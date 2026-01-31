@@ -1,0 +1,18 @@
+# Helm
+*.tgz
+charts/*/charts/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (절대 커밋하지 말 것!)
+*-secrets.yaml
+secrets/
+*.secret

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: community-service
+description: PawBridge Community Service Helm Chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

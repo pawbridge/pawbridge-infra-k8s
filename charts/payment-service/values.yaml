@@ -1,0 +1,41 @@
+# Default values for payment-service
+replicaCount: 1
+
+image:
+  repository: pawbridge/payment-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8084
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+env:
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pawbridge_payment
+  SPRING_DATASOURCE_USERNAME: root
+  SPRING_DATASOURCE_PASSWORD: ""
+  STORE_SERVICE_URL: http://store-service:8083
+
+secretRef: payment-service-secrets
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8084
+  initialDelaySeconds: 60
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8084
+  initialDelaySeconds: 30
+  periodSeconds: 5

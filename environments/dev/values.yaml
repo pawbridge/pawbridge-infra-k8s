@@ -1,0 +1,45 @@
+# Dev environment overrides
+# 이 파일에서 dev 환경 특화 설정을 override
+
+# 예시: dev 환경에서는 replica 1개
+# helm upgrade --install api-gateway ./charts/api-gateway -f environments/dev/values.yaml
+
+apiGateway:
+  replicaCount: 1
+  ingress:
+    hosts:
+      - host: api.pawbridge.local
+        paths:
+          - path: /
+            pathType: Prefix
+
+userService:
+  replicaCount: 1
+
+animalService:
+  replicaCount: 1
+
+communityService:
+  replicaCount: 1
+
+storeService:
+  replicaCount: 1
+
+paymentService:
+  replicaCount: 1
+
+# 공통 인프라 설정
+mysql:
+  host: mysql
+  port: 3306
+
+redis:
+  host: redis
+  port: 6379
+
+kafka:
+  bootstrapServers: kafka:9092
+
+elasticsearch:
+  host: elasticsearch
+  port: 9200

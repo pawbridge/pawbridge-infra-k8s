@@ -1,0 +1,52 @@
+# Default values for api-gateway
+replicaCount: 1
+
+image:
+  repository: pawbridge/api-gateway
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: api.pawbridge.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# 환경변수 - 다른 서비스 URL
+env:
+  USER_SERVICE_URL: http://user-service:8080
+  ANIMAL_SERVICE_URL: http://animal-service:8081
+  COMMUNITY_SERVICE_URL: http://community-service:8082
+  STORE_SERVICE_URL: http://store-service:8083
+  PAYMENT_SERVICE_URL: http://payment-service:8084
+
+# Probe 설정
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 5

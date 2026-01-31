@@ -1,0 +1,42 @@
+# Default values for community-service
+replicaCount: 1
+
+image:
+  repository: pawbridge/community-service
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8082
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+env:
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pawbridge_community
+  SPRING_DATASOURCE_USERNAME: root
+  SPRING_DATASOURCE_PASSWORD: ""
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  USER_SERVICE_URL: http://user-service:8080
+
+secretRef: community-service-secrets
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8082
+  initialDelaySeconds: 60
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8082
+  initialDelaySeconds: 30
+  periodSeconds: 5

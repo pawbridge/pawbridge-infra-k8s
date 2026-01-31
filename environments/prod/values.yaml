@@ -1,0 +1,33 @@
+# Prod environment overrides
+# 프로덕션 환경 설정
+
+apiGateway:
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  ingress:
+    hosts:
+      - host: api.pawbridge.com
+        paths:
+          - path: /
+            pathType: Prefix
+
+userService:
+  replicaCount: 2
+
+animalService:
+  replicaCount: 2
+
+communityService:
+  replicaCount: 2
+
+storeService:
+  replicaCount: 2
+
+paymentService:
+  replicaCount: 2
