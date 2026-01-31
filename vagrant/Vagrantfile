@@ -1,0 +1,288 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# PawBridge K8s Cluster - Vagrant Configuration
+# VM: 1 Control Plane + 2 Workers (fully automated)
+
+# 필요한 플러그인 자동 설치
+required_plugins = %w(vagrant-disksize vagrant-vbguest)
+required_plugins.each do |plugin|
+  unless Vagrant.has_plugin?(plugin)
+    system("vagrant plugin install #{plugin}") || exit!
+    exit system('vagrant', *ARGV)
+  end
+end
+
+# 노드 설정 (64GB RAM 환경 최적화)
+NODES = [
+  { name: "k8s-master", ip: "192.168.56.70", cpus: 2, memory: 4096, role: "master" },
+  { name: "k8s-worker1", ip: "192.168.56.71", cpus: 4, memory: 8192, role: "worker" },
+  { name: "k8s-worker2", ip: "192.168.56.72", cpus: 4, memory: 8192, role: "worker" }
+]
+
+Vagrant.configure("2") do |config|
+  # Rocky Linux 8 사용 (기존 환경과 동일)
+  config.vm.box = "rockylinux/8"
+  
+  # Disk 확장 설정
+  config.disksize.size = "50GB"
+  
+  # 자동 업데이트 비활성화
+  config.vbguest.auto_update = false
+  config.vm.synced_folder "./", "/vagrant", disabled: true
+
+  # 공통 프로비저닝
+  config.vm.provision :shell, privileged: true, inline: $install_common
+
+  NODES.each do |node|
+    config.vm.define node[:name] do |n|
+      n.vm.hostname = node[:name]
+      n.vm.network "private_network", ip: node[:ip]
+      
+      # VirtualBox 설정
+      n.vm.provider :virtualbox do |vb|
+        vb.name = node[:name]
+        vb.cpus = node[:cpus]
+        vb.memory = node[:memory]
+        vb.gui = false
+        vb.customize ["modifyvm", :id, "--firmware", "efi"]
+        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+        vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
+      end
+      
+      # Master 노드 추가 프로비저닝
+      if node[:role] == "master"
+        n.vm.provision :shell, privileged: true, inline: $install_master
+      end
+      
+      # Worker 노드 추가 프로비저닝
+      if node[:role] == "worker"
+        n.vm.provision :shell, privileged: true, inline: $install_worker, args: [node[:name]]
+      end
+    end
+  end
+end
+
+# ========================================
+# 공통 설치 스크립트 (Master + Worker)
+# ========================================
+$install_common = <<-SHELL
+
+echo '======== [1] Rocky Linux 기본 설정 ========'
+timedatectl set-timezone Asia/Seoul
+timedatectl set-ntp true
+chronyc makestep || true
+
+echo '======== [1-1] Disk 확장 ========'
+yum install -y cloud-utils-growpart
+growpart /dev/sda 4 || true
+xfs_growfs /dev/sda4 || true
+
+echo '======== [1-2] 방화벽 해제 ========'
+systemctl stop firewalld && systemctl disable firewalld
+
+echo '======== [1-3] Swap 비활성화 ========'
+swapoff -a && sed -i '/ swap / s/^/#/' /etc/fstab
+
+echo '======== [1-4] hosts 설정 ========'
+cat <<EOF >> /etc/hosts
+192.168.56.70 k8s-master
+192.168.56.71 k8s-worker1
+192.168.56.72 k8s-worker2
+EOF
+
+echo '======== [2] 컨테이너 런타임 (containerd) 설치 ========'
+echo '======== [2-1] 커널 모듈 설정 ========'
+cat <<EOF | tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+modprobe overlay
+modprobe br_netfilter
+
+cat <<EOF | tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+sysctl --system
+
+echo '======== [2-2] containerd 설치 ========'
+yum install -y yum-utils iproute-tc
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+yum install -y containerd.io
+systemctl daemon-reload
+systemctl enable --now containerd
+
+echo '======== [2-3] containerd cgroup 설정 ========'
+containerd config default > /etc/containerd/config.toml
+sed -i 's/ SystemdCgroup = false/ SystemdCgroup = true/' /etc/containerd/config.toml
+systemctl restart containerd
+
+echo '======== [3] Kubernetes 설치 (v1.27 - 안정 버전) ========'
+cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.27/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.27/rpm/repodata/repomd.xml.key
+exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+EOF
+
+echo '======== [3-1] SELinux 설정 ========'
+setenforce 0
+sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+echo '======== [3-2] kubeadm, kubelet, kubectl 설치 ========'
+yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+systemctl enable --now kubelet
+
+SHELL
+
+# ========================================
+# Master 노드 전용 스크립트
+# ========================================
+$install_master = <<-SHELL
+
+echo '======== [4] kubeadm 클러스터 초기화 ========'
+kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.56.70
+
+echo '======== [4-1] kubectl 설정 ========'
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+
+# vagrant 사용자도 kubectl 사용 가능하도록
+mkdir -p /home/vagrant/.kube
+cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+chown -R vagrant:vagrant /home/vagrant/.kube
+
+echo '======== [4-2] Pod Network (Calico) 설치 ========'
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.4/manifests/tigera-operator.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.4/manifests/custom-resources.yaml
+
+echo '======== [4-3] Master Taint 제거 (필요시 Pod 배포 가능) ========'
+kubectl taint nodes k8s-master node-role.kubernetes.io/control-plane- || true
+
+echo '======== [5] 편의 기능 설치 ========'
+echo '======== [5-1] kubectl 자동완성 ========'
+echo "source <(kubectl completion bash)" >> /root/.bashrc
+echo 'alias k=kubectl' >> /root/.bashrc
+echo 'complete -o default -F __start_kubectl k' >> /root/.bashrc
+
+echo "source <(kubectl completion bash)" >> /home/vagrant/.bashrc
+echo 'alias k=kubectl' >> /home/vagrant/.bashrc
+echo 'complete -o default -F __start_kubectl k' >> /home/vagrant/.bashrc
+
+echo '======== [5-2] Helm 설치 ========'
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+echo '======== [6] Ingress Controller (nginx) 설치 ========'
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/baremetal/deploy.yaml
+
+echo '======== [7] Kubernetes Dashboard 설치 ========'
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+
+# Dashboard Admin 계정 생성
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+EOF
+
+echo '======== [8] Metrics Server 설치 ========'
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+# TLS 검증 비활성화 (로컬 환경)
+kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+
+echo '======== [9] Prometheus + Grafana (kube-prometheus-stack) 설치 ========'
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace \
+  --set grafana.adminPassword=admin123 \
+  --wait --timeout 10m
+
+echo '======== [10] Zipkin 설치 (분산 추적) ========'
+kubectl create namespace tracing || true
+cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipkin
+  namespace: tracing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zipkin
+  template:
+    metadata:
+      labels:
+        app: zipkin
+    spec:
+      containers:
+      - name: zipkin
+        image: openzipkin/zipkin:latest
+        ports:
+        - containerPort: 9411
+        resources:
+          limits:
+            memory: 512Mi
+            cpu: 500m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin
+  namespace: tracing
+spec:
+  selector:
+    app: zipkin
+  ports:
+  - port: 9411
+    targetPort: 9411
+  type: ClusterIP
+EOF
+
+echo '======== [11] Worker Join 토큰 저장 ========'
+kubeadm token create --print-join-command > /vagrant_shared/join-command.sh
+chmod +x /vagrant_shared/join-command.sh
+
+echo ''
+echo '======== 설치 완료! ========'
+echo 'Dashboard 토큰 확인: kubectl -n kubernetes-dashboard create token admin-user'
+echo 'Grafana 접속: admin / admin123'
+echo 'Zipkin 접속: kubectl port-forward -n tracing svc/zipkin 9411:9411'
+echo ''
+
+SHELL
+
+# ========================================
+# Worker 노드 전용 스크립트
+# ========================================
+$install_worker = <<-SHELL
+
+echo '======== Worker 노드: 클러스터 조인 대기 ========'
+echo '마스터 노드에서 다음 명령어로 조인 토큰을 가져오세요:'
+echo 'kubeadm token create --print-join-command'
+echo ''
+echo '그 다음 이 노드에서 실행하세요.'
+
+SHELL

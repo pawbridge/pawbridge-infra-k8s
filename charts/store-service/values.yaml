@@ -23,19 +23,38 @@ env:
   SPRING_DATASOURCE_USERNAME: root
   SPRING_DATASOURCE_PASSWORD: ""
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
 
 secretRef: store-service-secrets
+
+startupProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8083
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 30
 
 livenessProbe:
   httpGet:
     path: /actuator/health/liveness
     port: 8083
-  initialDelaySeconds: 60
+  initialDelaySeconds: 0
   periodSeconds: 10
+  failureThreshold: 3
 
 readinessProbe:
   httpGet:
     path: /actuator/health/readiness
     port: 8083
-  initialDelaySeconds: 30
+  initialDelaySeconds: 0
   periodSeconds: 5
+  failureThreshold: 3
+
+# HPA 설정
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
