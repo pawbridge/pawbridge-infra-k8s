@@ -35,18 +35,42 @@ env:
   COMMUNITY_SERVICE_URL: http://community-service:8082
   STORE_SERVICE_URL: http://store-service:8083
   PAYMENT_SERVICE_URL: http://payment-service:8084
+  # Zipkin
+  SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+
+# Secret 참조 (민감정보)
+secretRef: api-gateway-secrets
 
 # Probe 설정
+startupProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 30  # 30 * 5 = 150초까지 대기
+
 livenessProbe:
   httpGet:
     path: /actuator/health/liveness
     port: 8080
-  initialDelaySeconds: 60
+  initialDelaySeconds: 0
   periodSeconds: 10
+  failureThreshold: 3
 
 readinessProbe:
   httpGet:
     path: /actuator/health/readiness
     port: 8080
-  initialDelaySeconds: 30
+  initialDelaySeconds: 0
   periodSeconds: 5
+  failureThreshold: 3
+
+# HPA 설정
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
