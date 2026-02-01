@@ -51,7 +51,7 @@ spec:
     userOperator: {}
 
 ---
-# Kafka Connect (Debezium용)
+# Kafka Connect (Debezium용) - 미리 빌드된 이미지 사용
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaConnect
 metadata:
@@ -63,6 +63,7 @@ spec:
   version: 3.5.0
   replicas: 1
   bootstrapServers: pawbridge-kafka-bootstrap:9092
+  image: quay.io/debezium/connect:2.4
   config:
     group.id: pawbridge-connect
     offset.storage.topic: connect-offsets
@@ -71,23 +72,10 @@ spec:
     offset.storage.replication.factor: 1
     config.storage.replication.factor: 1
     status.storage.replication.factor: 1
-  build:
-    output:
-      type: docker
-      image: pawbridge/kafka-connect:latest
-    plugins:
-      - name: debezium-mysql
-        artifacts:
-          - type: maven
-            group: io.debezium
-            artifact: debezium-connector-mysql
-            version: 2.4.0.Final
-      - name: elasticsearch-sink
-        artifacts:
-          - type: maven
-            group: io.confluent
-            artifact: kafka-connect-elasticsearch
-            version: 14.0.0
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: "false"
+    value.converter.schemas.enable: "false"
   resources:
     requests:
       cpu: 200m
