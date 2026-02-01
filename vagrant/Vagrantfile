@@ -5,7 +5,7 @@
 # VM: 1 Control Plane + 2 Workers (fully automated)
 
 # 필요한 플러그인 자동 설치
-required_plugins = %w(vagrant-disksize vagrant-vbguest)
+required_plugins = %w(vagrant-disksize)
 required_plugins.each do |plugin|
   unless Vagrant.has_plugin?(plugin)
     system("vagrant plugin install #{plugin}") || exit!
@@ -15,20 +15,19 @@ end
 
 # 노드 설정 (64GB RAM 환경 최적화)
 NODES = [
-  { name: "k8s-master", ip: "192.168.56.70", cpus: 2, memory: 4096, role: "master" },
+  { name: "k8s-master", ip: "192.168.56.70", cpus: 2, memory: 6144, role: "master" },
   { name: "k8s-worker1", ip: "192.168.56.71", cpus: 4, memory: 8192, role: "worker" },
   { name: "k8s-worker2", ip: "192.168.56.72", cpus: 4, memory: 8192, role: "worker" }
 ]
 
 Vagrant.configure("2") do |config|
-  # Rocky Linux 8 사용 (기존 환경과 동일)
-  config.vm.box = "rockylinux/8"
+  # Ubuntu 22.04 LTS 사용 (VirtualBox 호환성 최고)
+  config.vm.box = "ubuntu/jammy64"
   
   # Disk 확장 설정
   config.disksize.size = "50GB"
   
-  # 자동 업데이트 비활성화
-  config.vbguest.auto_update = false
+  # 공유 폴더 비활성화 (보안)
   config.vm.synced_folder "./", "/vagrant", disabled: true
 
   # 공통 프로비저닝
@@ -45,9 +44,7 @@ Vagrant.configure("2") do |config|
         vb.cpus = node[:cpus]
         vb.memory = node[:memory]
         vb.gui = false
-        vb.customize ["modifyvm", :id, "--firmware", "efi"]
         vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
-        vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
       end
       
       # Master 노드 추가 프로비저닝
@@ -68,23 +65,17 @@ end
 # ========================================
 $install_common = <<-SHELL
 
-echo '======== [1] Rocky Linux 기본 설정 ========'
+echo '======== [1] Ubuntu 기본 설정 ========'
 timedatectl set-timezone Asia/Seoul
-timedatectl set-ntp true
-chronyc makestep || true
 
-echo '======== [1-1] Disk 확장 ========'
-yum install -y cloud-utils-growpart
-growpart /dev/sda 4 || true
-xfs_growfs /dev/sda4 || true
+echo '======== [1-1] 패키지 업데이트 ========'
+apt-get update
+apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release conntrack socat iproute2
 
-echo '======== [1-2] 방화벽 해제 ========'
-systemctl stop firewalld && systemctl disable firewalld
-
-echo '======== [1-3] Swap 비활성화 ========'
+echo '======== [1-2] Swap 비활성화 ========'
 swapoff -a && sed -i '/ swap / s/^/#/' /etc/fstab
 
-echo '======== [1-4] hosts 설정 ========'
+echo '======== [1-3] hosts 설정 ========'
 cat <<EOF >> /etc/hosts
 192.168.56.70 k8s-master
 192.168.56.71 k8s-worker1
@@ -108,10 +99,10 @@ EOF
 sysctl --system
 
 echo '======== [2-2] containerd 설치 ========'
-yum install -y yum-utils iproute-tc
-yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-yum install -y containerd.io
-systemctl daemon-reload
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
+apt-get update
+apt-get install -y containerd.io
 systemctl enable --now containerd
 
 echo '======== [2-3] containerd cgroup 설정 ========'
@@ -119,24 +110,70 @@ containerd config default > /etc/containerd/config.toml
 sed -i 's/ SystemdCgroup = false/ SystemdCgroup = true/' /etc/containerd/config.toml
 systemctl restart containerd
 
-echo '======== [3] Kubernetes 설치 (v1.27 - 안정 버전) ========'
-cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
-[kubernetes]
-name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v1.27/rpm/
-enabled=1
-gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v1.27/rpm/repodata/repomd.xml.key
-exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+echo '======== [3] Kubernetes 설치 (v1.27 - 바이너리 직접 설치) ========'
+K8S_VERSION="v1.27.16"
+CRICTL_VERSION="v1.27.0"
+
+# kubectl 다운로드
+curl -LO "https://dl.k8s.io/release/${K8S_VERSION}/bin/linux/amd64/kubectl"
+install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+rm -f kubectl
+
+# kubeadm 다운로드
+curl -LO "https://dl.k8s.io/release/${K8S_VERSION}/bin/linux/amd64/kubeadm"
+install -o root -g root -m 0755 kubeadm /usr/local/bin/kubeadm
+rm -f kubeadm
+
+# kubelet 다운로드  
+curl -LO "https://dl.k8s.io/release/${K8S_VERSION}/bin/linux/amd64/kubelet"
+install -o root -g root -m 0755 kubelet /usr/local/bin/kubelet
+rm -f kubelet
+
+# crictl 다운로드 (kubeadm에서 필요)
+curl -LO "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz"
+tar -zxvf crictl-${CRICTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
+rm -f crictl-${CRICTL_VERSION}-linux-amd64.tar.gz
+
+# crictl 설정 (containerd 사용)
+cat <<EOF | tee /etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock
+image-endpoint: unix:///run/containerd/containerd.sock
+timeout: 10
 EOF
 
-echo '======== [3-1] SELinux 설정 ========'
-setenforce 0
-sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+# kubelet 서비스 설정
+mkdir -p /etc/systemd/system/kubelet.service.d
+cat <<EOF | tee /etc/systemd/system/kubelet.service
+[Unit]
+Description=kubelet: The Kubernetes Node Agent
+Documentation=https://kubernetes.io/docs/
+Wants=network-online.target
+After=network-online.target
 
-echo '======== [3-2] kubeadm, kubelet, kubectl 설치 ========'
-yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
-systemctl enable --now kubelet
+[Service]
+ExecStart=/usr/local/bin/kubelet
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# kubelet 설정 드롭인
+cat <<'EOF' | tee /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+EnvironmentFile=-/etc/default/kubelet
+ExecStart=
+ExecStart=/usr/local/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+EOF
+
+systemctl daemon-reload
+systemctl enable kubelet
+# kubelet은 kubeadm init/join이 시작시킴 (여기서 --now 사용하면 포트 충돌!)
 
 SHELL
 
@@ -146,12 +183,16 @@ SHELL
 $install_master = <<-SHELL
 
 echo '======== [4] kubeadm 클러스터 초기화 ========'
-kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.56.70
+if ! kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.56.70; then
+  echo 'kubeadm init 실패! 스크립트 중단.'
+  exit 1
+fi
 
 echo '======== [4-1] kubectl 설정 ========'
 mkdir -p $HOME/.kube
 cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 chown $(id -u):$(id -g) $HOME/.kube/config
+export KUBECONFIG=$HOME/.kube/config
 
 # vagrant 사용자도 kubectl 사용 가능하도록
 mkdir -p /home/vagrant/.kube
@@ -160,7 +201,57 @@ chown -R vagrant:vagrant /home/vagrant/.kube
 
 echo '======== [4-2] Pod Network (Calico) 설치 ========'
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.4/manifests/tigera-operator.yaml
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.4/manifests/custom-resources.yaml
+
+# tigera-operator CRD 준비 대기
+echo 'tigera-operator CRD 대기 중...'
+sleep 15
+cat <<EOF | kubectl apply -f -
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  calicoNetwork:
+    ipPools:
+    - blockSize: 26
+      cidr: 10.244.0.0/16
+      encapsulation: VXLANCrossSubnet
+      natOutgoing: Enabled
+      nodeSelector: all()
+---
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
+EOF
+
+# Calico 설치 완료 대기 (최대 5분)
+echo 'Calico 설치 대기 중... (최대 5분)'
+for i in {1..60}; do
+  READY=$(kubectl get pods -n calico-system --no-headers 2>/dev/null | grep -c 'Running' || true)
+  READY=${READY:-0}
+  READY=$(echo $READY | tr -d '\n')
+  if [ "$READY" -ge 2 ] 2>/dev/null; then
+    echo "Calico Pod $READY개 Running!"
+    break
+  fi
+  echo "대기 중... ($i/60) - 현재 Running: $READY"
+  sleep 5
+done
+
+# 노드 Ready 대기
+echo '노드 Ready 상태 대기 중...'
+for i in {1..30}; do
+  STATUS=$(kubectl get nodes k8s-master --no-headers 2>/dev/null | awk '{print $2}' | tr -d '\n')
+  STATUS=${STATUS:-NotReady}
+  if [ "$STATUS" = "Ready" ]; then
+    echo "Master 노드 Ready!"
+    break
+  fi
+  echo "대기 중... ($i/30) - 현재: $STATUS"
+  sleep 5
+done
 
 echo '======== [4-3] Master Taint 제거 (필요시 Pod 배포 가능) ========'
 kubectl taint nodes k8s-master node-role.kubernetes.io/control-plane- || true
@@ -177,99 +268,36 @@ echo 'complete -o default -F __start_kubectl k' >> /home/vagrant/.bashrc
 
 echo '======== [5-2] Helm 설치 ========'
 curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+# Helm 설치 확인
+if [ -f /usr/local/bin/helm ]; then
+  echo 'Helm 설치 성공!'
+  /usr/local/bin/helm version
+else
+  echo 'Helm 설치 실패!'
+  exit 1
+fi
 
-echo '======== [6] Ingress Controller (nginx) 설치 ========'
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.4/deploy/static/provider/baremetal/deploy.yaml
-
-echo '======== [7] Kubernetes Dashboard 설치 ========'
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
-
-# Dashboard Admin 계정 생성
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: admin-user
-  namespace: kubernetes-dashboard
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: admin-user
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-- kind: ServiceAccount
-  name: admin-user
-  namespace: kubernetes-dashboard
-EOF
-
-echo '======== [8] Metrics Server 설치 ========'
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-# TLS 검증 비활성화 (로컬 환경)
-kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
-
-echo '======== [9] Prometheus + Grafana (kube-prometheus-stack) 설치 ========'
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring --create-namespace \
-  --set grafana.adminPassword=admin123 \
-  --wait --timeout 10m
-
-echo '======== [10] Zipkin 설치 (분산 추적) ========'
-kubectl create namespace tracing || true
-cat <<EOF | kubectl apply -f -
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: zipkin
-  namespace: tracing
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: zipkin
-  template:
-    metadata:
-      labels:
-        app: zipkin
-    spec:
-      containers:
-      - name: zipkin
-        image: openzipkin/zipkin:latest
-        ports:
-        - containerPort: 9411
-        resources:
-          limits:
-            memory: 512Mi
-            cpu: 500m
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: zipkin
-  namespace: tracing
-spec:
-  selector:
-    app: zipkin
-  ports:
-  - port: 9411
-    targetPort: 9411
-  type: ClusterIP
-EOF
-
-echo '======== [11] Worker Join 토큰 저장 ========'
-kubeadm token create --print-join-command > /vagrant_shared/join-command.sh
-chmod +x /vagrant_shared/join-command.sh
+# Helm repo 추가
+echo 'Helm 레포지토리 추가 중...'
+/usr/local/bin/helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
+/usr/local/bin/helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx || true
+/usr/local/bin/helm repo update
 
 echo ''
-echo '======== 설치 완료! ========'
-echo 'Dashboard 토큰 확인: kubectl -n kubernetes-dashboard create token admin-user'
-echo 'Grafana 접속: admin / admin123'
-echo 'Zipkin 접속: kubectl port-forward -n tracing svc/zipkin 9411:9411'
+echo '========================================'
+echo '  Master 노드 클러스터 초기화 완료!'
+echo '========================================'
+echo ''
+echo '[Worker Join 명령어]'
+kubeadm token create --print-join-command
+echo ''
+echo '[다음 단계]'
+echo '모니터링 도구 설치: infra/install-infra.sh 실행'
+echo ''
+echo 'Worker 노드 Join 후 아래 명령어로 인프라 설치:'
+echo '  cd /path/to/infra'
+echo '  chmod +x install-infra.sh'
+echo '  ./install-infra.sh'
 echo ''
 
 SHELL
@@ -279,10 +307,16 @@ SHELL
 # ========================================
 $install_worker = <<-SHELL
 
-echo '======== Worker 노드: 클러스터 조인 대기 ========'
-echo '마스터 노드에서 다음 명령어로 조인 토큰을 가져오세요:'
-echo 'kubeadm token create --print-join-command'
 echo ''
-echo '그 다음 이 노드에서 실행하세요.'
+echo '========================================'
+echo '  Worker 노드 설치 완료!'
+echo '========================================'
+echo ''
+echo 'Master 노드에서 아래 명령어로 Join 토큰을 확인하세요:'
+echo '  vagrant ssh k8s-master'
+echo '  kubeadm token create --print-join-command'
+echo ''
+echo '그 다음 이 노드에서 sudo로 실행하세요.'
+echo ''
 
 SHELL

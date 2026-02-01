@@ -16,3 +16,6 @@ Thumbs.db
 *-secrets.yaml
 secrets/
 *.secret
+ 
+# Vagrant 
+.vagrant/ 
