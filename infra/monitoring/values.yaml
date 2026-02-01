@@ -1,0 +1,67 @@
+# Prometheus + Grafana (kube-prometheus-stack) values
+# 공식 차트: prometheus-community/kube-prometheus-stack
+
+# Grafana 설정
+grafana:
+  enabled: true
+  adminPassword: admin123
+  
+  # Ingress 설정
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.local
+    path: /
+    pathType: Prefix
+  
+  # 리소스 제한
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Prometheus 설정
+prometheus:
+  prometheusSpec:
+    # 모든 ServiceMonitor 수집
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    
+    # 리소스 제한
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    
+    # 데이터 보관 기간
+    retention: 7d
+    
+    # 스토리지 (로컬 환경이므로 emptyDir)
+    storageSpec: {}
+
+# Alertmanager 설정
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# Node Exporter 설정
+nodeExporter:
+  enabled: true
+
+# Kube State Metrics 설정
+kubeStateMetrics:
+  enabled: true
