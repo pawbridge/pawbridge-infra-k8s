@@ -1,0 +1,29 @@
+# Redis 7 Helm values
+# 공식 차트: bitnami/redis
+
+image:
+  tag: "7.0"
+
+# 인증 비활성화 (로컬 개발 환경)
+auth:
+  enabled: false
+
+# 단일 노드 모드
+architecture: standalone
+
+master:
+  persistence:
+    enabled: true
+    size: 1Gi
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Replica 비활성화 (로컬 환경)
+replica:
+  replicaCount: 0

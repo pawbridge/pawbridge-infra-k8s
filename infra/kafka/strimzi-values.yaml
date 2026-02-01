@@ -1,0 +1,16 @@
+# Strimzi Kafka Operator + Kafka Cluster
+# 공식 차트: strimzi/strimzi-kafka-operator
+
+# Strimzi Operator가 설치되면, 아래 Kafka CR(Custom Resource)로 클러스터 생성
+
+# Operator 설정
+watchNamespaces: []
+watchAnyNamespace: true
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 384Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

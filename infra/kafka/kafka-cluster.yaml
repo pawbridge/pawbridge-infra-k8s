@@ -1,0 +1,97 @@
+# Strimzi Kafka Cluster CR (Custom Resource)
+# Strimzi Operator 설치 후 적용
+
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: pawbridge
+  namespace: kafka
+spec:
+  kafka:
+    version: 3.5.0
+    replicas: 1
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      auto.create.topics.enable: "true"
+      log.retention.hours: 168
+    storage:
+      type: ephemeral
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+  zookeeper:
+    replicas: 1
+    storage:
+      type: ephemeral
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+
+---
+# Kafka Connect (Debezium용)
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: pawbridge-connect
+  namespace: kafka
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 3.5.0
+  replicas: 1
+  bootstrapServers: pawbridge-kafka-bootstrap:9092
+  config:
+    group.id: pawbridge-connect
+    offset.storage.topic: connect-offsets
+    config.storage.topic: connect-configs
+    status.storage.topic: connect-status
+    offset.storage.replication.factor: 1
+    config.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+  build:
+    output:
+      type: docker
+      image: pawbridge/kafka-connect:latest
+    plugins:
+      - name: debezium-mysql
+        artifacts:
+          - type: maven
+            group: io.debezium
+            artifact: debezium-connector-mysql
+            version: 2.4.0.Final
+      - name: elasticsearch-sink
+        artifacts:
+          - type: maven
+            group: io.confluent
+            artifact: kafka-connect-elasticsearch
+            version: 14.0.0
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
