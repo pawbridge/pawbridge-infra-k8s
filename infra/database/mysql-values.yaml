@@ -1,0 +1,40 @@
+# MySQL 8.0 Helm values
+# 공식 차트: bitnami/mysql
+
+image:
+  tag: "8.0"
+
+auth:
+  rootPassword: "root123"
+  database: "pawbridge"
+
+primary:
+  persistence:
+    enabled: true
+    size: 10Gi
+  
+  configuration: |-
+    [mysqld]
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
+    log-bin=mysql-bin
+    binlog-format=ROW
+    binlog-row-image=FULL
+    server-id=1
+  
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Init SQL (데이터베이스 생성)
+initdbScripts:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS pawbridge_user;
+    CREATE DATABASE IF NOT EXISTS pawbridge_animal;
+    CREATE DATABASE IF NOT EXISTS pawbridge_community;
+    CREATE DATABASE IF NOT EXISTS pawbridge_store;
+    CREATE DATABASE IF NOT EXISTS pawbridge_payment;
