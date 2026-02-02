@@ -16,6 +16,14 @@ auth:
 # 단일 노드 모드
 architecture: standalone
 
+# Redis 기본 설정 (모듈 로딩 없음 - bitnamilegacy 이미지 호환)
+commonConfiguration: |-
+  # Enable AOF persistence
+  appendonly yes
+  # Disable RDB persistence
+  save ""
+  # No modules (bitnamilegacy doesn't include redisearch)
+
 master:
   persistence:
     enabled: true
