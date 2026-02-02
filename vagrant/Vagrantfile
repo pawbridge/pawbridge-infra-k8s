@@ -253,8 +253,8 @@ for i in {1..30}; do
   sleep 5
 done
 
-echo '======== [4-3] Master Taint 제거 (필요시 Pod 배포 가능) ========'
-kubectl taint nodes k8s-master node-role.kubernetes.io/control-plane- || true
+# Master Taint는 유지 (워크로드는 Worker 노드에서만 실행)
+# kubectl taint nodes k8s-master node-role.kubernetes.io/control-plane- || true
 
 echo '======== [5] 편의 기능 설치 ========'
 echo '======== [5-1] kubectl 자동완성 ========'
