@@ -34,6 +34,7 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.service.type=NodePort \
   --set controller.service.nodePorts.http=30080 \
   --set controller.service.nodePorts.https=30443 \
+  --set controller.extraArgs.enable-ssl-passthrough=true \
   --wait
 
 # MySQL 설치 (Bitnami Helm - startup probe 시간 충분히 설정됨)
