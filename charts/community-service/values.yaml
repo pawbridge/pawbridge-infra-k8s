@@ -17,14 +17,14 @@ resources:
   requests:
     cpu: 250m
     memory: 256Mi
-
+# 환경변수 (K8s FQDN 사용)
 env:
-  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pawbridge_community
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.default.svc.cluster.local:3306/pawbridge_community
   SPRING_DATASOURCE_USERNAME: root
   SPRING_DATASOURCE_PASSWORD: ""
-  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  USER_SERVICE_URL: http://user-service:8080
-  SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+  KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
+  USER_SERVICE_URL: http://user-service.pawbridge.svc.cluster.local:8080
+  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
 
 secretRef: community-service-secrets
 

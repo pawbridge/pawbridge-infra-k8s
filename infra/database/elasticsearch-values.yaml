@@ -1,0 +1,56 @@
+# Elasticsearch Helm Values (Single Node)
+# 공식 차트: elastic/elasticsearch
+
+replicas: 1
+
+# Single Node 설정
+minimumMasterNodes: 1
+esJavaOpts: "-Xmx1g -Xms1g"
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1.5Gi"
+  limits:
+    cpu: "1000m"
+    memory: "2Gi"
+
+# 데이터 영구 저장 (Local Path)
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path
+
+# Service 설정
+service:
+  type: ClusterIP
+  httpPort: 9200
+  transportPort: 9300
+
+# 보안 설정 (개발용이라 끔)
+# xpack.security.enabled: false는 환경변수로
+extraEnvs:
+  - name: "discovery.type"
+    value: "single-node"
+  - name: "xpack.security.enabled"
+    value: "false"
+
+# Health Check
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 10
+
+lifecycle:
+  postStart:
+    exec:
+      command:
+        - bash
+        - -c
+        - |
+          #!/bin/bash
+          # ES 플러그인 설치 (필요시 - 예를 들어 nori 형태소 분석기)
+          # bin/elasticsearch-plugin install analysis-nori

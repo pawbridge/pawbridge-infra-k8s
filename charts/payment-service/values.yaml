@@ -17,13 +17,13 @@ resources:
   requests:
     cpu: 250m
     memory: 256Mi
-
+# 환경변수 (K8s FQDN 사용)
 env:
-  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pawbridge_payment
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.default.svc.cluster.local:3306/pawbridge_payment
   SPRING_DATASOURCE_USERNAME: root
   SPRING_DATASOURCE_PASSWORD: ""
-  STORE_SERVICE_URL: http://store-service:8083
-  SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+  STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
+  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
 
 secretRef: payment-service-secrets
 

@@ -28,15 +28,15 @@ resources:
     cpu: 250m
     memory: 256Mi
 
-# 환경변수 - 다른 서비스 URL
+# 환경변수 - 다른 서비스 URL (K8s FQDN 사용)
 env:
-  USER_SERVICE_URL: http://user-service:8080
-  ANIMAL_SERVICE_URL: http://animal-service:8081
-  COMMUNITY_SERVICE_URL: http://community-service:8082
-  STORE_SERVICE_URL: http://store-service:8083
-  PAYMENT_SERVICE_URL: http://payment-service:8084
+  USER_SERVICE_URL: http://user-service.pawbridge.svc.cluster.local:8080
+  ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
+  COMMUNITY_SERVICE_URL: http://community-service.pawbridge.svc.cluster.local:8082
+  STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
+  PAYMENT_SERVICE_URL: http://payment-service.pawbridge.svc.cluster.local:8084
   # Zipkin
-  SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
 
 # Secret 참조 (민감정보)
 secretRef: api-gateway-secrets
