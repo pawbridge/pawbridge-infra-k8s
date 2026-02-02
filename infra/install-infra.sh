@@ -36,15 +36,15 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.service.nodePorts.https=30443 \
   --wait
 
-# MySQL 설치
+# MySQL 설치 (Bitnami Helm - startup probe 시간 충분히 설정됨)
 echo ""
 echo "[4/10] MySQL 설치..."
 helm upgrade --install mysql bitnami/mysql \
   --namespace default \
   -f "${SCRIPT_DIR}/database/mysql-values.yaml" \
-  --wait --timeout 10m
+  --wait --timeout 15m
 
-# Redis 설치
+# Redis 설치 (Bitnami Helm)
 echo ""
 echo "[5/10] Redis 설치..."
 helm upgrade --install redis bitnami/redis \
