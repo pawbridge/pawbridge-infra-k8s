@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: debezium-connect
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 8083
+          name: connect-api
+        env:
+        - name: BOOTSTRAP_SERVERS
+          value: {{ .Values.kafka.bootstrapServers | quote }}
+        - name: GROUP_ID
+          value: {{ .Values.connect.groupId | quote }}
+        - name: CONFIG_STORAGE_TOPIC
+          value: {{ .Values.connect.configStorageTopic | quote }}
+        - name: OFFSET_STORAGE_TOPIC
+          value: {{ .Values.connect.offsetStorageTopic | quote }}
+        - name: STATUS_STORAGE_TOPIC
+          value: {{ .Values.connect.statusStorageTopic | quote }}
+        - name: CONFIG_STORAGE_REPLICATION_FACTOR
+          value: {{ .Values.connect.replicationFactor | quote }}
+        - name: OFFSET_STORAGE_REPLICATION_FACTOR
+          value: {{ .Values.connect.replicationFactor | quote }}
+        - name: STATUS_STORAGE_REPLICATION_FACTOR
+          value: {{ .Values.connect.replicationFactor | quote }}
+        - name: KEY_CONVERTER
+          value: {{ .Values.converter.key | quote }}
+        - name: VALUE_CONVERTER
+          value: {{ .Values.converter.value | quote }}
+        - name: KEY_CONVERTER_SCHEMAS_ENABLE
+          value: {{ .Values.converter.schemasEnable | quote }}
+        - name: VALUE_CONVERTER_SCHEMAS_ENABLE
+          value: {{ .Values.converter.schemasEnable | quote }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8083
+          initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8083
+          initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}

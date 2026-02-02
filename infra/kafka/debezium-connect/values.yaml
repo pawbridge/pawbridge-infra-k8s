@@ -1,0 +1,52 @@
+# Debezium Kafka Connect Helm values
+# 공식 이미지: quay.io/debezium/connect
+
+image:
+  repository: quay.io/debezium/connect
+  tag: "2.4.0.Final"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# Kafka 연결 설정
+kafka:
+  bootstrapServers: "pawbridge-kafka-bootstrap:9092"
+
+# Kafka Connect 설정
+connect:
+  groupId: "pawbridge-connect"
+  configStorageTopic: "connect-configs"
+  offsetStorageTopic: "connect-offsets"
+  statusStorageTopic: "connect-status"
+  replicationFactor: 1
+
+# Converter 설정
+converter:
+  key: "org.apache.kafka.connect.json.JsonConverter"
+  value: "org.apache.kafka.connect.json.JsonConverter"
+  schemasEnable: false
+
+# Service 설정
+service:
+  type: ClusterIP
+  port: 8083
+
+# 리소스 제한
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Probe 설정
+probes:
+  readiness:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+  liveness:
+    initialDelaySeconds: 90
+    periodSeconds: 30
+    timeoutSeconds: 10
