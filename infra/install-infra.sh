@@ -13,7 +13,7 @@ echo "========================================"
 # Local Path Provisioner 설치 (로컬 스토리지용)
 echo ""
 echo "[1/10] Local Path Provisioner 설치..."
-kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.35/deploy/local-path-storage.yaml
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.34/deploy/local-path-storage.yaml
 kubectl wait --for=condition=available --timeout=60s deployment/local-path-provisioner -n local-path-storage || true
 
 # Helm repo 추가
@@ -58,6 +58,7 @@ echo "[6/10] Strimzi Kafka Operator 설치..."
 kubectl create namespace kafka --dry-run=client -o yaml | kubectl apply -f -
 helm upgrade --install strimzi strimzi/strimzi-kafka-operator \
   --namespace kafka \
+  --version 0.39.0 \
   -f "${SCRIPT_DIR}/kafka/strimzi-values.yaml" \
   --wait --timeout 5m
 
