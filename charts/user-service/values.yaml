@@ -18,17 +18,17 @@ resources:
     cpu: 250m
     memory: 256Mi
 
-# 환경변수
+# 환경변수 (K8s FQDN 사용)
 env:
-  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/pawbridge_user
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.default.svc.cluster.local:3306/pawbridge_user
   SPRING_DATASOURCE_USERNAME: root
   SPRING_DATASOURCE_PASSWORD: ""
-  REDIS_HOST: redis
+  REDIS_HOST: redis-master.default.svc.cluster.local
   REDIS_PORT: "6379"
-  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-  ANIMAL_SERVICE_URL: http://animal-service:8081
-  STORE_SERVICE_URL: http://store-service:8083
-  SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+  KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
+  ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
+  STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
+  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
 
 # Secret 참조 (민감정보)
 secretRef: user-service-secrets

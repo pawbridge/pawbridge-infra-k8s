@@ -53,6 +53,17 @@ helm upgrade --install redis bitnami/redis \
   -f "${SCRIPT_DIR}/database/redis-values.yaml" \
   --wait --timeout 5m
 
+# Elasticsearch 설치 (Single Node)
+echo ""
+echo "[5.5/10] Elasticsearch 설치..."
+helm repo add elastic https://helm.elastic.co || true
+helm repo update
+helm upgrade --install elasticsearch elastic/elasticsearch \
+  --namespace default \
+  --version 7.17.3 \
+  -f "${SCRIPT_DIR}/database/elasticsearch-values.yaml" \
+  --wait --timeout 5m
+
 # Strimzi Kafka Operator 설치
 echo ""
 echo "[6/10] Strimzi Kafka Operator 설치..."
