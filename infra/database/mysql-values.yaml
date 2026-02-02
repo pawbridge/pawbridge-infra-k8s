@@ -1,8 +1,13 @@
-# MySQL 8.0 Helm values
+# MySQL Helm values
 # 공식 차트: bitnami/mysql
+# 참고: Bitnami 2025.08 정책 변경으로 버전 태그 삭제됨
+# 현재 사용 가능: latest 태그만
 
 image:
-  tag: "8.0"
+  registry: docker.io
+  repository: bitnami/mysql
+  tag: latest
+  pullPolicy: Always
 
 auth:
   rootPassword: "root123"

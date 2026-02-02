@@ -63,7 +63,7 @@ spec:
   version: 3.5.0
   replicas: 1
   bootstrapServers: pawbridge-kafka-bootstrap:9092
-  image: quay.io/debezium/connect:2.4
+  image: quay.io/debezium/connect:2.4.0.Final
   config:
     group.id: pawbridge-connect
     offset.storage.topic: connect-offsets
