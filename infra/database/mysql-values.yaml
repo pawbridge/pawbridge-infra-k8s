@@ -36,6 +36,28 @@ primary:
       cpu: 1000m
       memory: 1Gi
 
+  # Startup probe 설정 (MySQL 시작 시간 충분히 확보)
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 30  # 60 + (15 * 30) = 최대 510초 = 8.5분 대기
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+
 # Init SQL (데이터베이스 생성)
 initdbScripts:
   init.sql: |
