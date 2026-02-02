@@ -3,8 +3,8 @@
 
 replicas: 1
 
-# Single Node 설정
-minimumMasterNodes: 1
+# Single Node 설정 - cluster.initial_master_nodes 충돌 방지
+clusterInitialMasterNodes: []
 esJavaOpts: "-Xmx1g -Xms1g"
 
 resources:
