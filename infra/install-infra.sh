@@ -70,6 +70,15 @@ kubectl apply -f "${SCRIPT_DIR}/kafka/kafka-cluster.yaml"
 echo "Kafka 클러스터 시작 대기 중 (약 2분)..."
 sleep 60
 
+# Debezium Kafka Connect 배포 (Kafka 브로커가 준비된 후)
+echo ""
+echo "[7.5/10] Debezium Kafka Connect 배포..."
+helm upgrade --install debezium-connect "${SCRIPT_DIR}/kafka/debezium-connect" \
+  --namespace kafka \
+  --wait --timeout 5m
+echo "Debezium Connect 시작 대기 중..."
+sleep 30
+
 # Prometheus + Grafana 설치
 echo ""
 echo "[8/10] Prometheus + Grafana 설치..."

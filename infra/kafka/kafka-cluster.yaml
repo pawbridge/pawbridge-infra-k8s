@@ -50,36 +50,7 @@ spec:
     topicOperator: {}
     userOperator: {}
 
----
-# Kafka Connect (Debezium용) - 미리 빌드된 이미지 사용
-apiVersion: kafka.strimzi.io/v1beta2
-kind: KafkaConnect
-metadata:
-  name: pawbridge-connect
-  namespace: kafka
-  annotations:
-    strimzi.io/use-connector-resources: "true"
-spec:
-  version: 3.5.1
-  replicas: 1
-  bootstrapServers: pawbridge-kafka-bootstrap:9092
-  image: quay.io/debezium/connect:2.4.0.Final
-  config:
-    group.id: pawbridge-connect
-    offset.storage.topic: connect-offsets
-    config.storage.topic: connect-configs
-    status.storage.topic: connect-status
-    offset.storage.replication.factor: 1
-    config.storage.replication.factor: 1
-    status.storage.replication.factor: 1
-    key.converter: org.apache.kafka.connect.json.JsonConverter
-    value.converter: org.apache.kafka.connect.json.JsonConverter
-    key.converter.schemas.enable: "false"
-    value.converter.schemas.enable: "false"
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi
+# Debezium Kafka Connect는 별도 파일(debezium-connect.yaml)로 분리
+# Strimzi KafkaConnect CR과 Debezium 이미지 호환성 이슈로 인해
+# 직접 Deployment로 배포
+

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: debezium-connect
+description: Debezium Kafka Connect for CDC (Change Data Capture)
+type: application
+version: 1.0.0
+appVersion: "2.4.0"
