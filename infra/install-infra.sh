@@ -13,7 +13,7 @@ echo "========================================"
 # Local Path Provisioner 설치 (로컬 스토리지용)
 echo ""
 echo "[1/10] Local Path Provisioner 설치..."
-kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.26/deploy/local-path-storage.yaml
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.35/deploy/local-path-storage.yaml
 kubectl wait --for=condition=available --timeout=60s deployment/local-path-provisioner -n local-path-storage || true
 
 # Helm repo 추가

@@ -1,8 +1,13 @@
-# Redis 7 Helm values
+# Redis Helm values
 # 공식 차트: bitnami/redis
+# 참고: Bitnami 2025.08 정책 변경으로 버전 태그 삭제됨
+# 현재 사용 가능: latest 태그만
 
 image:
-  tag: "7.0"
+  registry: docker.io
+  repository: bitnami/redis
+  tag: latest
+  pullPolicy: Always
 
 # 인증 비활성화 (로컬 개발 환경)
 auth:
