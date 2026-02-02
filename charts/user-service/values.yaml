@@ -20,10 +20,10 @@ resources:
 
 # 환경변수 (K8s FQDN 사용)
 env:
-  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.default.svc.cluster.local:3306/pawbridge_user
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_user
   SPRING_DATASOURCE_USERNAME: root
   SPRING_DATASOURCE_PASSWORD: ""
-  REDIS_HOST: redis-master.default.svc.cluster.local
+  REDIS_HOST: redis-master.databases.svc.cluster.local
   REDIS_PORT: "6379"
   KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
