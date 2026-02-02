@@ -40,8 +40,15 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 # MySQL 설치 (Bitnami Helm - startup probe 시간 충분히 설정됨)
 echo ""
 echo "[4/10] MySQL 설치..."
+# MySQL 설치 (Bitnami Helm - startup probe 시간 충분히 설정됨)
+echo ""
+echo "[3.5/10] databases 네임스페이스 생성..."
+kubectl create namespace databases --dry-run=client -o yaml | kubectl apply -f -
+
+echo ""
+echo "[4/10] MySQL 설치..."
 helm upgrade --install mysql bitnami/mysql \
-  --namespace default \
+  --namespace databases \
   -f "${SCRIPT_DIR}/database/mysql-values.yaml" \
   --wait --timeout 15m
 
@@ -49,7 +56,7 @@ helm upgrade --install mysql bitnami/mysql \
 echo ""
 echo "[5/10] Redis 설치..."
 helm upgrade --install redis bitnami/redis \
-  --namespace default \
+  --namespace databases \
   -f "${SCRIPT_DIR}/database/redis-values.yaml" \
   --wait --timeout 5m
 
@@ -59,7 +66,7 @@ echo "[5.5/10] Elasticsearch 설치..."
 helm repo add elastic https://helm.elastic.co || true
 helm repo update
 helm upgrade --install elasticsearch elastic/elasticsearch \
-  --namespace default \
+  --namespace databases \
   --version 7.17.3 \
   -f "${SCRIPT_DIR}/database/elasticsearch-values.yaml" \
   --wait --timeout 5m

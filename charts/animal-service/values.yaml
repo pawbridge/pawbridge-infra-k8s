@@ -19,11 +19,11 @@ resources:
     memory: 256Mi
 # 환경변수 (K8s FQDN 사용)
 env:
-  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.default.svc.cluster.local:3306/pawbridge_animal
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_animal
   SPRING_DATASOURCE_USERNAME: root
   SPRING_DATASOURCE_PASSWORD: ""
   KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
-  ELASTICSEARCH_HOST: elasticsearch.default.svc.cluster.local
+  ELASTICSEARCH_HOST: elasticsearch.databases.svc.cluster.local
   ELASTICSEARCH_PORT: "9200"
   SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
 
