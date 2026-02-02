@@ -9,7 +9,7 @@ metadata:
   namespace: kafka
 spec:
   kafka:
-    version: 3.5.0
+    version: 3.5.1
     replicas: 1
     listeners:
       - name: plain
@@ -60,7 +60,7 @@ metadata:
   annotations:
     strimzi.io/use-connector-resources: "true"
 spec:
-  version: 3.5.0
+  version: 3.5.1
   replicas: 1
   bootstrapServers: pawbridge-kafka-bootstrap:9092
   image: quay.io/debezium/connect:2.4.0.Final
