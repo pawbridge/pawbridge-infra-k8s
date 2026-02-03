@@ -21,7 +21,7 @@ resources:
 env:
   SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_community
   SPRING_DATASOURCE_USERNAME: root
-  SPRING_DATASOURCE_PASSWORD: ""
+
   KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
   USER_SERVICE_URL: http://user-service.pawbridge.svc.cluster.local:8080
   SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411

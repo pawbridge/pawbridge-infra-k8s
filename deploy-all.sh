@@ -7,6 +7,7 @@ echo "========================================================"
 
 echo ""
 echo "[1/2] Applying Secrets..."
+kubectl create namespace pawbridge --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f secrets/
 
 echo ""
