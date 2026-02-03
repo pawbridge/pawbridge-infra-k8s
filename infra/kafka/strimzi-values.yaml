@@ -12,5 +12,16 @@ resources:
     cpu: 200m
     memory: 384Mi
   limits:
-    cpu: 500m
-    memory: 512Mi
+    cpu: 1000m
+    memory: 1Gi
+
+# 느린 노드 환경(VM)을 위한 타임아웃 증가
+livenessProbe:
+  initialDelaySeconds: 10
+  timeoutSeconds: 30
+  periodSeconds: 30
+
+readinessProbe:
+  initialDelaySeconds: 10
+  timeoutSeconds: 30
+  periodSeconds: 30

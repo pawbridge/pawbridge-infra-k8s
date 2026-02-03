@@ -13,7 +13,7 @@ image:
 auth:
   enabled: false
 
-# 단일 노드 모드
+# 단일 노드 모드 (replica 없음)
 architecture: standalone
 
 # Redis 기본 설정 (모듈 로딩 없음 - bitnamilegacy 이미지 호환)
@@ -22,14 +22,13 @@ commonConfiguration: |-
   appendonly yes
   # Disable RDB persistence
   save ""
-  # No modules (bitnamilegacy doesn't include redisearch)
 
 master:
   persistence:
     enabled: true
     storageClass: "local-path"
     size: 1Gi
-  
+
   resources:
     requests:
       cpu: 100m
@@ -37,7 +36,3 @@ master:
     limits:
       cpu: 500m
       memory: 256Mi
-
-# Replica 비활성화 (로컬 환경)
-replica:
-  replicaCount: 0

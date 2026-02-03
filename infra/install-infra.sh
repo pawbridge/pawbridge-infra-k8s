@@ -10,11 +10,17 @@ echo "========================================"
 echo "  PawBridge 인프라 설치"
 echo "========================================"
 
-# Local Path Provisioner 설치 (로컬 스토리지용)
+# Local Path Provisioner 확인 (Vagrantfile에서 이미 설치됨)
 echo ""
-echo "[1/10] Local Path Provisioner 설치..."
-kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.34/deploy/local-path-storage.yaml
-kubectl wait --for=condition=available --timeout=60s deployment/local-path-provisioner -n local-path-storage || true
+echo "[1/10] Local Path Provisioner 확인..."
+if kubectl get storageclass local-path &>/dev/null; then
+  echo "Local Path Provisioner 이미 설치됨"
+else
+  echo "Local Path Provisioner 설치 중..."
+  kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.34/deploy/local-path-storage.yaml
+  kubectl wait --for=condition=available --timeout=120s deployment/local-path-provisioner -n local-path-storage || true
+  kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+fi
 
 # Helm repo 추가
 echo ""
@@ -69,7 +75,7 @@ helm upgrade --install elasticsearch elastic/elasticsearch \
   --namespace databases \
   --version 7.17.3 \
   -f "${SCRIPT_DIR}/database/elasticsearch-values.yaml" \
-  --wait --timeout 5m
+  --wait --timeout 10m
 
 # Strimzi Kafka Operator 설치
 echo ""
@@ -85,8 +91,17 @@ helm upgrade --install strimzi strimzi/strimzi-kafka-operator \
 echo ""
 echo "[7/10] Kafka Cluster 생성..."
 kubectl apply -f "${SCRIPT_DIR}/kafka/kafka-cluster.yaml"
-echo "Kafka 클러스터 시작 대기 중 (약 2분)..."
-sleep 60
+echo "Kafka 클러스터 시작 대기 중 (약 3분)..."
+# Kafka Ready 대기 (최대 5분)
+for i in {1..30}; do
+  READY=$(kubectl get kafka pawbridge -n kafka -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+  if [ "$READY" = "True" ]; then
+    echo "Kafka 클러스터 Ready!"
+    break
+  fi
+  echo "Kafka 대기 중... ($i/30)"
+  sleep 10
+done
 
 # Debezium Kafka Connect 배포 (Kafka 브로커가 준비된 후)
 echo ""
