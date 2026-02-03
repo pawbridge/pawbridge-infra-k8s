@@ -2,8 +2,8 @@
 replicaCount: 1
 
 image:
-  repository: pawbridge/payment-service
-  tag: latest
+  repository: dorosiya/pawbridge-payment-service
+  tag: k8s-v1
   pullPolicy: IfNotPresent
 
 service:
