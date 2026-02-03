@@ -23,7 +23,7 @@ env:
   SPRING_DATASOURCE_USERNAME: root
 
   KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
-  SPRING_ELASTICSEARCH_URIS: http://elasticsearch.databases.svc.cluster.local:9200
+  SPRING_ELASTICSEARCH_URIS: http://elasticsearch-master.databases.svc.cluster.local:9200
   SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
 
 secretRef: animal-service-secrets
