@@ -45,6 +45,11 @@ Vagrant.configure("2") do |config|
         vb.memory = node[:memory]
         vb.gui = false
         vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+        # 시간 동기화 강화
+        vb.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", "1000"]
+        # 네트워크 성능 향상
+        vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
+        vb.customize ["modifyvm", :id, "--nictype2", "virtio"]
       end
       
       # Master 노드 추가 프로비저닝
@@ -70,7 +75,11 @@ timedatectl set-timezone Asia/Seoul
 
 echo '======== [1-1] 패키지 업데이트 ========'
 apt-get update
-apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release conntrack socat iproute2
+apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release conntrack socat iproute2 chrony
+
+echo '======== [1-1-1] NTP 시간 동기화 설정 ========'
+systemctl enable --now chrony
+chronyc makestep
 
 echo '======== [1-2] Swap 비활성화 ========'
 swapoff -a && sed -i '/ swap / s/^/#/' /etc/fstab
@@ -98,16 +107,18 @@ net.ipv4.ip_forward                 = 1
 EOF
 sysctl --system
 
-echo '======== [2-2] containerd 설치 ========'
+echo '======== [2-2] containerd 설치 (v1.7.29 고정) ========'
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /usr/share/keyrings/docker-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
 apt-get update
-apt-get install -y containerd.io
+# K8s 1.27 호환성 1.7.29 버전 고정 (SystemdCgroup 필수)
+apt-get install -y --allow-downgrades containerd.io=1.7.29-1~ubuntu.22.04~jammy
+apt-mark hold containerd.io
 systemctl enable --now containerd
 
 echo '======== [2-3] containerd cgroup 설정 ========'
-containerd config default > /etc/containerd/config.toml
-sed -i 's/ SystemdCgroup = false/ SystemdCgroup = true/' /etc/containerd/config.toml
+containerd config default | tee /etc/containerd/config.toml
+sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 systemctl restart containerd
 
 echo '======== [3] Kubernetes 설치 (v1.27 - 바이너리 직접 설치) ========'
@@ -134,12 +145,15 @@ curl -LO "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICT
 tar -zxvf crictl-${CRICTL_VERSION}-linux-amd64.tar.gz -C /usr/local/bin
 rm -f crictl-${CRICTL_VERSION}-linux-amd64.tar.gz
 
-# crictl 설정 (containerd 사용)
+# crictl 설정 (containerd 사용) - timeout 30초로 증가
 cat <<EOF | tee /etc/crictl.yaml
 runtime-endpoint: unix:///run/containerd/containerd.sock
 image-endpoint: unix:///run/containerd/containerd.sock
-timeout: 10
+timeout: 30
 EOF
+
+# Worker 노드용 manifests 디렉토리 생성 (에러 로그 방지)
+mkdir -p /etc/kubernetes/manifests
 
 # kubelet 서비스 설정
 mkdir -p /etc/systemd/system/kubelet.service.d
@@ -281,7 +295,20 @@ fi
 echo 'Helm 레포지토리 추가 중...'
 /usr/local/bin/helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
 /usr/local/bin/helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx || true
+/usr/local/bin/helm repo add bitnami https://charts.bitnami.com/bitnami || true
+/usr/local/bin/helm repo add strimzi https://strimzi.io/charts/ || true
 /usr/local/bin/helm repo update
+
+echo '======== [5-3] Local Path Provisioner 설치 (스토리지) ========'
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.34/deploy/local-path-storage.yaml
+# default StorageClass로 설정
+sleep 10
+kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
+echo '======== [5-4] Worker Join 토큰 저장 ========'
+# Worker 노드가 자동으로 Join할 수 있도록 토큰 저장
+kubeadm token create --print-join-command > /tmp/kubeadm_join_command.sh
+chmod 644 /tmp/kubeadm_join_command.sh
 
 echo ''
 echo '========================================'
@@ -289,15 +316,13 @@ echo '  Master 노드 클러스터 초기화 완료!'
 echo '========================================'
 echo ''
 echo '[Worker Join 명령어]'
-kubeadm token create --print-join-command
+cat /tmp/kubeadm_join_command.sh
 echo ''
 echo '[다음 단계]'
-echo '모니터링 도구 설치: infra/install-infra.sh 실행'
+echo '1. Worker 노드 Join: vagrant ssh k8s-worker1 후 아래 명령 실행'
+echo '   sudo $(cat /tmp/kubeadm_join_command.sh)'
 echo ''
-echo 'Worker 노드 Join 후 아래 명령어로 인프라 설치:'
-echo '  cd /path/to/infra'
-echo '  chmod +x install-infra.sh'
-echo '  ./install-infra.sh'
+echo '2. 인프라 설치: install-infra.sh 실행'
 echo ''
 
 SHELL
