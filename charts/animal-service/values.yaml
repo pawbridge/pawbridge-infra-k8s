@@ -2,8 +2,8 @@
 replicaCount: 1
 
 image:
-  repository: pawbridge/animal-service
-  tag: latest
+  repository: dorosiya/pawbridge-animal-service
+  tag: k8s-v1
   pullPolicy: IfNotPresent
 
 service:
@@ -23,8 +23,7 @@ env:
   SPRING_DATASOURCE_USERNAME: root
   SPRING_DATASOURCE_PASSWORD: ""
   KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
-  ELASTICSEARCH_HOST: elasticsearch.databases.svc.cluster.local
-  ELASTICSEARCH_PORT: "9200"
+  SPRING_ELASTICSEARCH_URIS: http://elasticsearch.databases.svc.cluster.local:9200
   SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
 
 secretRef: animal-service-secrets

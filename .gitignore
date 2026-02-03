@@ -19,3 +19,8 @@ secrets/
  
 # Vagrant 
 .vagrant/ 
+
+# Kubeconfig (Local)
+config
+kubeconfig
+*.kubeconfig

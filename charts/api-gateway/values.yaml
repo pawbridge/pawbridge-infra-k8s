@@ -2,8 +2,8 @@
 replicaCount: 1
 
 image:
-  repository: pawbridge/api-gateway
-  tag: latest
+  repository: dorosiya/pawbridge-api-gateway
+  tag: k8s-v1
   pullPolicy: IfNotPresent
 
 service:
