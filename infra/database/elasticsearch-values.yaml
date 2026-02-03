@@ -3,8 +3,8 @@
 
 replicas: 1
 
-# Single Node 설정 - cluster.initial_master_nodes 충돌 방지
-clusterInitialMasterNodes: []
+# Single Node 설정 - 정석 클러스터 모드 (부트스트랩)
+clusterInitialMasterNodes: ["elasticsearch-master-0"]
 esJavaOpts: "-Xmx1g -Xms1g"
 
 resources:
@@ -31,9 +31,8 @@ service:
 
 # 보안 설정 (개발용이라 끔)
 # xpack.security.enabled: false는 환경변수로
+# xpack.security.enabled: false는 환경변수로
 extraEnvs:
-  - name: "discovery.type"
-    value: "single-node"
   - name: "xpack.security.enabled"
     value: "false"
 
