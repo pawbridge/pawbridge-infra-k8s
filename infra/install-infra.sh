@@ -10,6 +10,42 @@ echo "========================================"
 echo "  PawBridge 인프라 설치"
 echo "========================================"
 
+# 사전 검사: 필수 파일 및 디렉토리 확인
+echo "[0/10] 필수 파일 및 설정 확인..."
+REQUIRED_FILES=(
+  "database/mysql-values.yaml"
+  "database/redis-values.yaml"
+  "database/elasticsearch-values.yaml"
+  "kafka/strimzi-values.yaml"
+  "kafka/kafka-cluster.yaml"
+  "kafka/debezium-connect"
+  "monitoring/values.yaml"
+  "dashboard/dashboard.yaml"
+  "tracing/zipkin.yaml"
+)
+
+for file in "${REQUIRED_FILES[@]}"; do
+  if [ ! -e "${SCRIPT_DIR}/${file}" ]; then
+    echo "❌ 오류: 필수 파일/디렉토리가 없습니다: ${SCRIPT_DIR}/${file}"
+    exit 1
+  fi
+done
+echo "✅ 필수 파일 확인 완료."
+
+# 사전 검사: vm.max_map_count (Elasticsearch 필수)
+VM_MAX_MAP_COUNT=$(sysctl -n vm.max_map_count)
+if [ "$VM_MAX_MAP_COUNT" -lt 262144 ]; then
+  echo "❌ 오류: vm.max_map_count가 너무 낮습니다 ($VM_MAX_MAP_COUNT). 최소 262144 필요."
+  echo "   해결법: 'sudo sysctl -w vm.max_map_count=262144' 실행 (모든 노드)"
+  exit 1
+fi
+echo "✅ vm.max_map_count 확인 완료."
+
+# 사전 검사: NodePort 충돌 확인 (30080, 30443)
+if netstat -tuln | grep -qE ":30080|:30443"; then
+  echo "⚠️  경고: 포트 30080 또는 30443이 이미 사용 중일 수 있습니다."
+fi
+
 # Local Path Provisioner 확인 (Vagrantfile에서 이미 설치됨)
 echo ""
 echo "[1/10] Local Path Provisioner 확인..."
@@ -29,6 +65,7 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx || true
 helm repo add bitnami https://charts.bitnami.com/bitnami || true
 helm repo add strimzi https://strimzi.io/charts/ || true
+helm repo add elastic https://helm.elastic.co || true
 helm repo update
 
 # Ingress Controller 설치
@@ -46,13 +83,9 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 # MySQL 설치 (Bitnami Helm - startup probe 시간 충분히 설정됨)
 echo ""
 echo "[4/10] MySQL 설치..."
-# MySQL 설치 (Bitnami Helm - startup probe 시간 충분히 설정됨)
-echo ""
-echo "[3.5/10] databases 네임스페이스 생성..."
+# databases 네임스페이스 생성
 kubectl create namespace databases --dry-run=client -o yaml | kubectl apply -f -
 
-echo ""
-echo "[4/10] MySQL 설치..."
 helm upgrade --install mysql bitnami/mysql \
   --namespace databases \
   -f "${SCRIPT_DIR}/database/mysql-values.yaml" \
@@ -69,8 +102,6 @@ helm upgrade --install redis bitnami/redis \
 # Elasticsearch 설치 (Single Node)
 echo ""
 echo "[5.5/10] Elasticsearch 설치..."
-helm repo add elastic https://helm.elastic.co || true
-helm repo update
 helm upgrade --install elasticsearch elastic/elasticsearch \
   --namespace databases \
   --version 7.17.3 \
@@ -130,6 +161,8 @@ kubectl apply -f "${SCRIPT_DIR}/dashboard/dashboard.yaml"
 # Zipkin 설치
 echo ""
 echo "[10/10] Zipkin 설치..."
+# Tracing 네임스페이스 명시적 생성 (안전장치)
+kubectl create namespace tracing --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f "${SCRIPT_DIR}/tracing/zipkin.yaml"
 
 # 설치 완료 대기
@@ -154,6 +187,6 @@ echo "  Dashboard:  kubectl port-forward -n kubernetes-dashboard svc/kubernetes-
 echo "  Zipkin:     kubectl port-forward -n tracing svc/zipkin 9411:9411"
 echo ""
 
-# Pod 상태 확인
+# Pod 상태 확인 (grep 실패해도 스크립트 중단되지 않도록 || true 추가)
 echo "[현재 Pod 상태]"
-kubectl get pods -A | grep -E "mysql|redis|kafka|strimzi|monitoring|tracing|kubernetes-dashboard|ingress-nginx|local-path"
+kubectl get pods -A | grep -E "mysql|redis|kafka|strimzi|monitoring|tracing|kubernetes-dashboard|ingress-nginx|local-path" || true
