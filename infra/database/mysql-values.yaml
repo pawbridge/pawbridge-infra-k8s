@@ -3,7 +3,7 @@
 # App Version: MySQL 8.0.37
 
 image:
-  tag: "8.0.41-debian-12-r0"
+  tag: "8.0.37-debian-12-r2"
 
 auth:
   # Password is now managed via Kubernetes Secret (Security Fix #1)
