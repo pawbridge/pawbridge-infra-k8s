@@ -18,7 +18,13 @@ primary:
     enabled: true
     storageClass: "local-path"
     size: 10Gi
-  
+
+  # extraEnvVars: legacy 이미지가 MYSQL_ROOT_PASSWORD 환경변수를 인식하도록 직접 주입
+  # 차트 14.x는 MYSQL_ROOT_PASSWORD_FILE 방식을 사용하지만 legacy 이미지와 호환 안 됨
+  extraEnvVars:
+    - name: MYSQL_ROOT_PASSWORD
+      value: "root123"
+
   configuration: |-
     [mysqld]
     default_authentication_plugin=mysql_native_password
@@ -30,7 +36,7 @@ primary:
     server-id=1
     skip-host-cache
     skip-name-resolve
-  
+
   resources:
     requests:
       cpu: 250m
@@ -47,15 +53,15 @@ primary:
   readinessProbe:
     enabled: false
 
-  # Custom Startup Probe - 올바른 소켓 경로 사용
-  # bitnamilegacy 이미지는 /opt/bitnami/mysql/tmp/mysql.sock 사용
+  # Custom Startup Probe
+  # 비밀번호를 파일에서 읽음 (환경변수 ${MYSQL_ROOT_PASSWORD}가 없을 수 있으므로)
   customStartupProbe:
     exec:
       command:
         - /bin/bash
         - -c
         - |
-          mysqladmin ping -uroot -p"${MYSQL_ROOT_PASSWORD}" --socket=/opt/bitnami/mysql/tmp/mysql.sock
+          mysqladmin ping -uroot -p"$(cat /opt/bitnami/mysql/secrets/mysql-root-password)" --socket=/opt/bitnami/mysql/tmp/mysql.sock
     initialDelaySeconds: 60
     periodSeconds: 15
     timeoutSeconds: 5
@@ -69,7 +75,7 @@ primary:
         - /bin/bash
         - -c
         - |
-          mysqladmin ping -uroot -p"${MYSQL_ROOT_PASSWORD}" --socket=/opt/bitnami/mysql/tmp/mysql.sock
+          mysqladmin ping -uroot -p"$(cat /opt/bitnami/mysql/secrets/mysql-root-password)" --socket=/opt/bitnami/mysql/tmp/mysql.sock
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 5
@@ -83,7 +89,7 @@ primary:
         - /bin/bash
         - -c
         - |
-          mysqladmin ping -uroot -p"${MYSQL_ROOT_PASSWORD}" --socket=/opt/bitnami/mysql/tmp/mysql.sock
+          mysqladmin ping -uroot -p"$(cat /opt/bitnami/mysql/secrets/mysql-root-password)" --socket=/opt/bitnami/mysql/tmp/mysql.sock
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 5
