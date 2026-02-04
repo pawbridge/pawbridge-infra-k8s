@@ -24,3 +24,6 @@ secrets/
 config
 kubeconfig
 *.kubeconfig
+
+# Local Environment Values
+environments/*/values/

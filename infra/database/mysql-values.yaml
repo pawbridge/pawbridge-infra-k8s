@@ -1,17 +1,15 @@
-# MySQL Helm values
-# 공식 차트: bitnami/mysql
-# 참고: Bitnami 2025.08 정책 변경으로 docker.io/bitnami 이미지 삭제됨
-# bitnamilegacy 레포지토리 사용 (업데이트 없음, 개발용)
+# MySQL Helm values (Hardened & Secret-based)
+# Chart: bitnami/mysql 10.3.0
+# App Version: MySQL 8.0.37
 
 image:
-  registry: docker.io
-  repository: bitnamilegacy/mysql
-  tag: "8.0"
-  pullPolicy: IfNotPresent
+  tag: "8.0.37"
 
 auth:
-  rootPassword: "root123"
+  # Password is now managed via Kubernetes Secret (Security Fix #1)
+  existingSecret: "mysql-auth"
   database: "pawbridge"
+  defaultAuthenticationPlugin: "mysql_native_password"
 
 primary:
   persistence:
@@ -19,27 +17,20 @@ primary:
     storageClass: "local-path"
     size: 10Gi
 
-  # extraEnvVars: legacy 이미지가 MYSQL_ROOT_PASSWORD 환경변수를 인식하도록 주입
-  # 차트 14.x는 MYSQL_ROOT_PASSWORD_FILE 방식을 사용하지만 legacy 이미지와 호환 안 됨
-  # 보안: 평문 대신 차트가 생성하는 Secret에서 참조
-  extraEnvVars:
-    - name: MYSQL_ROOT_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: mysql
-          key: mysql-root-password
-
+  # Network & Bind Settings (Security Fix #2: Standard for internal but open)
+  extraFlags: "--bind-address=0.0.0.0"
+  
   configuration: |-
     [mysqld]
-    default_authentication_plugin=mysql_native_password
+    bind-address=0.0.0.0
+    skip-host-cache
+    skip-name-resolve
     character-set-server=utf8mb4
     collation-server=utf8mb4_unicode_ci
     log-bin=mysql-bin
     binlog-format=ROW
     binlog-row-image=FULL
     server-id=1
-    skip-host-cache
-    skip-name-resolve
 
   resources:
     requests:
@@ -49,58 +40,6 @@ primary:
       cpu: 1000m
       memory: 1Gi
 
-  # 기본 probe 비활성화 (customProbe 사용)
-  startupProbe:
-    enabled: false
-  livenessProbe:
-    enabled: false
-  readinessProbe:
-    enabled: false
-
-  # Custom Startup Probe
-  # 비밀번호를 파일에서 읽음 (환경변수 ${MYSQL_ROOT_PASSWORD}가 없을 수 있으므로)
-  customStartupProbe:
-    exec:
-      command:
-        - /bin/bash
-        - -c
-        - |
-          mysqladmin ping -uroot -p"$(cat /opt/bitnami/mysql/secrets/mysql-root-password)" --socket=/opt/bitnami/mysql/tmp/mysql.sock
-    initialDelaySeconds: 60
-    periodSeconds: 15
-    timeoutSeconds: 5
-    failureThreshold: 30  # 최대 8.5분 대기
-    successThreshold: 1
-
-  # Custom Liveness Probe
-  customLivenessProbe:
-    exec:
-      command:
-        - /bin/bash
-        - -c
-        - |
-          mysqladmin ping -uroot -p"$(cat /opt/bitnami/mysql/secrets/mysql-root-password)" --socket=/opt/bitnami/mysql/tmp/mysql.sock
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 5
-    successThreshold: 1
-
-  # Custom Readiness Probe
-  customReadinessProbe:
-    exec:
-      command:
-        - /bin/bash
-        - -c
-        - |
-          mysqladmin ping -uroot -p"$(cat /opt/bitnami/mysql/secrets/mysql-root-password)" --socket=/opt/bitnami/mysql/tmp/mysql.sock
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 5
-    successThreshold: 1
-
-# Init SQL (데이터베이스 생성)
 initdbScripts:
   init.sql: |
     CREATE DATABASE IF NOT EXISTS pawbridge_user;
