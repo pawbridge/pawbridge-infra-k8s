@@ -83,8 +83,9 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 # MySQL 설치 (Bitnami Helm - startup probe 시간 충분히 설정됨)
 echo ""
 echo "[4/10] MySQL 설치..."
-# databases 네임스페이스 생성
+# databases 네임스페이스 및 시크릿 사전 주입 (Security Fix)
 kubectl create namespace databases --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f "${SCRIPT_DIR}/../secrets/"
 
 helm upgrade --install mysql bitnami/mysql \
   --namespace databases \
