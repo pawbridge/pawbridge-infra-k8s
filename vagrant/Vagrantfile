@@ -55,6 +55,9 @@ Vagrant.configure("2") do |config|
       
       # Master 노드 추가 프로비저닝
       if node[:role] == "master"
+        # [Security] Git에 올리지 않는 시크릿 파일을 VM으로 자동 전송
+        n.vm.provision "file", source: "../secrets/", destination: "/home/vagrant/pawbridge-infra-k8s/secrets"
+        
         n.vm.provision :shell, privileged: true, inline: $install_master
       end
       
