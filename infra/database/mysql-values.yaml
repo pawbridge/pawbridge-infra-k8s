@@ -3,7 +3,7 @@
 # App Version: MySQL 8.0.37
 
 image:
-  tag: "8.0.37"
+  tag: "8.0.41-debian-12-r0"
 
 auth:
   # Password is now managed via Kubernetes Secret (Security Fix #1)
@@ -39,6 +39,21 @@ primary:
     limits:
       cpu: 1000m
       memory: 1Gi
+
+  # VM 환경을 위한 Probe 시간 연장 (이미지 다운로드 및 DB 초기화 대기)
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30 # 약 5분(300초) 대기
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 10
 
 initdbScripts:
   init.sql: |
