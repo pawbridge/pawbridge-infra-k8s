@@ -1,8 +1,8 @@
-#!/bin/bash
-set -e
+ENV=${1:-local}
 
 echo "========================================================"
 echo "  PawBridge K8s Deployment Script (Linux/VM)"
+echo "  Environment: ${ENV}"
 echo "========================================================"
 
 echo ""
@@ -16,7 +16,9 @@ echo "[2/2] Deploying Services via Helm..."
 deploy_service() {
     local service_name=$1
     echo "  - Deploying ${service_name}..."
-    helm upgrade --install ${service_name} ./charts/${service_name} -n pawbridge --create-namespace
+    helm upgrade --install ${service_name} ./charts/${service_name} \
+        -n pawbridge --create-namespace \
+        -f environments/${ENV}/values/${service_name}.yaml
 }
 
 deploy_service "user-service"
