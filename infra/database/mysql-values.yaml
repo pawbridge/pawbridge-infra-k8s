@@ -22,7 +22,11 @@ primary:
   extraFlags: "--bind-address=0.0.0.0"
   
   configuration: |-
+    [client]
+    socket=/opt/bitnami/mysql/tmp/mysql.sock
+
     [mysqld]
+    socket=/opt/bitnami/mysql/tmp/mysql.sock
     bind-address=0.0.0.0
     skip-host-cache
     skip-name-resolve
