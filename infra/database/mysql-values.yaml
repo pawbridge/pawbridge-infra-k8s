@@ -18,27 +18,19 @@ primary:
     storageClass: "local-path"
     size: 10Gi
 
-  # Network & Bind Settings (Security Fix #2: Standard for internal but open)
-  # Command-line flags override my.cnf, so we MUST force 0.0.0.0 here to beat 127.0.0.1 default
+  # Network & Bind Settings
   extraFlags:
     - "--bind-address=0.0.0.0"
   
-  configuration: |-
-    [client]
-    socket=/opt/bitnami/mysql/tmp/mysql.sock
-
-    [mysqld]
-    default_authentication_plugin=mysql_native_password
-    socket=/opt/bitnami/mysql/tmp/mysql.sock
-    bind-address=0.0.0.0
-    skip-host-cache
-    skip-name-resolve
-    character-set-server=utf8mb4
-    collation-server=utf8mb4_unicode_ci
-    log-bin=mysql-bin
-    binlog-format=ROW
-    binlog-row-image=FULL
-    server-id=1
+  # configuration: |-
+  #   [client]
+  #   socket=/opt/bitnami/mysql/tmp/mysql.sock
+  #   [mysqld]
+  #   default_authentication_plugin=mysql_native_password
+  #   socket=/opt/bitnami/mysql/tmp/mysql.sock
+  #   bind-address=0.0.0.0
+  #   skip-host-cache
+  #   skip-name-resolve
 
   resources:
     requests:
@@ -46,64 +38,17 @@ primary:
       memory: 512Mi
     limits:
       cpu: 1000m
-      memory: 2Gi   # OOMKill 방지 (1Gi -> 2Gi 상향)
+      memory: 2Gi
 
-  # VM 환경을 위한 Probe 시간 연장 및 소켓 경로 명시 (Fix: Socket Mismatch & Timeout)
-  # Bitnami Chart 특성상 standard probe를 끄고 custom probe로 교체해야 exec가 반영됨
+  # "진짜 마지막" 조치: 프로브 전면 비활성화 (일단 띄우기 위함)
   startupProbe:
     enabled: false
   readinessProbe:
     enabled: false
   livenessProbe:
     enabled: false
-
-  customStartupProbe:
-    exec:
-      command:
-        - /bin/bash
-        - -ec
-        - |
-          test -S /opt/bitnami/mysql/tmp/mysql.sock
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    timeoutSeconds: 5
-    failureThreshold: 180  # VM 초기화 시간 고려: 30분 대기 (Exit 137 방지)
-
-  customReadinessProbe:
-    exec:
-      command:
-        - /bin/bash
-        - -ec
-        - |
-          password_aux=""
-          if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
-            password_aux="$(cat "$MYSQL_ROOT_PASSWORD_FILE")"
-          fi
-          /opt/bitnami/mysql/bin/mysqladmin ping \
-            --socket=/opt/bitnami/mysql/tmp/mysql.sock \
-            -uroot -p"${password_aux}" >/dev/null 2>&1
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 10
-    failureThreshold: 10
-
-  customLivenessProbe:
-    exec:
-      command:
-        - /bin/bash
-        - -ec
-        - |
-          password_aux=""
-          if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
-            password_aux="$(cat "$MYSQL_ROOT_PASSWORD_FILE")"
-          fi
-          /opt/bitnami/mysql/bin/mysqladmin status \
-            --socket=/opt/bitnami/mysql/tmp/mysql.sock \
-            -uroot -p"${password_aux}" >/dev/null 2>&1
-    initialDelaySeconds: 600  # 10분 뒤부터 생존 체크 (초기화 중 사살 방지)
-    periodSeconds: 10
-    timeoutSeconds: 10
-    failureThreshold: 10
+  
+  # Custom Probes 제거 (기본값 사용 = enabled: false로 인해 꺼짐)
 
 initdbScripts:
   init.sql: |
