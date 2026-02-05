@@ -46,7 +46,7 @@ primary:
       memory: 512Mi
     limits:
       cpu: 1000m
-      memory: 1Gi
+      memory: 2Gi   # OOMKill 방지 (1Gi -> 2Gi 상향)
 
   # VM 환경을 위한 Probe 시간 연장 및 소켓 경로 명시 (Fix: Socket Mismatch & Timeout)
   # Bitnami Chart 특성상 standard probe를 끄고 custom probe로 교체해야 exec가 반영됨
