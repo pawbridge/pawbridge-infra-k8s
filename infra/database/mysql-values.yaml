@@ -67,7 +67,7 @@ primary:
     initialDelaySeconds: 10
     periodSeconds: 5
     timeoutSeconds: 5
-    failureThreshold: 60
+    failureThreshold: 180  # VM 초기화 시간 고려: 30분 대기 (Exit 137 방지)
 
   customReadinessProbe:
     exec:
@@ -100,7 +100,7 @@ primary:
           /opt/bitnami/mysql/bin/mysqladmin status \
             --socket=/opt/bitnami/mysql/tmp/mysql.sock \
             -uroot -p"${password_aux}" >/dev/null 2>&1
-    initialDelaySeconds: 30
+    initialDelaySeconds: 600  # 10분 뒤부터 생존 체크 (초기화 중 사살 방지)
     periodSeconds: 10
     timeoutSeconds: 10
     failureThreshold: 10

@@ -12,6 +12,26 @@ echo "========================================"
 
 # 사전 검사: 필수 파일 및 디렉토리 확인
 echo "[0/10] 필수 파일 및 설정 확인..."
+
+# 실패 시 자동 진단 덤프 함수
+dump_diag() {
+  local ns="${1:-databases}"
+  echo "==== DIAG DUMP (ns=${ns}) ===="
+  kubectl get nodes -o wide || true
+  kubectl get pods -A -o wide || true
+  kubectl get events -A --sort-by=.lastTimestamp | tail -n 200 || true
+
+  if kubectl get ns "$ns" >/dev/null 2>&1; then
+    kubectl get all -n "$ns" -o wide || true
+    kubectl get pvc -n "$ns" -o wide || true
+    kubectl get pv -o wide | grep -E "$ns|data-mysql-0|pvc-" || true
+    kubectl describe pod -n "$ns" mysql-0 2>/dev/null | sed -n '1,260p' || true
+    kubectl logs -n "$ns" mysql-0 -c mysql --tail=300 2>/dev/null || true
+    kubectl logs -n "$ns" mysql-0 -c mysql --previous --tail=300 2>/dev/null || true
+  fi
+  echo "==== END DIAG DUMP ===="
+}
+
 REQUIRED_FILES=(
   "database/mysql-values.yaml"
   "database/redis-values.yaml"
@@ -90,18 +110,22 @@ kubectl create namespace databases --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f "${SCRIPT_DIR}/../secrets/mysql-auth-secrets.yaml"
 
 # (옵션) 이전 실패 흔적 정리: PVC 남아 있으면 비번/초기화가 안 바뀜
-kubectl delete pvc -n databases data-mysql-0 --ignore-not-found=true
+# (수정) 설치 직전 무지성 PVC 삭제 제거 (StatefulSet 꼬임 방지)
+# kubectl delete pvc -n databases data-mysql-0 --ignore-not-found=true
 
 helm upgrade --install mysql bitnami/mysql \
   --namespace databases \
   -f "${SCRIPT_DIR}/database/mysql-values.yaml" \
-  --wait --timeout 15m || {
+  --wait --timeout 30m || {
     echo "❌ MySQL 설치가 Ready 상태로 완료되지 않았습니다. 아래 로그/이벤트를 확인하세요."
-    kubectl get pods -n databases -o wide || true
-    kubectl describe pod -n databases mysql-0 || true
-    kubectl logs -n databases mysql-0 -c mysql --tail=200 || true
+    dump_diag "databases"
     exit 1
   }
+
+# ✅ helm 성공 후에도 실제로 Ready인지 한 번 더 강제 확인
+echo "MySQL StatefulSet & Pod Ready 검증..."
+kubectl rollout status statefulset/mysql -n databases --timeout=30m
+kubectl wait --for=condition=Ready pod -n databases -l app.kubernetes.io/instance=mysql --timeout=30m
 
 # MySQL 접속 테스트 (Client Pod 사용)
 echo "🔍 MySQL 접속 테스트 중..."
