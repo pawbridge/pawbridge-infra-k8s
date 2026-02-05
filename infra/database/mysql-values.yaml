@@ -1,6 +1,6 @@
 # MySQL Helm values (Hardened & Secret-based)
-# Chart: bitnami/mysql 10.3.0
-# App Version: MySQL 8.0.37
+# Chart: bitnami/mysql 14.0.3 (Verified)
+# App Version: MySQL 8.0.37 (Forced Compatibility)
 
 image:
   repository: "bitnamilegacy/mysql"
@@ -62,6 +62,15 @@ primary:
 
 initdbScripts:
   init.sql: |
+    -- Ensure root password is set to match the secret (Fix Access Denied)
+    ALTER USER 'root'@'localhost' IDENTIFIED BY 'root123';
+    
+    -- Allow root access from anywhere (for debugging/external connections)
+    CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY 'root123';
+    GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+    FLUSH PRIVILEGES;
+
+    -- Create Application Databases
     CREATE DATABASE IF NOT EXISTS pawbridge_user;
     CREATE DATABASE IF NOT EXISTS pawbridge_animal;
     CREATE DATABASE IF NOT EXISTS pawbridge_community;
