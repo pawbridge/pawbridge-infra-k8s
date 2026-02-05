@@ -19,13 +19,14 @@ primary:
     size: 10Gi
 
   # Network & Bind Settings (Security Fix #2: Standard for internal but open)
-  extraFlags: "--bind-address=0.0.0.0"
+  # extraFlags removed to avoid duplication with configuration [mysqld] section
   
   configuration: |-
     [client]
     socket=/opt/bitnami/mysql/tmp/mysql.sock
 
     [mysqld]
+    default_authentication_plugin=mysql_native_password
     socket=/opt/bitnami/mysql/tmp/mysql.sock
     bind-address=0.0.0.0
     skip-host-cache
@@ -45,30 +46,66 @@ primary:
       cpu: 1000m
       memory: 1Gi
 
-  # VM 환경을 위한 Probe 시간 연장 (이미지 다운로드 및 DB 초기화 대기)
+  # VM 환경을 위한 Probe 시간 연장 및 소켓 경로 명시 (Fix: Socket Mismatch & Timeout)
+  # Bitnami Chart 특성상 standard probe를 끄고 custom probe로 교체해야 exec가 반영됨
   startupProbe:
-    enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 30 # 약 5분(300초) 대기
-  
+    enabled: false
   readinessProbe:
-    enabled: true
+    enabled: false
+  livenessProbe:
+    enabled: false
+
+  customStartupProbe:
+    exec:
+      command:
+        - /bin/bash
+        - -ec
+        - |
+          password_aux="${MYSQL_ROOT_PASSWORD:-}"
+          if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
+              password_aux=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+          fi
+          mysql --protocol=socket --socket=/opt/bitnami/mysql/tmp/mysql.sock -uroot -p"${password_aux}" -e "SELECT 1" >/dev/null 2>&1
     initialDelaySeconds: 30
     periodSeconds: 10
-    timeoutSeconds: 5
+    timeoutSeconds: 10
+    failureThreshold: 30
+
+  customReadinessProbe:
+    exec:
+      command:
+        - /bin/bash
+        - -ec
+        - |
+          password_aux="${MYSQL_ROOT_PASSWORD:-}"
+          if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
+              password_aux=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+          fi
+          mysql --protocol=socket --socket=/opt/bitnami/mysql/tmp/mysql.sock -uroot -p"${password_aux}" -e "SELECT 1" >/dev/null 2>&1
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 10
+
+  customLivenessProbe:
+    exec:
+      command:
+        - /bin/bash
+        - -ec
+        - |
+          password_aux="${MYSQL_ROOT_PASSWORD:-}"
+          if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
+              password_aux=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+          fi
+          mysql --protocol=socket --socket=/opt/bitnami/mysql/tmp/mysql.sock -uroot -p"${password_aux}" -e "SELECT 1" >/dev/null 2>&1
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 10
     failureThreshold: 10
 
 initdbScripts:
   init.sql: |
-    -- Ensure root password is set to match the secret (Fix Access Denied)
-    ALTER USER 'root'@'localhost' IDENTIFIED BY 'root123';
-    
-    -- Allow root access from anywhere (for debugging/external connections)
-    CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY 'root123';
-    GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
-    FLUSH PRIVILEGES;
+    -- Only create databases (Do not modify root user to avoid conflicts with PVC/Secrets)
 
     -- Create Application Databases
     CREATE DATABASE IF NOT EXISTS pawbridge_user;
