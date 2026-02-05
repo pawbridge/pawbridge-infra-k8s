@@ -85,7 +85,9 @@ echo ""
 echo "[4/10] MySQL 설치..."
 # databases 네임스페이스 및 시크릿 사전 주입 (Security Fix)
 kubectl create namespace databases --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f "${SCRIPT_DIR}/../secrets/"
+# 주의: 모든 secrets를 apply하면 pawbridge 등 다른 네임스페이스가 없어서 에러 발생함.
+# 인프라 단계에서는 DB용 시크릿만 적용.
+kubectl apply -f "${SCRIPT_DIR}/../secrets/mysql-auth-secrets.yaml"
 
 # (옵션) 이전 실패 흔적 정리: PVC 남아 있으면 비번/초기화가 안 바뀜
 kubectl delete pvc -n databases data-mysql-0 --ignore-not-found=true
