@@ -19,7 +19,9 @@ primary:
     size: 10Gi
 
   # Network & Bind Settings (Security Fix #2: Standard for internal but open)
-  # extraFlags removed to avoid duplication with configuration [mysqld] section
+  # Command-line flags override my.cnf, so we MUST force 0.0.0.0 here to beat 127.0.0.1 default
+  extraFlags:
+    - "--bind-address=0.0.0.0"
   
   configuration: |-
     [client]
@@ -61,15 +63,11 @@ primary:
         - /bin/bash
         - -ec
         - |
-          password_aux="${MYSQL_ROOT_PASSWORD:-}"
-          if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
-              password_aux=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
-          fi
-          mysql --protocol=socket --socket=/opt/bitnami/mysql/tmp/mysql.sock -uroot -p"${password_aux}" -e "SELECT 1" >/dev/null 2>&1
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 10
-    failureThreshold: 30
+          test -S /opt/bitnami/mysql/tmp/mysql.sock
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 60
 
   customReadinessProbe:
     exec:
@@ -77,11 +75,13 @@ primary:
         - /bin/bash
         - -ec
         - |
-          password_aux="${MYSQL_ROOT_PASSWORD:-}"
+          password_aux=""
           if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
-              password_aux=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+            password_aux="$(cat "$MYSQL_ROOT_PASSWORD_FILE")"
           fi
-          mysql --protocol=socket --socket=/opt/bitnami/mysql/tmp/mysql.sock -uroot -p"${password_aux}" -e "SELECT 1" >/dev/null 2>&1
+          /opt/bitnami/mysql/bin/mysqladmin ping \
+            --socket=/opt/bitnami/mysql/tmp/mysql.sock \
+            -uroot -p"${password_aux}" >/dev/null 2>&1
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 10
@@ -93,11 +93,13 @@ primary:
         - /bin/bash
         - -ec
         - |
-          password_aux="${MYSQL_ROOT_PASSWORD:-}"
+          password_aux=""
           if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
-              password_aux=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+            password_aux="$(cat "$MYSQL_ROOT_PASSWORD_FILE")"
           fi
-          mysql --protocol=socket --socket=/opt/bitnami/mysql/tmp/mysql.sock -uroot -p"${password_aux}" -e "SELECT 1" >/dev/null 2>&1
+          /opt/bitnami/mysql/bin/mysqladmin status \
+            --socket=/opt/bitnami/mysql/tmp/mysql.sock \
+            -uroot -p"${password_aux}" >/dev/null 2>&1
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 10

@@ -42,7 +42,7 @@ fi
 echo "✅ vm.max_map_count 확인 완료."
 
 # 사전 검사: NodePort 충돌 확인 (30080, 30443)
-if netstat -tuln | grep -qE ":30080|:30443"; then
+if ss -tuln | grep -qE ":30080|:30443"; then
   echo "⚠️  경고: 포트 30080 또는 30443이 이미 사용 중일 수 있습니다."
 fi
 
@@ -87,10 +87,27 @@ echo "[4/10] MySQL 설치..."
 kubectl create namespace databases --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f "${SCRIPT_DIR}/../secrets/"
 
+# (옵션) 이전 실패 흔적 정리: PVC 남아 있으면 비번/초기화가 안 바뀜
+kubectl delete pvc -n databases data-mysql-0 --ignore-not-found=true
+
 helm upgrade --install mysql bitnami/mysql \
   --namespace databases \
   -f "${SCRIPT_DIR}/database/mysql-values.yaml" \
-  --wait --timeout 15m
+  --wait --timeout 15m || {
+    echo "❌ MySQL 설치가 Ready 상태로 완료되지 않았습니다. 아래 로그/이벤트를 확인하세요."
+    kubectl get pods -n databases -o wide || true
+    kubectl describe pod -n databases mysql-0 || true
+    kubectl logs -n databases mysql-0 -c mysql --tail=200 || true
+    exit 1
+  }
+
+# MySQL 접속 테스트 (Client Pod 사용)
+echo "🔍 MySQL 접속 테스트 중..."
+MYSQL_ROOT_PASSWORD=$(kubectl get secret -n databases mysql-auth -o jsonpath='{.data.mysql-root-password}' | base64 -d)
+kubectl run mysql-client -n databases --rm -i --tty \
+  --image=mysql:8.0 \
+  --env MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD}" \
+  --command -- bash -lc 'mysql -h mysql.databases.svc.cluster.local -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW DATABASES;"' || echo "⚠️ MySQL 접속 테스트 실패 (로그 확인 필요)"
 
 # Redis 설치 (Bitnami Helm)
 echo ""
