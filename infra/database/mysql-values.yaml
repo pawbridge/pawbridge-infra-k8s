@@ -19,8 +19,7 @@ primary:
     size: 10Gi
 
   # Network & Bind Settings
-  extraFlags:
-    - "--bind-address=0.0.0.0"
+  extraFlags: "--bind-address=0.0.0.0"
   
   # configuration: |-
   #   [client]
@@ -47,8 +46,55 @@ primary:
     enabled: false
   livenessProbe:
     enabled: false
-  
-  # Custom Probes 제거 (기본값 사용 = enabled: false로 인해 꺼짐)
+
+  # Custom Probes Restored (Safe Config with Socket Check)
+  customStartupProbe:
+    exec:
+      command:
+        - /bin/bash
+        - -ec
+        - |
+          test -S /opt/bitnami/mysql/tmp/mysql.sock
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 180  # 180 * 10s = 30min wait
+
+  customReadinessProbe:
+    exec:
+      command:
+        - /bin/bash
+        - -ec
+        - |
+          password_aux=""
+          if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
+            password_aux="$(cat "$MYSQL_ROOT_PASSWORD_FILE")"
+          fi
+          /opt/bitnami/mysql/bin/mysqladmin ping \
+            --socket=/opt/bitnami/mysql/tmp/mysql.sock \
+            -uroot -p"${password_aux}" >/dev/null 2>&1
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 10
+
+  customLivenessProbe:
+    exec:
+      command:
+        - /bin/bash
+        - -ec
+        - |
+          password_aux=""
+          if [[ -f "${MYSQL_ROOT_PASSWORD_FILE:-}" ]]; then
+            password_aux="$(cat "$MYSQL_ROOT_PASSWORD_FILE")"
+          fi
+          /opt/bitnami/mysql/bin/mysqladmin status \
+            --socket=/opt/bitnami/mysql/tmp/mysql.sock \
+            -uroot -p"${password_aux}" >/dev/null 2>&1
+    initialDelaySeconds: 600
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 10
 
 initdbScripts:
   init.sql: |
