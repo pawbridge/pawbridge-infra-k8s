@@ -1,0 +1,6 @@
+env:
+  REDIS_HOST: redis-master.databases.svc.cluster.local
+  REDIS_PORT: "6379"
+
+  ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
+  STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083

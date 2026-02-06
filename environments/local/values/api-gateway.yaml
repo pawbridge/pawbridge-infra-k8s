@@ -1,0 +1,15 @@
+replicaCount: 1
+
+env:
+
+  SPRING_DATASOURCE_USERNAME: root
+  # Password injected via Secret
+
+  REDIS_HOST: redis-master.databases.svc.cluster.local
+  REDIS_PORT: "6379"
+
+  KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
+
+  ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
+  STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
+  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411

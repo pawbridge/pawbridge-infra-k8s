@@ -26,4 +26,4 @@ kubeconfig
 *.kubeconfig
 
 # Local Environment Values
-environments/*/values/
+# environments/*/values/
