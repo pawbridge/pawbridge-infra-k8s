@@ -187,6 +187,16 @@ helm upgrade --install debezium-connect "${SCRIPT_DIR}/kafka/debezium-connect" \
 echo "Debezium Connect 시작 대기 중..."
 sleep 30
 
+# Metrics Server 설치 (HPA 및 kubectl top 필수)
+echo ""
+echo "[7.8/10] Metrics Server 설치 (공식 Helm)..."
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ || true
+helm repo update
+helm upgrade --install metrics-server metrics-server/metrics-server \
+  --namespace kube-system \
+  --set args={--kubelet-insecure-tls} \
+  --wait
+
 # Prometheus + Grafana 설치
 echo ""
 echo "[8/10] Prometheus + Grafana 설치..."
