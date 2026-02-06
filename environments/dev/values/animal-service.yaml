@@ -1,4 +1,7 @@
 env:
+  # Force Dev Profile
+  SPRING_PROFILES_ACTIVE: dev
+
   # 1. Database (MySQL)
   SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_animal
 
