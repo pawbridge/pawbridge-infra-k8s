@@ -15,5 +15,7 @@ env:
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
 
-  # 5. Redis (URL Style)
+  # 6. Redis (Explicit Host/Port for Legacy Support)
   SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
+  REDIS_HOST: redis-master.databases.svc.cluster.local
+  REDIS_PORT: "6379"
