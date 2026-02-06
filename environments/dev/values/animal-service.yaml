@@ -1,6 +1,19 @@
 env:
-  REDIS_HOST: redis-master.databases.svc.cluster.local
-  REDIS_PORT: "6379"
+  # 1. Database (MySQL)
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_animal
 
+  # 2. Kafka (Strimzi)
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
+  
+  # 3. Elasticsearch
+  SPRING_ELASTICSEARCH_URIS: http://elasticsearch-master.databases.svc.cluster.local:9200
+
+  # 4. Zipkin (Tracing)
+  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
+
+  # 5. Service Discovery (Internal URLs)
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
+
+  # 6. Redis (URL Style)
+  SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
