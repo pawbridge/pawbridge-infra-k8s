@@ -4,7 +4,7 @@ replicaCount: 1
 image:
   repository: dorosiya/pawbridge-user-service
   tag: k8s-v1
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 service:
   type: ClusterIP
