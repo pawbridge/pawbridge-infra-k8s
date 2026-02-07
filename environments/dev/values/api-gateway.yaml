@@ -14,6 +14,9 @@ env:
   # 4. Service Discovery
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
+  USER_SERVICE_URL: http://user-service.pawbridge.svc.cluster.local:8080
+  COMMUNITY_SERVICE_URL: http://community-service.pawbridge.svc.cluster.local:8082
+  PAYMENT_SERVICE_URL: http://payment-service.pawbridge.svc.cluster.local:8084
 
   # 5. Redis (URL Style)
   SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
