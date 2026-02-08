@@ -36,7 +36,9 @@ extraEnvs:
   - name: "xpack.security.enabled"
     value: "false"
 
-# Health Check
+# Health Check (Single Node: Must allow YELLOW status)
+clusterHealthCheckParams: "wait_for_status=yellow&timeout=1s"
+
 readinessProbe:
   initialDelaySeconds: 60
   periodSeconds: 10
