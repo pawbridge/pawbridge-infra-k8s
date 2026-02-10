@@ -1,4 +1,4 @@
-ENV=${1:-local}
+ENV=${1:-dev}
 
 echo "========================================================"
 echo "  PawBridge K8s Deployment Script (Linux/VM)"

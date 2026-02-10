@@ -13,6 +13,8 @@ spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
     {{- range .Values.ingress.hosts }}
+    {{- if .host }}
+    # 도메인 기반 라우팅 (나중에: Cloudflare Tunnel 설정 후)
     - host: {{ .host | quote }}
       http:
         paths:
@@ -25,5 +27,19 @@ spec:
                 port:
                   number: {{ $.Values.service.port }}
           {{- end }}
+    {{- else }}
+    # IP 기반 라우팅 (현재: dev/local 모두 사용 중)
+    - http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ $.Release.Name }}
+                port:
+                  number: {{ $.Values.service.port }}
+          {{- end }}
+    {{- end }}
     {{- end }}
 {{- end }}
