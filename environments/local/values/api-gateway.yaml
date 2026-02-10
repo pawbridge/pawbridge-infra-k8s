@@ -1,7 +1,14 @@
 replicaCount: 1
 
-env:
+# Ingress 설정 (local 환경 - IP 접근)
+ingress:
+  hosts:
+    - host: ""  # 빈 문자열 = IP 접근 허용
+      paths:
+        - path: /
+          pathType: Prefix
 
+env:
   SPRING_DATASOURCE_USERNAME: root
   # Password injected via Secret
 
