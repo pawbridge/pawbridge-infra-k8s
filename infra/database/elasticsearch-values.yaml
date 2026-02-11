@@ -53,5 +53,5 @@ lifecycle:
         - -c
         - |
           #!/bin/bash
-          # ES 플러그인 설치 (필요시 - 예를 들어 nori 형태소 분석기)
-          # bin/elasticsearch-plugin install analysis-nori
+          # ES 플러그인 설치 - Nori 한국어 형태소 분석기
+          bin/elasticsearch-plugin install --batch analysis-nori
