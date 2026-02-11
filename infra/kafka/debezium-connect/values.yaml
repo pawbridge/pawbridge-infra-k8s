@@ -35,10 +35,10 @@ service:
 resources:
   requests:
     cpu: 200m
-    memory: 512Mi
+    memory: 1Gi
   limits:
     cpu: 1000m
-    memory: 1Gi
+    memory: 2560Mi  # Confluent JVM -Xmx2G 요구사항 + 여유 (2.5GB)
 
 # Probe 설정
 probes:
