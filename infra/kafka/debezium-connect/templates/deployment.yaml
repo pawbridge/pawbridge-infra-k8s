@@ -24,29 +24,29 @@ spec:
         - containerPort: 8083
           name: connect-api
         env:
-        - name: BOOTSTRAP_SERVERS
+        - name: CONNECT_BOOTSTRAP_SERVERS
           value: {{ .Values.kafka.bootstrapServers | quote }}
-        - name: GROUP_ID
+        - name: CONNECT_GROUP_ID
           value: {{ .Values.connect.groupId | quote }}
-        - name: CONFIG_STORAGE_TOPIC
+        - name: CONNECT_CONFIG_STORAGE_TOPIC
           value: {{ .Values.connect.configStorageTopic | quote }}
-        - name: OFFSET_STORAGE_TOPIC
+        - name: CONNECT_OFFSET_STORAGE_TOPIC
           value: {{ .Values.connect.offsetStorageTopic | quote }}
-        - name: STATUS_STORAGE_TOPIC
+        - name: CONNECT_STATUS_STORAGE_TOPIC
           value: {{ .Values.connect.statusStorageTopic | quote }}
-        - name: CONFIG_STORAGE_REPLICATION_FACTOR
+        - name: CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR
           value: {{ .Values.connect.replicationFactor | quote }}
-        - name: OFFSET_STORAGE_REPLICATION_FACTOR
+        - name: CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR
           value: {{ .Values.connect.replicationFactor | quote }}
-        - name: STATUS_STORAGE_REPLICATION_FACTOR
+        - name: CONNECT_STATUS_STORAGE_REPLICATION_FACTOR
           value: {{ .Values.connect.replicationFactor | quote }}
-        - name: KEY_CONVERTER
+        - name: CONNECT_KEY_CONVERTER
           value: {{ .Values.converter.key | quote }}
-        - name: VALUE_CONVERTER
+        - name: CONNECT_VALUE_CONVERTER
           value: {{ .Values.converter.value | quote }}
-        - name: KEY_CONVERTER_SCHEMAS_ENABLE
+        - name: CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE
           value: {{ .Values.converter.schemasEnable | quote }}
-        - name: VALUE_CONVERTER_SCHEMAS_ENABLE
+        - name: CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE
           value: {{ .Values.converter.schemasEnable | quote }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
