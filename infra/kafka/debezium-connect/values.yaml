@@ -3,7 +3,7 @@
 
 image:
   repository: dorosiya/pawbridge-debezium-connect
-  tag: "2.4.0-es"
+  tag: "confluent-7.5.0"
   pullPolicy: Always  # Docker Hub에서 자동 Pull
 
 replicaCount: 1
