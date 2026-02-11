@@ -1,7 +1,7 @@
 @echo off
 setlocal
 set DOCKER_ID=dorosiya
-set VERSION=2.4.0-es
+set VERSION=confluent-7.5.0
 
 echo ========================================================
 echo   Debezium Connect Custom Image Build ^& Push
