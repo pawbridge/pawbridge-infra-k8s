@@ -2,9 +2,9 @@
 # 공식 이미지: quay.io/debezium/connect
 
 image:
-  repository: quay.io/debezium/connect
-  tag: "2.4.0.Final"
-  pullPolicy: IfNotPresent
+  repository: dorosiya/pawbridge-debezium-connect
+  tag: "2.4.0-es"
+  pullPolicy: Always  # Docker Hub에서 자동 Pull
 
 replicaCount: 1
 
