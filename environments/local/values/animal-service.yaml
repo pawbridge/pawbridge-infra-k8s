@@ -1,6 +1,11 @@
 replicaCount: 1
 
 env:
+  # JPA Settings (테이블 자동 생성)
+  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+  SPRING_JPA_SHOW_SQL: "true"
+  SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
+  SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "true"
 
   SPRING_DATASOURCE_USERNAME: root
   # Password injected via Secret
