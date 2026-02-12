@@ -30,11 +30,16 @@ service:
   transportPort: 9300
 
 # 보안 설정 (개발용이라 끔)
-# xpack.security.enabled: false는 환경변수로
-# xpack.security.enabled: false는 환경변수로
-extraEnvs:
-  - name: "xpack.security.enabled"
-    value: "false"
+# Elasticsearch 8.x는 기본적으로 보안이 켜져있음
+# Helm Chart 템플릿을 오버라이드해야 함
+protocol: http
+createCert: false
+
+esConfig:
+  elasticsearch.yml: |
+    xpack.security.enabled: false
+    xpack.security.transport.ssl.enabled: false
+    xpack.security.http.ssl.enabled: false
 
 # Health Check (Single Node: Must allow YELLOW status)
 clusterHealthCheckParams: "wait_for_status=yellow&timeout=1s"
