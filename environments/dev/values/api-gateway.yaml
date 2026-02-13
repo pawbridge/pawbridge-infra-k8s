@@ -29,3 +29,47 @@ env:
 
   # 5. Redis (URL Style)
   SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
+
+  # 6. CORS Override (kr only)
+  # [실무 Best Practice 적용]
+  # - 방법: SPRING_APPLICATION_JSON 환경변수 직접 주입
+  # - 장점: 헬름 차트 수정 없이 values.yaml에서 명시적으로 관리
+  #
+  # [설정 내용]
+  # - Allowed Origins: pawbridge.kr (https), localhost (3000)
+  # - Allowed Methods: GET, POST, PUT, DELETE, OPTIONS
+  # - Allowed Headers: * (All)
+  # - Allow Credentials: true
+  SPRING_APPLICATION_JSON: |
+    {
+      "spring": {
+        "cloud": {
+          "gateway": {
+            "globalcors": {
+              "cors-configurations": {
+                "[/**]": {
+                  "allowedOriginPatterns": [
+                    "https://pawbridge.kr",
+                    "https://www.pawbridge.kr",
+                    "https://*.pawbridge.kr",
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000"
+                  ],
+                  "allowedMethods": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "DELETE",
+                    "OPTIONS"
+                  ],
+                  "allowedHeaders": [
+                    "*"
+                  ],
+                  "allowCredentials": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
