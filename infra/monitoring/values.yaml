@@ -4,7 +4,11 @@
 # Grafana 설정
 grafana:
   enabled: true
-  adminPassword: admin123
+  # adminPassword: admin123 (Removed for security)
+  admin:
+    existingSecret: "grafana-admin-credentials"
+    userKey: admin-user
+    passwordKey: admin-password
   
   # Ingress 설정
   ingress:
