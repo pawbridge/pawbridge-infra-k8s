@@ -2,7 +2,7 @@
 # 현재: IP 접근 (Cloudflare Tunnel 설정 후 도메인 추가 예정)
 ingress:
   hosts:
-    - host: ""  # 당장은 IP 접근, 나중에 api.pawbridge.kr로 변경
+    - host: "api.pawbridge.kr"
       paths:
         - path: /
           pathType: Prefix
