@@ -18,7 +18,7 @@ env:
   SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
 
   # 3. Zipkin
-  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
   # 4. Service Discovery
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
@@ -32,14 +32,7 @@ env:
 
   # 6. CORS Override (kr only)
   # [실무 Best Practice 적용]
-  # - 방법: SPRING_APPLICATION_JSON 환경변수 직접 주입
-  # - 장점: 헬름 차트 수정 없이 values.yaml에서 명시적으로 관리
-  #
-  # [설정 내용]
-  # - Allowed Origins: pawbridge.kr (https), localhost (3000)
-  # - Allowed Methods: GET, POST, PUT, DELETE, OPTIONS
-  # - Allowed Headers: * (All)
-  # - Allow Credentials: true
+  # - SPRING_APPLICATION_JSON 환경변수 직접 주입 (CORS only)
   SPRING_APPLICATION_JSON: |
     {
       "spring": {
