@@ -40,7 +40,7 @@ env:
           "gateway": {
             "globalcors": {
               "cors-configurations": {
-                "[/**]": {
+                "/**": {
                   "allowedOriginPatterns": [
                     "https://pawbridge.kr",
                     "https://www.pawbridge.kr",
