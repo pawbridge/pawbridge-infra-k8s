@@ -53,10 +53,14 @@ env:
                     "POST",
                     "PUT",
                     "DELETE",
-                    "OPTIONS"
+                    "OPTIONS",
+                    "PATCH"
                   ],
                   "allowedHeaders": [
-                    "*"
+                    "Authorization",
+                    "Content-Type",
+                    "Accept",
+                    "x-user-id"
                   ],
                   "allowCredentials": true
                 }
