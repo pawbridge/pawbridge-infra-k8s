@@ -13,6 +13,12 @@ auth:
   defaultAuthenticationPlugin: "mysql_native_password"
 
 primary:
+  # NodePort로 외부 접근 (호스트 PC에서 DataGrip/Workbench → VM_IP:30306)
+  service:
+    type: NodePort
+    nodePorts:
+      mysql: 30306
+
   persistence:
     enabled: true
     storageClass: "local-path"

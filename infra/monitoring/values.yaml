@@ -10,14 +10,14 @@ grafana:
     userKey: admin-user
     passwordKey: admin-password
   
-  # Ingress 설정
+  # NodePort로 외부 접근 (호스트 PC에서 VM_IP:30090)
+  service:
+    type: NodePort
+    nodePort: 30090
+
+  # Ingress 비활성화 (NodePort로 대체)
   ingress:
-    enabled: true
-    ingressClassName: nginx
-    hosts:
-      - grafana.local
-    path: /
-    pathType: Prefix
+    enabled: false
   
   # 리소스 제한
   resources:
