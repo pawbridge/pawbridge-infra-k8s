@@ -1,3 +1,8 @@
+cronjob:
+  enabled: true
+  schedule: "*/30 * * * *"
+  image: curlimages/curl:8.5.0
+
 env:
   # Force Dev Profile
   SPRING_PROFILES_ACTIVE: dev
