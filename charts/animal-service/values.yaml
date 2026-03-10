@@ -52,6 +52,12 @@ readinessProbe:
   periodSeconds: 5
   failureThreshold: 3
 
+# CronJob 설정 (배치 스케줄)
+cronjob:
+  enabled: true
+  schedule: "*/30 * * * *"
+  image: curlimages/curl:8.5.0
+
 # HPA 설정
 autoscaling:
   enabled: true
