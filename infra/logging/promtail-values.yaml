@@ -1,0 +1,14 @@
+# Promtail - 로그 수집기 (DaemonSet, 워커 노드당 1개)
+config:
+  logLevel: info
+  serverPort: 3101
+  clients:
+    - url: http://loki.logging.svc.cluster.local:3100/loki/api/v1/push
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
