@@ -42,6 +42,8 @@ REQUIRED_FILES=(
   "monitoring/values.yaml"
   "dashboard/dashboard.yaml"
   "tracing/zipkin.yaml"
+  "logging/loki-values.yaml"
+  "logging/promtail-values.yaml"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
@@ -86,6 +88,7 @@ helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx || true
 helm repo add bitnami https://charts.bitnami.com/bitnami || true
 helm repo add strimzi https://strimzi.io/charts/ || true
 helm repo add elastic https://helm.elastic.co || true
+helm repo add grafana https://grafana.github.io/helm-charts || true
 helm repo update
 
 # Ingress Controller 설치
@@ -212,6 +215,19 @@ echo "[9/10] Kubernetes Dashboard 설치..."
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
 kubectl apply -f "${SCRIPT_DIR}/dashboard/dashboard.yaml"
 
+# Loki + Promtail 설치
+echo ""
+echo "[9.5/10] Loki + Promtail 설치 (로그 수집)..."
+kubectl create namespace logging --dry-run=client -o yaml | kubectl apply -f -
+helm upgrade --install loki grafana/loki \
+  --namespace logging \
+  -f "${SCRIPT_DIR}/logging/loki-values.yaml" \
+  --wait --timeout 5m
+helm upgrade --install promtail grafana/promtail \
+  --namespace logging \
+  -f "${SCRIPT_DIR}/logging/promtail-values.yaml" \
+  --wait --timeout 5m
+
 # Zipkin 설치
 echo ""
 echo "[10/10] Zipkin 설치..."
@@ -243,4 +259,4 @@ echo ""
 
 # Pod 상태 확인 (grep 실패해도 스크립트 중단되지 않도록 || true 추가)
 echo "[현재 Pod 상태]"
-kubectl get pods -A | grep -E "mysql|redis|kafka|strimzi|monitoring|tracing|kubernetes-dashboard|ingress-nginx|local-path" || true
+kubectl get pods -A | grep -E "mysql|redis|kafka|strimzi|monitoring|tracing|kubernetes-dashboard|ingress-nginx|local-path|logging" || true
