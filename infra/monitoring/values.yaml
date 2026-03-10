@@ -15,6 +15,11 @@ grafana:
     type: NodePort
     nodePort: 30090
 
+  # 대시보드/데이터소스 영구 저장
+  persistence:
+    enabled: true
+    size: 2Gi
+
   # Ingress 비활성화 (NodePort로 대체)
   ingress:
     enabled: false
