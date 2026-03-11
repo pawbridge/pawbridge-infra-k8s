@@ -20,6 +20,10 @@ grafana:
     enabled: true
     size: 2Gi
 
+  # PVC 권한 문제 방지
+  initChownData:
+    enabled: false
+
   # Ingress 비활성화 (NodePort로 대체)
   ingress:
     enabled: false
