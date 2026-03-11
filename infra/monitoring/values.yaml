@@ -4,6 +4,8 @@
 # Grafana 설정
 grafana:
   enabled: true
+  image:
+    tag: "11.4.0"
   # adminPassword: admin123 (Removed for security)
   admin:
     existingSecret: "grafana-admin-credentials"
