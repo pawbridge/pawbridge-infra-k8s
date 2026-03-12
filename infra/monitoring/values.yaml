@@ -41,10 +41,15 @@ grafana:
 
 # Prometheus 설정
 prometheus:
+  service:
+    type: NodePort
+    nodePort: 30909
   prometheusSpec:
     # 모든 ServiceMonitor 수집
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
+    # k6 메트릭 수신을 위한 remote write receiver 활성화
+    enableRemoteWriteReceiver: true
     
     # 리소스 제한
     resources:
