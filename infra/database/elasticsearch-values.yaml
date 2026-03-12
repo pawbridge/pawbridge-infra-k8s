@@ -5,15 +5,15 @@ replicas: 1
 
 # Single Node 설정 - 정석 클러스터 모드 (부트스트랩)
 clusterInitialMasterNodes: ["elasticsearch-master-0"]
-esJavaOpts: "-Xmx1g -Xms1g"
+esJavaOpts: "-Xmx512m -Xms512m"
 
 resources:
   requests:
     cpu: "500m"
-    memory: "1.5Gi"
+    memory: "1Gi"
   limits:
     cpu: "1000m"
-    memory: "2Gi"
+    memory: "1.5Gi"
 
 # 데이터 영구 저장 (Local Path)
 volumeClaimTemplate:

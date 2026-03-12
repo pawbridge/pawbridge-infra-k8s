@@ -17,8 +17,8 @@ end
 # Master: CPU 4개 필수 (컨트롤 플레인 + Calico 등 많은 컴포넌트 실행)
 NODES = [
   { name: "k8s-master", ip: "192.168.56.70", cpus: 4, memory: 6144, role: "master" },
-  { name: "k8s-worker1", ip: "192.168.56.71", cpus: 4, memory: 8192, role: "worker" },
-  { name: "k8s-worker2", ip: "192.168.56.72", cpus: 4, memory: 8192, role: "worker" }
+  { name: "k8s-worker1", ip: "192.168.56.71", cpus: 4, memory: 10240, role: "worker" },
+  { name: "k8s-worker2", ip: "192.168.56.72", cpus: 4, memory: 10240, role: "worker" }
 ]
 
 Vagrant.configure("2") do |config|
