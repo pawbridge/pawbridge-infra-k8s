@@ -63,12 +63,13 @@ metadata:
   labels:
     app: zipkin
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: zipkin
   ports:
   - port: 9411
     targetPort: 9411
+    nodePort: 30941
     name: http
 
 ---

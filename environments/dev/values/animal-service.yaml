@@ -18,7 +18,7 @@ env:
   SPRING_ELASTICSEARCH_URIS: http://elasticsearch-master.databases.svc.cluster.local:9200
 
   # 4. Zipkin (Tracing)
-  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
   # 5. Timezone (KST)
   TZ: "Asia/Seoul"

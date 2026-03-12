@@ -17,7 +17,7 @@ env:
 
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
-  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
   # Timezone (KST)
   TZ: "Asia/Seoul"

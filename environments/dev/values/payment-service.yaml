@@ -15,7 +15,7 @@ env:
   SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
 
   # 3. Zipkin
-  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
   # 4. Service Discovery
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
