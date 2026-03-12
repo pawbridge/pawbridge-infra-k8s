@@ -36,7 +36,7 @@ env:
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
   PAYMENT_SERVICE_URL: http://payment-service.pawbridge.svc.cluster.local:8084
   # Zipkin
-  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
 # Secret 참조 (민감정보)
 secretRef: api-gateway-secrets

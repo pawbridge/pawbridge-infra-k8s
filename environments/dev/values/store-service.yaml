@@ -18,7 +18,7 @@ env:
   SPRING_ELASTICSEARCH_URIS: http://elasticsearch-master.databases.svc.cluster.local:9200
 
   # 4. Zipkin
-  SPRING_ZIPKIN_BASE_URL: http://zipkin.tracing.svc.cluster.local:9411
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
   # 5. Service Discovery
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
