@@ -24,7 +24,7 @@ AWS EC2 단일 배포 환경에서 **Kubernetes(k8s) 기반의 컨테이너 오�
 - **CDC**: Debezium Connector를 통한 변경 데이터 캡처 (MySQL Binlog)
 - **Search**: `analysis-nori` (한국어 형태소 분석기) 적용
 - **데이터 흐름**: 공공데이터 배치 수집(Animal Service) → MySQL 저장 → Kafka 메시지 발행 → Elasticsearch 실시간 인덱싱
-
+<img width="1041" height="786" alt="Image" src="https://github.com/user-attachments/assets/de0e0646-588c-4ce9-b3f5-7cec49e8f210" />
 ---
 
 ## 주요 기능 (Key Features)
@@ -44,7 +44,7 @@ AWS EC2 단일 배포 환경에서 **Kubernetes(k8s) 기반의 컨테이너 오�
 1.  **Cluster Provisioning**: `Vagrantfile` 기반 3-Node Cluster 자동 구축 (Control Plane + 2 Workers)
 2.  **Service Deployment**: `deploy-all.sh` 스크립트를 통한 원클릭 통합 배포 (Helm Upgrade)
 3.  **Data Verification**: 공공데이터 수집 배치 실행 및 CDC 파이프라인 동작 검증 (Elasticsearch Indexing)
-
+<img width="1920" height="920" alt="Image" src="https://github.com/user-attachments/assets/393a5460-8de9-45d4-a389-d921c37101b3" />
 ---
 
 ## 구성 전략 (Configuration Strategy)
