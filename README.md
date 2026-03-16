@@ -16,7 +16,7 @@ AWS EC2 단일 배포 환경에서 **Kubernetes(k8s) 기반의 컨테이너 오�
 
 ### 1. 인프라스트럭처
 - **환경**: On-Premise (Local VirtualBox Based)
-- **클러스터**: Kubernetes v1.30.0 (Control Plane 1 + Worker 2)
+- **클러스터**: Kubernetes v1.27.2 (Control Plane 1 + Worker 2)
 - **네트워킹**: Ingress-Nginx, CoreDNS Service Discovery
 
 ### 2. 데이터 파이프라인 (CDC)
