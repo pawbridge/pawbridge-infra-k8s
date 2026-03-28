@@ -19,7 +19,7 @@ resources:
     memory: 768Mi
 # 환경변수 (K8s FQDN 사용)
 env:
-  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_animal
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_animal?rewriteBatchedStatements=true
   SPRING_DATASOURCE_USERNAME: root
 
   KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092

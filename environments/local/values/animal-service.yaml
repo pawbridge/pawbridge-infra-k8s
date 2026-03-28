@@ -8,6 +8,7 @@ env:
   SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "true"
 
   SPRING_DATASOURCE_USERNAME: root
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "30"
   # Password injected via Secret
 
   REDIS_HOST: redis-master.databases.svc.cluster.local
