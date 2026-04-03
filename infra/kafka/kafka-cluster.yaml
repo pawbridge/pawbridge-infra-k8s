@@ -27,7 +27,9 @@ spec:
       auto.create.topics.enable: "true"
       log.retention.hours: 168
     storage:
-      type: ephemeral
+      type: persistent-claim
+      size: 3Gi
+      class: local-path
     resources:
       requests:
         cpu: 250m
@@ -38,7 +40,9 @@ spec:
   zookeeper:
     replicas: 1
     storage:
-      type: ephemeral
+      type: persistent-claim
+      size: 3Gi
+      class: local-path
     resources:
       requests:
         cpu: 100m
