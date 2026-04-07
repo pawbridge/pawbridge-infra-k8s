@@ -1,0 +1,6 @@
+apiVersion: v2
+name: python-ai-service
+description: PawBridge Python AI Service Helm Chart (이미지 유사 동물 추천)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
