@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: dorosiya/pawbridge-python-ai-service
-  tag: latest
+  tag: k8s-v1
   pullPolicy: Always
 
 service:
