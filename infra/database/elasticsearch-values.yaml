@@ -50,15 +50,31 @@ readinessProbe:
   timeoutSeconds: 5
   failureThreshold: 10
 
-lifecycle:
-  postStart:
-    exec:
-      command:
-        - bash
-        - -c
-        - |
-          #!/bin/bash
-          # ES 플러그인 설치 - Nori 한국어 형태소 분석기 (이미 설치되어 있으면 skip)
-          if ! bin/elasticsearch-plugin list | grep -q analysis-nori; then
-            bin/elasticsearch-plugin install --batch analysis-nori
-          fi
+# Nori(analysis-nori)는 ES 시작 전에 설치해야 JVM에 로드됨.
+# postStart는 메인 프로세스와 동시에 돌아가 플러그인만 생기고 로드 안 되는 상태가 된다(empty _cat/plugins).
+extraVolumes: |
+  - name: es-plugins
+    emptyDir: {}
+
+extraVolumeMounts: |
+  - name: es-plugins
+    mountPath: /usr/share/elasticsearch/plugins
+
+extraInitContainers: |
+  - name: install-analysis-nori
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+    image: "{{ .Values.image }}:{{ .Values.imageTag }}"
+    imagePullPolicy: "{{ .Values.imagePullPolicy }}"
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        if ! bin/elasticsearch-plugin list | grep -q analysis-nori; then
+          bin/elasticsearch-plugin install --batch analysis-nori
+        fi
+    volumeMounts:
+      - name: es-plugins
+        mountPath: /usr/share/elasticsearch/plugins

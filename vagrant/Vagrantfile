@@ -16,9 +16,9 @@ end
 # 노드 설정 (64GB RAM 환경 최적화)
 # Master: CPU 4개 필수 (컨트롤 플레인 + Calico 등 많은 컴포넌트 실행)
 NODES = [
-  { name: "k8s-master", ip: "192.168.56.70", cpus: 4, memory: 6144, role: "master" },
-  { name: "k8s-worker1", ip: "192.168.56.71", cpus: 4, memory: 10240, role: "worker" },
-  { name: "k8s-worker2", ip: "192.168.56.72", cpus: 4, memory: 10240, role: "worker" }
+  { name: "k8s-master", ip: "192.168.0.252", cpus: 4, memory: 6144, role: "master" },
+  { name: "k8s-worker1", ip: "192.168.0.253", cpus: 4, memory: 10240, role: "worker" },
+  { name: "k8s-worker2", ip: "192.168.0.254", cpus: 4, memory: 10240, role: "worker" }
 ]
 
 Vagrant.configure("2") do |config|
@@ -37,7 +37,7 @@ Vagrant.configure("2") do |config|
   NODES.each do |node|
     config.vm.define node[:name] do |n|
       n.vm.hostname = node[:name]
-      n.vm.network "private_network", ip: node[:ip]
+      n.vm.network "public_network", ip: node[:ip], bridge: "Realtek Gaming 2.5GbE Family Controller"
       
       # VirtualBox 설정
       n.vm.provider :virtualbox do |vb|
@@ -59,7 +59,16 @@ Vagrant.configure("2") do |config|
         # 네트워크 성능 향상
         vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
         vb.customize ["modifyvm", :id, "--nictype2", "virtio"]
+        # [수정 4] Bridge NIC Promiscuous Mode (Bridge 통신 정상화 필수)
+        vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
       end
+      
+      # [수정 5] 기본 라우트를 Bridge 게이트웨이로 변경 (VBox 7.1.x NAT 버그 회피)
+      # vagrant up/reload 시마다 실행되어 인터넷 트래픽이 Bridge를 타도록 보장
+      n.vm.provision "shell", run: "always", privileged: true, inline: <<-ROUTE
+        ip route del default via 10.0.2.2 dev enp0s3 2>/dev/null || true
+        ip route add default via 192.168.0.1 dev enp0s8 2>/dev/null || true
+      ROUTE
       
       # Master 노드 추가 프로비저닝
       if node[:role] == "master"
@@ -118,9 +127,9 @@ update-grub
 
 echo '======== [1-3] hosts 설정 ========'
 cat <<EOF >> /etc/hosts
-192.168.56.70 k8s-master
-192.168.56.71 k8s-worker1
-192.168.56.72 k8s-worker2
+192.168.0.252 k8s-master
+192.168.0.253 k8s-worker1
+192.168.0.254 k8s-worker2
 EOF
 
 echo '======== [2] 컨테이너 런타임 (containerd) 설치 ========'
@@ -229,7 +238,7 @@ SHELL
 $install_master = <<-SHELL
 
 echo '======== [4] kubeadm 클러스터 초기화 ========'
-if ! kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.56.70; then
+if ! kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.0.252; then
   echo 'kubeadm init 실패! 스크립트 중단.'
   exit 1
 fi
