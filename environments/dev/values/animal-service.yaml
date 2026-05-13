@@ -2,8 +2,8 @@ env:
   # Force Dev Profile
   SPRING_PROFILES_ACTIVE: dev
 
-  # JPA Settings (테이블 자동 생성)
-  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+  # JPA — validate: 기동 시 스키마 검증만 (update 시 api_source ALTER 반복·MDL 유발)
+  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
   SPRING_JPA_SHOW_SQL: "false"
   SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
   SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "false"
