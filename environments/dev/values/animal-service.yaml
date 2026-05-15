@@ -34,3 +34,10 @@ env:
   SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
   SPRING_DATA_REDIS_HOST: redis-master.databases.svc.cluster.local
   SPRING_DATA_REDIS_PORT: "6379"
+
+  # 8. Chatbot Rate Limit
+  CHATBOT_RATE_LIMIT_ANON_10M: "5"
+  CHATBOT_RATE_LIMIT_ANON_DAILY: "20"
+  CHATBOT_RATE_LIMIT_IP_10M: "20"
+  CHATBOT_RATE_LIMIT_IP_DAILY: "100"
+  CHATBOT_RATE_LIMIT_GLOBAL_DAILY: "300"
