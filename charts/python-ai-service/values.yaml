@@ -20,6 +20,8 @@ resources:
 env:
   ES_URL: http://elasticsearch-master.databases.svc.cluster.local:9200
 
+secretRef: python-ai-service-secrets
+
 startupProbe:
   httpGet:
     path: /health
