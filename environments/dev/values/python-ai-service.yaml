@@ -1,5 +1,5 @@
 env:
   ES_URL: http://elasticsearch-master.databases.svc.cluster.local:9200
-  LLM_PROVIDER: stub
+  LLM_PROVIDER: gemini
 
 secretRef: python-ai-service-secrets
