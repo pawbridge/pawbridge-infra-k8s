@@ -29,6 +29,9 @@ spec:
             - secretRef:
                 name: {{ .Values.secretRef }}
                 optional: true
+            - secretRef:
+                name: {{ .Values.r2SecretRef }}
+                optional: false
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.startupProbe }}
