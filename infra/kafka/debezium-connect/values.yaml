@@ -4,6 +4,8 @@
 image:
   repository: dorosiya/pawbridge-debezium-connect
   tag: "confluent-7.5.0"
+  # 라이브 검증 이미지. 새 이미지를 빌드할 때 플러그인 버전 검증 후 함께 갱신한다.
+  digest: "sha256:42f271d62d16bcf861cfdb2e506fe89c573a6ca31b79ccedca64f661e1ef6601"
   pullPolicy: Always  # Docker Hub에서 자동 Pull
 
 replicaCount: 1

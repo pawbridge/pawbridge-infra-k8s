@@ -4,6 +4,8 @@ replicaCount: 1
 image:
   repository: dorosiya/pawbridge-store-service
   tag: k8s-v1
+  # Production cutovers should pin an immutable digest. When set, digest wins over tag.
+  digest: ""
   pullPolicy: Always
 
 service:

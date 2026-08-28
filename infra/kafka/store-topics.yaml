@@ -1,0 +1,41 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: store.product-sku.events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: compact,delete
+    retention.ms: 2592000000
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: store.order.events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: 604800000
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: store.product-sku.es.dlq
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: 2592000000
