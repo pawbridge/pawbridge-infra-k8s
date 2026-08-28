@@ -25,6 +25,26 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            # Legacy store-service-secrets may still expose Spring Cloud AWS
+            # properties. Explicit env entries take precedence over envFrom.
+            - name: SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.r2SecretRef }}
+                  key: R2_ACCESS_KEY_ID
+            - name: SPRING_CLOUD_AWS_CREDENTIALS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.r2SecretRef }}
+                  key: R2_SECRET_ACCESS_KEY
+            - name: SPRING_CLOUD_AWS_REGION_STATIC
+              value: {{ .Values.env.R2_REGION | quote }}
+            - name: SPRING_CLOUD_AWS_S3_ENDPOINT
+              value: {{ .Values.env.R2_ENDPOINT | quote }}
+            - name: SPRING_CLOUD_AWS_S3_BUCKET
+              value: {{ .Values.env.R2_BUCKET_NAME | quote }}
+            - name: PAWBRIDGE_STORAGE_PUBLIC_BASE_URL
+              value: {{ .Values.env.R2_PUBLIC_BASE_URL | quote }}
           envFrom:
             - secretRef:
                 name: {{ .Values.secretRef }}
