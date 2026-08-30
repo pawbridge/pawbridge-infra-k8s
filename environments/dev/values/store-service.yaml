@@ -1,3 +1,8 @@
+image:
+  repository: dorosiya/pawbridge-store-service
+  tag: sha-30d0ae0a73aa0a9498b9f36521e04fd482da0652
+  digest: sha256:f2e10746ac0c66c5c20e12aed07a75afa64f9f5b8a6b588d5292b2e412c107f2
+
 env:
   # Force Dev Profile
   SPRING_PROFILES_ACTIVE: dev
