@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: store-service-dev
+  namespace: argocd
+spec:
+  project: pawbridge-store-pilot
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: charts/store-service
+    helm:
+      releaseName: store-service
+      valueFiles:
+        - ../../environments/dev/values/store-service.yaml
+      parameters:
+        - name: autoscaling.enabled
+          value: "true"
+        - name: autoscaling.minReplicas
+          value: "1"
+        - name: autoscaling.maxReplicas
+          value: "1"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - RespectIgnoreDifferences=true
+      - FailOnSharedResource=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: store-service
+      namespace: pawbridge
+      jsonPointers:
+        - /spec/replicas
