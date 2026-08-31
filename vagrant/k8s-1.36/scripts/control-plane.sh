@@ -67,7 +67,8 @@ EOF
   rm -f /tmp/kubeadm-init.yaml
 fi
 
-install -d -m 0700 /root/.kube /home/vagrant/.kube
+install -d -m 0700 /root/.kube
+install -d -o vagrant -g vagrant -m 0700 /home/vagrant/.kube
 install -m 0600 "${KUBECONFIG_PATH}" /root/.kube/config
 export KUBECONFIG=/root/.kube/config
 current_context="$(kubectl config current-context)"
