@@ -1,0 +1,127 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+require "ipaddr"
+
+VERSIONS_PATH = File.join(__dir__, "versions.env")
+REQUIRED_VERSION_KEYS = %w[
+  BOX_NAME
+  BOX_VERSION
+  KUBERNETES_VERSION
+  KUBERNETES_PACKAGE_VERSION
+  KUBERNETES_REPOSITORY_MINOR
+  CONTAINERD_VERSION
+  CONTAINERD_SHA256
+  RUNC_VERSION
+  RUNC_SHA256
+  CNI_PLUGINS_VERSION
+  CNI_PLUGINS_SHA256
+  CRICTL_VERSION
+  CRICTL_SHA256
+  CALICO_VERSION
+  CALICO_OPERATOR_SHA256
+  CALICO_OPERATOR_IMAGE
+  CALICO_OPERATOR_DIGEST
+].freeze
+
+SOURCE_VM_NAMES = %w[k8s-master k8s-worker1 k8s-worker2].freeze
+SOURCE_IPS = %w[192.168.0.252 192.168.0.253 192.168.0.254].freeze
+HOST_ONLY_CIDR = "192.168.57.0/24"
+POD_CIDR = "10.244.0.0/16"
+SERVICE_CIDR = "10.96.0.0/12"
+HOST_ONLY_NETWORK = IPAddr.new(HOST_ONLY_CIDR)
+POD_NETWORK = IPAddr.new(POD_CIDR)
+SERVICE_NETWORK = IPAddr.new(SERVICE_CIDR)
+CLUSTER_NAME = "pawbridge-vbox-k136"
+CONTROL_PLANE_IP = "192.168.57.11"
+JOIN_SERVER_PORT = 18_080
+
+NODES = [
+  { name: "pawbridge-k136-cp1", ip: CONTROL_PLANE_IP, cpus: 4, memory: 4096, disk_gb: 60, role: :control_plane },
+  { name: "pawbridge-k136-w1", ip: "192.168.57.12", cpus: 4, memory: 6144, disk_gb: 80, role: :worker },
+  { name: "pawbridge-k136-w2", ip: "192.168.57.13", cpus: 4, memory: 6144, disk_gb: 80, role: :worker }
+].freeze
+
+def load_versions(path)
+  abort "Missing version file: #{path}" unless File.file?(path)
+
+  File.readlines(path, chomp: true).each_with_object({}) do |line, versions|
+    next if line.empty? || line.start_with?("#")
+
+    key, value = line.split("=", 2)
+    abort "Invalid version entry: #{line}" unless key&.match?(/\A[A-Z0-9_]+\z/) && value&.match?(/\A[-A-Za-z0-9._\/:]+\z/)
+    abort "Duplicate version key: #{key}" if versions.key?(key)
+
+    versions[key] = value
+  end
+end
+
+def networks_overlap?(left, right)
+  left.include?(right.to_range.first) || right.include?(left.to_range.first)
+end
+
+VERSIONS = load_versions(VERSIONS_PATH).freeze
+missing_keys = REQUIRED_VERSION_KEYS.reject { |key| VERSIONS.key?(key) }
+abort "Missing version keys: #{missing_keys.join(', ')}" unless missing_keys.empty?
+
+abort "Vagrant 2.4 or newer is required" if Gem::Version.new(Vagrant::VERSION) < Gem::Version.new("2.4.0")
+
+node_names = NODES.map { |node| node[:name] }
+node_ips = NODES.map { |node| node[:ip] }
+abort "Target VM names must be unique" unless node_names.uniq.length == node_names.length
+abort "Target IPs must be unique" unless node_ips.uniq.length == node_ips.length
+abort "Source VM name reuse is forbidden" unless (node_names & SOURCE_VM_NAMES).empty?
+abort "Source IP reuse is forbidden" unless (node_ips & SOURCE_IPS).empty?
+abort "Every target IP must be inside #{HOST_ONLY_CIDR}" unless node_ips.all? { |ip| HOST_ONLY_NETWORK.include?(IPAddr.new(ip)) }
+abort "Pod and host-only networks overlap" if networks_overlap?(POD_NETWORK, HOST_ONLY_NETWORK)
+abort "Pod and service networks overlap" if networks_overlap?(POD_NETWORK, SERVICE_NETWORK)
+abort "Service and host-only networks overlap" if networks_overlap?(SERVICE_NETWORK, HOST_ONLY_NETWORK)
+
+Vagrant.configure("2") do |config|
+  config.vm.box = VERSIONS.fetch("BOX_NAME")
+  config.vm.box_version = VERSIONS.fetch("BOX_VERSION")
+  config.vm.box_check_update = false
+  config.vm.boot_timeout = 900
+  config.ssh.keep_alive = true
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  NODES.each do |node|
+    config.vm.define node[:name] do |machine|
+      machine.vm.hostname = node[:name]
+      machine.vm.network "private_network", ip: node[:ip], netmask: "255.255.255.0"
+      machine.vm.disk :disk, size: "#{node[:disk_gb]}GB", primary: true
+
+      machine.vm.provider :virtualbox do |virtualbox|
+        virtualbox.name = node[:name]
+        virtualbox.cpus = node[:cpus]
+        virtualbox.memory = node[:memory]
+        virtualbox.gui = false
+        virtualbox.customize ["modifyvm", :id, "--ioapic", "on"]
+        virtualbox.customize ["modifyvm", :id, "--paravirtprovider", "minimal"]
+        virtualbox.customize ["modifyvm", :id, "--nictype1", "virtio"]
+        virtualbox.customize ["modifyvm", :id, "--nictype2", "virtio"]
+        virtualbox.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+        virtualbox.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", "1000"]
+      end
+
+      machine.vm.provision "file", source: VERSIONS_PATH, destination: "/tmp/pawbridge-k136-versions.env"
+      machine.vm.provision "shell", path: File.join(__dir__, "scripts/common.sh"), args: [node[:name], node[:ip], node[:disk_gb]]
+
+      if node[:role] == :control_plane
+        machine.vm.provision "shell",
+          path: File.join(__dir__, "scripts/control-plane.sh"),
+          args: [node[:name], node[:ip], CLUSTER_NAME, POD_CIDR, SERVICE_CIDR, JOIN_SERVER_PORT]
+
+        machine.vm.provision "verify-cluster",
+          type: "shell",
+          run: "never",
+          path: File.join(__dir__, "scripts/verify-cluster.sh"),
+          args: [CLUSTER_NAME, VERSIONS.fetch("KUBERNETES_VERSION"), VERSIONS.fetch("CONTAINERD_VERSION"), *node_names]
+      else
+        machine.vm.provision "shell",
+          path: File.join(__dir__, "scripts/worker.sh"),
+          args: [node[:name], CONTROL_PLANE_IP, JOIN_SERVER_PORT]
+      end
+    end
+  end
+end
