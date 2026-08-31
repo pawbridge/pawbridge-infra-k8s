@@ -12,6 +12,9 @@ service:
   type: ClusterIP
   port: 8083
 
+serviceMonitor:
+  enabled: true
+
 resources:
   requests:
     cpu: 300m

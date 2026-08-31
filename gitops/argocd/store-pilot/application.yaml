@@ -20,6 +20,8 @@ spec:
           value: "1"
         - name: autoscaling.maxReplicas
           value: "1"
+        - name: serviceMonitor.enabled
+          value: "false"
   destination:
     server: https://kubernetes.default.svc
     namespace: pawbridge
