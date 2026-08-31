@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-metrics-server-pilot
+  namespace: argocd
+spec:
+  description: metrics-server manual-sync adoption pilot
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
+  clusterResourceWhitelist:
+    - group: apiregistration.k8s.io
+      kind: APIService
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ServiceAccount
+    - group: ""
+      kind: Service
+    - group: apps
+      kind: Deployment
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding

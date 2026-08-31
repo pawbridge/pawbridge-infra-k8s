@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+spec:
+  project: pawbridge-metrics-server-pilot
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/cluster-addons/metrics-server
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - RespectIgnoreDifferences=true
+      - FailOnSharedResource=true
+  ignoreDifferences:
+    - group: "*"
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration

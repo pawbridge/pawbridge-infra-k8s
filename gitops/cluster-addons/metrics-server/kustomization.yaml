@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: kube-system
+resources:
+  # metrics-server v0.8.1
+  - https://github.com/kubernetes-sigs/metrics-server/manifests/overlays/release?ref=9ce65a47f9262e19e482c259ace815f01135a898
+patches:
+  # Local Vagrant kubelet serving certificates do not contain InternalIP SANs.
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: metrics-server
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --kubelet-insecure-tls
