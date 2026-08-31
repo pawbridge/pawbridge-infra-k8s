@@ -91,6 +91,7 @@ sed -i "s|image: ${CALICO_OPERATOR_IMAGE}|image: quay.io/tigera/operator@${CALIC
 grep -Fq "image: quay.io/tigera/operator@${CALICO_OPERATOR_DIGEST}" "${CALICO_OPERATOR_MANIFEST}"
 
 kubectl apply --server-side --field-manager=pawbridge-bootstrap --force-conflicts -f "${CALICO_OPERATOR_MANIFEST}"
+kubectl wait --for=create crd/installations.operator.tigera.io --timeout=300s
 kubectl wait --for=condition=Established crd/installations.operator.tigera.io --timeout=300s
 kubectl wait --for=condition=Available deployment/tigera-operator -n tigera-operator --timeout=300s
 cat <<EOF | kubectl apply --server-side --field-manager=pawbridge-bootstrap --force-conflicts -f -
@@ -115,6 +116,7 @@ while IFS= read -r existing_token; do
   kubeadm token delete "${existing_token%%.*}" >/dev/null
 done < <(kubeadm token list | awk 'NR > 1 { print $1 }')
 join_command="$(kubeadm token create --ttl 2h --print-join-command)"
+join_command="${join_command%"${join_command##*[![:space:]]}"}"
 if [[ ! "${join_command}" =~ ^kubeadm\ join\ ${NODE_IP//./\.}:6443\ --token\ [a-z0-9]{6}\.[a-z0-9]{16}\ --discovery-token-ca-cert-hash\ sha256:[a-f0-9]{64}$ ]]; then
   echo "kubeadm returned an unexpected join command" >&2
   exit 1
