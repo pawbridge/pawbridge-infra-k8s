@@ -61,8 +61,6 @@ server:
         capabilities:
           drop:
             - ALL
-          add:
-            - IPC_LOCK
   dataStorage:
     enabled: true
     size: 2Gi
@@ -86,7 +84,7 @@ server:
       setNodeId: true
       config: |
         ui = true
-        disable_mlock = false
+        disable_mlock = true
 
         listener "tcp" {
           address            = "[::]:8200"
