@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault-baseline
+  namespace: argocd
+spec:
+  project: pawbridge-vault-baseline-pilot
+  sources:
+    - repoURL: https://helm.releases.hashicorp.com
+      chart: vault
+      targetRevision: 0.34.1
+      helm:
+        releaseName: vault
+        skipTests: true
+        valueFiles:
+          - $values/gitops/security/vault/values.yaml
+    - repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+      targetRevision: dev
+      ref: values
+      path: gitops/security/vault
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true
