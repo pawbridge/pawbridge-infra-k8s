@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: store-r2-vso-shadow
+  namespace: argocd
+spec:
+  project: pawbridge-store-r2-vso-shadow
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/security/store-r2-vso-shadow
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true

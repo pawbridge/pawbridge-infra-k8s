@@ -1,0 +1,15 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: store-r2-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: store-r2-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: store-r2-read
+    serviceAccount: store-r2-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600
