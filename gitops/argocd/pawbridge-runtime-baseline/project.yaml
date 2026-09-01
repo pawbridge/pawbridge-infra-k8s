@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-runtime-baseline
+  namespace: argocd
+spec:
+  description: Shared PawBridge runtime namespace manual-sync baseline
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: pawbridge
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
