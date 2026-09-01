@@ -69,19 +69,42 @@ vault_status() {
 
 cleanup_token_session() {
   local exit_code=$?
+  local cleanup_failed=false
 
   trap - EXIT
   if [[ -n "${TOKEN_SESSION_DIR}" ]]; then
+    case "${TOKEN_SESSION_DIR}" in
+      /tmp/pawbridge-store-r2-bootstrap.*) ;;
+      *)
+        echo "ERROR: refusing to clean unexpected Vault session directory" >&2
+        [[ "${exit_code}" -eq 0 ]] && exit_code=1
+        exit "${exit_code}"
+        ;;
+    esac
+
     set +e
     if kube -n "${VAULT_NAMESPACE}" exec "${VAULT_POD}" -- \
       sh -c 'test -s "$1/.vault-token"' sh "${TOKEN_SESSION_DIR}"; then
-      vault_cli token revoke -self >/dev/null 2>&1
+      if ! vault_cli token revoke -self >/dev/null 2>&1; then
+        cleanup_failed=true
+      fi
     fi
-    kube -n "${VAULT_NAMESPACE}" exec "${VAULT_POD}" -- \
-      sh -c 'rm -f "$1/.vault-token" && rmdir "$1"' sh \
-      "${TOKEN_SESSION_DIR}" >/dev/null 2>&1
+
+    if [[ "${cleanup_failed}" == false ]]; then
+      if ! kube -n "${VAULT_NAMESPACE}" exec "${VAULT_POD}" -- \
+        sh -c 'case "$1" in /tmp/pawbridge-store-r2-bootstrap.*) rm -rf -- "$1" ;; *) exit 64 ;; esac' \
+        sh "${TOKEN_SESSION_DIR}" >/dev/null 2>&1; then
+        cleanup_failed=true
+      fi
+    fi
     set -e
-    echo "Isolated temporary Vault CLI session was revoked and removed."
+
+    if [[ "${cleanup_failed}" == true ]]; then
+      echo "ERROR: isolated Vault CLI session cleanup failed; manual recovery is required" >&2
+      [[ "${exit_code}" -eq 0 ]] && exit_code=1
+    else
+      echo "Isolated temporary Vault CLI session was revoked and removed."
+    fi
   fi
 
   exit "${exit_code}"
