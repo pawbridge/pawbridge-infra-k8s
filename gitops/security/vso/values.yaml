@@ -1,0 +1,63 @@
+controller:
+  replicas: 1
+  podDisruptionBudget:
+    enabled: false
+  kubeRbacProxy:
+    image:
+      repository: quay.io/brancz/kube-rbac-proxy
+      tag: v0.18.1
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 5m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 128Mi
+  manager:
+    image:
+      repository: hashicorp/vault-secrets-operator
+      tag: "1.4.1"
+      pullPolicy: IfNotPresent
+    globalTransformationOptions:
+      excludeRaw: true
+    clientCache:
+      persistenceModel: none
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 128Mi
+  podSecurityContext:
+    runAsNonRoot: true
+  securityContext:
+    allowPrivilegeEscalation: false
+
+defaultVaultConnection:
+  enabled: false
+
+defaultAuthMethod:
+  enabled: false
+
+telemetry:
+  serviceMonitor:
+    enabled: false
+
+hooks:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 128Mi
+  upgradeCRDs:
+    enabled: true
+
+csi:
+  enabled: false
+
+tests:
+  enabled: false
