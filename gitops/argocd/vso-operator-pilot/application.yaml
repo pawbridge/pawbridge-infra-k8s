@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault-secrets-operator
+  namespace: argocd
+spec:
+  project: pawbridge-vso-operator-pilot
+  sources:
+    - repoURL: https://helm.releases.hashicorp.com
+      chart: vault-secrets-operator
+      targetRevision: 1.4.1
+      helm:
+        releaseName: vault-secrets-operator
+        skipTests: true
+        valueFiles:
+          - $values/gitops/security/vso/values.yaml
+    - repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+      targetRevision: dev
+      ref: values
+      path: gitops/security/vso
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault-secrets-operator-system
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true
