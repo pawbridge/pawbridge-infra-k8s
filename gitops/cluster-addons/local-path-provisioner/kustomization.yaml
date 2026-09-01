@@ -1,0 +1,61 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # rancher/local-path-provisioner v0.0.36
+  - https://raw.githubusercontent.com/rancher/local-path-provisioner/5d4bfc84b32cd9c5f56ed3aba921b1a3924ea2f0/deploy/local-path-storage.yaml
+patches:
+  - target:
+      version: v1
+      kind: Namespace
+      name: local-path-storage
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          argocd.argoproj.io/sync-wave: "-1"
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: local-path-provisioner
+      namespace: local-path-storage
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: docker.io/rancher/local-path-provisioner:v0.0.36@sha256:1eba82e9c386038b4af6d69cca7519fac738c28c42735ed48ce70c882ad0d80f
+  - target:
+      group: storage.k8s.io
+      version: v1
+      kind: StorageClass
+      name: local-path
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          storageclass.kubernetes.io/is-default-class: "true"
+      - op: replace
+        path: /reclaimPolicy
+        value: Retain
+  - target:
+      version: v1
+      kind: ConfigMap
+      name: local-path-config
+      namespace: local-path-storage
+    patch: |-
+      - op: replace
+        path: /data/helperPod.yaml
+        value: |-
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: helper-pod
+          spec:
+            priorityClassName: system-node-critical
+            tolerations:
+              - key: node.kubernetes.io/disk-pressure
+                operator: Exists
+                effect: NoSchedule
+            containers:
+              - name: helper-pod
+                image: docker.io/library/busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+                imagePullPolicy: IfNotPresent
