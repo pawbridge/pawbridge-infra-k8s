@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pawbridge-mysql
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: pawbridge-mysql
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  project: pawbridge-mysql-pilot
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/stateful/mysql
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: databases
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - Prune=false
+      - FailOnSharedResource=true
+      - RespectIgnoreDifferences=true
+    managedNamespaceMetadata:
+      labels:
+        app.kubernetes.io/part-of: pawbridge
+        pawbridge.dev/managed-by: argocd

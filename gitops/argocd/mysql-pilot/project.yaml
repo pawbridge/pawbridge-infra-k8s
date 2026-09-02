@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-mysql-pilot
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: pawbridge-mysql-pilot
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  description: PawBridge MySQL manual-sync GitOps pilot
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: databases
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: Service
+    - group: apps
+      kind: StatefulSet
+  orphanedResources:
+    warn: true
