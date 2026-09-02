@@ -37,6 +37,7 @@ env:
 
 secretRef: store-service-secrets
 r2SecretRef: store-service-r2-secrets
+redisSecretRef: ""
 
 startupProbe:
   httpGet:

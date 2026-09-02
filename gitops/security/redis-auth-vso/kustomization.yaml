@@ -2,6 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - service-account.yaml
+  - client-service-account.yaml
   - vault-connection.yaml
+  - client-vault-connection.yaml
   - vault-auth.yaml
+  - client-vault-auth.yaml
   - vault-static-secret.yaml
+  - client-vault-static-secret.yaml

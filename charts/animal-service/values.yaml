@@ -27,6 +27,7 @@ env:
   MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
 secretRef: animal-service-secrets
+redisSecretRef: ""
 
 startupProbe:
   httpGet:
