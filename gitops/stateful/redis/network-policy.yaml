@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-ingress
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/instance: pawbridge
+    app.kubernetes.io/component: cache
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+      app.kubernetes.io/instance: pawbridge
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: pawbridge
+      ports:
+        - port: 6379
+          protocol: TCP
