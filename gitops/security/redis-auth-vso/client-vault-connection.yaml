@@ -1,0 +1,15 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultConnection
+metadata:
+  name: redis-client-vault-connection
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  address: https://vault.vault.svc.cluster.local:8200
+  # Bootstrap this Secret from vault/vault-server-tls ca.crt before syncing.
+  # The public CA value is intentionally not stored in Git.
+  caCertSecretRef: vault-internal-ca
+  skipTLSVerify: false
+  tlsServerName: vault.vault.svc.cluster.local
+  timeout: 10s

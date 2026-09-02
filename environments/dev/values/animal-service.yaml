@@ -1,3 +1,5 @@
+redisSecretRef: redis-auth
+
 env:
   # Force Dev Profile
   SPRING_PROFILES_ACTIVE: dev
@@ -31,7 +33,6 @@ env:
   PYTHON_AI_SERVICE_URL: http://python-ai-service.pawbridge.svc.cluster.local:8000
 
   # 7. Redis (Explicit Host/Port for Redisson)
-  SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
   SPRING_DATA_REDIS_HOST: redis-master.databases.svc.cluster.local
   SPRING_DATA_REDIS_PORT: "6379"
 

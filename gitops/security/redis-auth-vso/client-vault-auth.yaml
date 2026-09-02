@@ -1,0 +1,15 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: redis-client-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: redis-client-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: redis-client-auth-read
+    serviceAccount: redis-client-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600

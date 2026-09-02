@@ -4,12 +4,14 @@ metadata:
   name: pawbridge-redis-auth-vso
   namespace: argocd
 spec:
-  description: Redis Vault-backed Secret manual-sync pilot
+  description: Redis server and client Vault-backed Secrets manual-sync pilot
   sourceRepos:
     - https://github.com/pawbridge/pawbridge-infra-k8s.git
   destinations:
     - server: https://kubernetes.default.svc
       namespace: databases
+    - server: https://kubernetes.default.svc
+      namespace: pawbridge
   namespaceResourceWhitelist:
     - group: ""
       kind: ServiceAccount

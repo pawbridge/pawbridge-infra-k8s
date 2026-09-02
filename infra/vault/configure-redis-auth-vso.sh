@@ -10,9 +10,12 @@ readonly VAULT_POD="vault-0"
 readonly KV_MOUNT="secret"
 readonly KUBERNETES_AUTH_MOUNT="kubernetes"
 readonly POLICY_NAME="redis-auth-read"
-readonly ROLE_NAME="redis-auth-read"
-readonly BOUND_SERVICE_ACCOUNT="redis-vault-auth"
-readonly BOUND_NAMESPACE="databases"
+readonly SERVER_ROLE_NAME="redis-auth-read"
+readonly SERVER_BOUND_SERVICE_ACCOUNT="redis-vault-auth"
+readonly SERVER_BOUND_NAMESPACE="databases"
+readonly CLIENT_ROLE_NAME="redis-client-auth-read"
+readonly CLIENT_BOUND_SERVICE_ACCOUNT="redis-client-vault-auth"
+readonly CLIENT_BOUND_NAMESPACE="pawbridge"
 readonly TOKEN_AUDIENCE="vault"
 readonly TOKEN_TTL_SECONDS="600"
 readonly COMMAND_TIMEOUT_SECONDS="30"
@@ -30,8 +33,8 @@ Usage:
   configure-redis-auth-vso.sh apply
 
 This script verifies or configures only the least-privilege Vault policy and
-Kubernetes auth role used by the Redis VaultStaticSecret. It never accepts,
-reads, or writes the Redis password.
+Kubernetes auth roles used by the Redis server and client VaultStaticSecrets.
+It never accepts, reads, or writes the Redis password.
 
 Both modes use an isolated temporary token-helper directory inside vault-0.
 Vault prompts for the administrator password through an interactive userpass
@@ -143,7 +146,8 @@ validate_cluster_target() {
   [[ "${current_context}" == "${EXPECTED_CONTEXT}" ]] || \
     fail "unexpected kubectl context: ${current_context}"
 
-  kube get namespace "${BOUND_NAMESPACE}" >/dev/null
+  kube get namespace "${SERVER_BOUND_NAMESPACE}" >/dev/null
+  kube get namespace "${CLIENT_BOUND_NAMESPACE}" >/dev/null
   pod_phase="$(kube -n "${VAULT_NAMESPACE}" get pod "${VAULT_POD}" -o jsonpath='{.status.phase}')"
   pod_ready="$(kube -n "${VAULT_NAMESPACE}" get pod "${VAULT_POD}" -o jsonpath='{.status.containerStatuses[0].ready}')"
   [[ "${pod_phase}" == "Running" && "${pod_ready}" == "true" ]] || \
@@ -231,37 +235,47 @@ ensure_policy() {
 }
 
 normalized_role_field() {
-  local field_name="${1:?role field name is required}"
+  local role_name="${1:?role name is required}"
+  local field_name="${2:?role field name is required}"
   vault_cli read -field="${field_name}" \
-    "auth/${KUBERNETES_AUTH_MOUNT}/role/${ROLE_NAME}" | normalize
+    "auth/${KUBERNETES_AUTH_MOUNT}/role/${role_name}" | normalize
 }
 
 role_matches() {
-  vault_cli read "auth/${KUBERNETES_AUTH_MOUNT}/role/${ROLE_NAME}" >/dev/null 2>&1 || return 1
-  [[ "$(normalized_role_field bound_service_account_names)" == "${BOUND_SERVICE_ACCOUNT}" ]] || return 1
-  [[ "$(normalized_role_field bound_service_account_namespaces)" == "${BOUND_NAMESPACE}" ]] || return 1
-  [[ "$(normalized_role_field audience)" == "${TOKEN_AUDIENCE}" ]] || return 1
-  [[ "$(normalized_role_field token_policies)" == "${POLICY_NAME}" ]] || return 1
-  [[ "$(normalized_role_field token_ttl)" == "${TOKEN_TTL_SECONDS}" ]] || return 1
-  [[ "$(normalized_role_field token_max_ttl)" == "${TOKEN_TTL_SECONDS}" ]] || return 1
+  local role_name="${1:?role name is required}"
+  local bound_service_account="${2:?bound service account is required}"
+  local bound_namespace="${3:?bound namespace is required}"
+
+  vault_cli read "auth/${KUBERNETES_AUTH_MOUNT}/role/${role_name}" >/dev/null 2>&1 || return 1
+  [[ "$(normalized_role_field "${role_name}" bound_service_account_names)" == "${bound_service_account}" ]] || return 1
+  [[ "$(normalized_role_field "${role_name}" bound_service_account_namespaces)" == "${bound_namespace}" ]] || return 1
+  [[ "$(normalized_role_field "${role_name}" audience)" == "${TOKEN_AUDIENCE}" ]] || return 1
+  [[ "$(normalized_role_field "${role_name}" token_policies)" == "${POLICY_NAME}" ]] || return 1
+  [[ "$(normalized_role_field "${role_name}" token_ttl)" == "${TOKEN_TTL_SECONDS}" ]] || return 1
+  [[ "$(normalized_role_field "${role_name}" token_max_ttl)" == "${TOKEN_TTL_SECONDS}" ]] || return 1
 }
 
 ensure_role() {
-  if role_matches; then
-    echo "Vault Kubernetes role already matches: ${ROLE_NAME}"
+  local role_name="${1:?role name is required}"
+  local bound_service_account="${2:?bound service account is required}"
+  local bound_namespace="${3:?bound namespace is required}"
+
+  if role_matches "${role_name}" "${bound_service_account}" "${bound_namespace}"; then
+    echo "Vault Kubernetes role already matches: ${role_name}"
     return
   fi
 
-  [[ "${MODE}" == apply ]] || fail "Vault Kubernetes role is missing or differs: ${ROLE_NAME}"
-  vault_cli write "auth/${KUBERNETES_AUTH_MOUNT}/role/${ROLE_NAME}" \
-    bound_service_account_names="${BOUND_SERVICE_ACCOUNT}" \
-    bound_service_account_namespaces="${BOUND_NAMESPACE}" \
+  [[ "${MODE}" == apply ]] || fail "Vault Kubernetes role is missing or differs: ${role_name}"
+  vault_cli write "auth/${KUBERNETES_AUTH_MOUNT}/role/${role_name}" \
+    bound_service_account_names="${bound_service_account}" \
+    bound_service_account_namespaces="${bound_namespace}" \
     audience="${TOKEN_AUDIENCE}" \
     token_policies="${POLICY_NAME}" \
     token_ttl="${TOKEN_TTL_SECONDS}" \
     token_max_ttl="${TOKEN_TTL_SECONDS}" >/dev/null
-  role_matches || fail "Vault Kubernetes role verification failed after write"
-  echo "Applied Vault Kubernetes role: ${ROLE_NAME}"
+  role_matches "${role_name}" "${bound_service_account}" "${bound_namespace}" || \
+    fail "Vault Kubernetes role verification failed after write: ${role_name}"
+  echo "Applied Vault Kubernetes role: ${role_name}"
 }
 
 main() {
@@ -270,7 +284,8 @@ main() {
   validate_token_session
   validate_vault_prerequisites
   ensure_policy
-  ensure_role
+  ensure_role "${SERVER_ROLE_NAME}" "${SERVER_BOUND_SERVICE_ACCOUNT}" "${SERVER_BOUND_NAMESPACE}"
+  ensure_role "${CLIENT_ROLE_NAME}" "${CLIENT_BOUND_SERVICE_ACCOUNT}" "${CLIENT_BOUND_NAMESPACE}"
   echo "Redis Vault bootstrap ${MODE} completed. No Redis password was read or written."
 }
 

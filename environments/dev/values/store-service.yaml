@@ -4,6 +4,7 @@ image:
   digest: sha256:f2e10746ac0c66c5c20e12aed07a75afa64f9f5b8a6b588d5292b2e412c107f2
 
 r2SecretRef: store-service-r2-secrets-vso
+redisSecretRef: redis-auth
 
 env:
   # Force Dev Profile
@@ -32,6 +33,5 @@ env:
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
 
   # 6. Redis (Explicit Host/Port for Redisson)
-  SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
   SPRING_DATA_REDIS_HOST: redis-master.databases.svc.cluster.local
   SPRING_DATA_REDIS_PORT: "6379"

@@ -32,6 +32,7 @@ env:
 
 # Secret 참조 (민감정보)
 secretRef: user-service-secrets
+redisSecretRef: ""
 
 # Probe 설정
 startupProbe:
