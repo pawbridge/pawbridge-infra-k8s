@@ -1,0 +1,15 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: redis-vault-auth
+  namespace: databases
+spec:
+  vaultConnectionRef: redis-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: redis-auth-read
+    serviceAccount: redis-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600
