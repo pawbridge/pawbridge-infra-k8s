@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-redis-auth-vso
+  namespace: argocd
+spec:
+  description: Redis Vault-backed Secret manual-sync pilot
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: databases
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ServiceAccount
+    - group: secrets.hashicorp.com
+      kind: VaultConnection
+    - group: secrets.hashicorp.com
+      kind: VaultAuth
+    - group: secrets.hashicorp.com
+      kind: VaultStaticSecret
