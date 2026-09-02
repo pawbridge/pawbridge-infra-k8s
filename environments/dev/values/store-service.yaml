@@ -5,6 +5,7 @@ image:
 
 r2SecretRef: store-service-r2-secrets-vso
 redisSecretRef: redis-auth
+mysqlSecretRef: store-mysql-auth
 
 env:
   # Force Dev Profile
@@ -18,6 +19,7 @@ env:
 
   # 1. Database
   SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_store
+  SPRING_DATASOURCE_USERNAME: pawbridge_store_app
 
   # 2. Kafka
   SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092

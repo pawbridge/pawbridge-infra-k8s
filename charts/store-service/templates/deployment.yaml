@@ -32,6 +32,13 @@ spec:
                   name: {{ .Values.redisSecretRef }}
                   key: redis-password
             {{- end }}
+            {{- if .Values.mysqlSecretRef }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysqlSecretRef }}
+                  key: mysql-password
+            {{- end }}
             # Legacy store-service-secrets may still expose Spring Cloud AWS
             # properties. Explicit env entries take precedence over envFrom.
             - name: SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY
