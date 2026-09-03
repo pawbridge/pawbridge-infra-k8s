@@ -4,6 +4,10 @@ watchNamespaces:
   - kafka
 watchAnyNamespace: false
 
+extraEnvs:
+  - name: STRIMZI_POD_SECURITY_PROVIDER_CLASS
+    value: restricted
+
 image:
   digest: sha256:9c32dfe22d8602f43e8d8780706fbf65f023bcde3cef272688f35d1eead2640f
   imagePullPolicy: IfNotPresent
