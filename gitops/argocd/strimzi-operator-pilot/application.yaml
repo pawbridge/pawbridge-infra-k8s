@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: strimzi-operator-pilot
+  namespace: argocd
+spec:
+  project: pawbridge-strimzi-operator-pilot
+  sources:
+    - repoURL: https://strimzi.io/charts/
+      chart: strimzi-kafka-operator
+      targetRevision: 1.0.1
+      helm:
+        releaseName: strimzi-kafka-operator
+        skipTests: true
+        valueFiles:
+          - $values/gitops/cluster-addons/strimzi-operator/values.yaml
+    - repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+      targetRevision: dev
+      ref: values
+      path: gitops/cluster-addons/strimzi-operator
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kafka
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true
