@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin
+  namespace: tracing
+  labels:
+    app.kubernetes.io/name: zipkin
+    app.kubernetes.io/instance: pawbridge-zipkin
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: zipkin
+    app.kubernetes.io/instance: pawbridge-zipkin
+  ports:
+    - name: http
+      port: 9411
+      targetPort: http
+      protocol: TCP
