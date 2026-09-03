@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zipkin-pilot
+  namespace: argocd
+spec:
+  project: pawbridge-zipkin-pilot
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/platform/zipkin
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tracing
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true
