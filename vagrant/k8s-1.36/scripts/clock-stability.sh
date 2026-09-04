@@ -6,8 +6,10 @@ umask 022
 readonly CLOCKSOURCE_DIR="/sys/devices/system/clocksource/clocksource0"
 readonly ACTIVE_CLOCKSOURCE="${CLOCKSOURCE_DIR}/current_clocksource"
 readonly AVAILABLE_CLOCKSOURCES="${CLOCKSOURCE_DIR}/available_clocksource"
-readonly CLOCKSOURCE_HELPER="/usr/local/sbin/pawbridge-configure-clocksource"
-readonly CLOCKSOURCE_UNIT="/etc/systemd/system/pawbridge-clocksource.service"
+readonly CLOCK_BASELINE_HELPER="/usr/local/sbin/pawbridge-validate-clock-baseline"
+readonly CLOCK_BASELINE_UNIT="/etc/systemd/system/pawbridge-clock-baseline.service"
+readonly LEGACY_CLOCKSOURCE_HELPER="/usr/local/sbin/pawbridge-configure-clocksource"
+readonly LEGACY_CLOCKSOURCE_UNIT="/etc/systemd/system/pawbridge-clocksource.service"
 readonly TIME_SYNC_HELPER="/usr/local/sbin/pawbridge-wait-for-time-sync"
 readonly TIME_SYNC_UNIT="/etc/systemd/system/pawbridge-time-sync.service"
 readonly MAX_SAFE_FREQUENCY_PPM="500"
@@ -19,12 +21,14 @@ if [[ "${EUID}" -ne 0 ]]; then
   echo "clock stability provisioning must run as root" >&2
   exit 1
 fi
-if [[ ! -r "${AVAILABLE_CLOCKSOURCES}" ]] || ! grep -qw "kvm-clock" "${AVAILABLE_CLOCKSOURCES}"; then
-  echo "kvm-clock is unavailable; verify the VirtualBox KVM paravirtualization provider" >&2
+if [[ ! -r "${ACTIVE_CLOCKSOURCE}" || ! -r "${AVAILABLE_CLOCKSOURCES}" ]]; then
+  echo "Linux clocksource metadata is unavailable" >&2
   exit 1
 fi
-if ! command -v busybox >/dev/null 2>&1; then
-  echo "busybox is required to reset the kernel clock adjustment" >&2
+
+current_clocksource="$(< "${ACTIVE_CLOCKSOURCE}")"
+if [[ -z "${current_clocksource}" ]] || ! grep -qw -- "${current_clocksource}" "${AVAILABLE_CLOCKSOURCES}"; then
+  echo "active clocksource is not listed as available: ${current_clocksource:-unknown}" >&2
   exit 1
 fi
 
@@ -40,16 +44,9 @@ for runtime_unit in containerd.service kubelet.service; do
   fi
 done
 
-clock_baseline_needs_activation=false
-if ! systemctl is-active --quiet pawbridge-clocksource.service ||
-  [[ "$(< "${ACTIVE_CLOCKSOURCE}")" != "kvm-clock" ]] ||
-  { [[ "${chrony_is_installed}" == "true" ]] && ! systemctl is-active --quiet pawbridge-time-sync.service; }; then
-  clock_baseline_needs_activation=true
-fi
-
-if [[ "${clock_baseline_needs_activation}" == "true" && "${runtime_is_active}" == "true" ]]; then
+if [[ "${runtime_is_active}" == "true" ]]; then
   if [[ "${chrony_is_installed}" != "true" ]]; then
-    echo "refusing to switch clocksource after workloads started without Chrony health evidence" >&2
+    echo "refusing to install the time gate after workloads started without Chrony health evidence" >&2
     exit 1
   fi
 
@@ -65,12 +62,12 @@ if [[ "${clock_baseline_needs_activation}" == "true" && "${runtime_is_active}" =
         if (correction < 0) correction = -correction
         exit !(frequency <= frequency_limit && correction <= correction_limit)
       }'; then
-    echo "refusing unsafe live clocksource transition while workloads are active" >&2
+    echo "refusing unsafe time gate installation while workloads are active" >&2
     exit 1
   fi
 fi
 
-cat > "${CLOCKSOURCE_HELPER}" <<'HELPER'
+cat > "${CLOCK_BASELINE_HELPER}" <<'HELPER'
 #!/usr/bin/env bash
 
 set -Eeuo pipefail
@@ -81,8 +78,14 @@ readonly AVAILABLE_CLOCKSOURCES="${CLOCKSOURCE_DIR}/available_clocksource"
 readonly CHRONY_DRIFT_FILE="/var/lib/chrony/chrony.drift"
 readonly MAX_SAFE_FREQUENCY_PPM="500"
 
-if ! grep -qw "kvm-clock" "${AVAILABLE_CLOCKSOURCES}"; then
-  echo "kvm-clock is unavailable" >&2
+if [[ ! -r "${ACTIVE_CLOCKSOURCE}" || ! -r "${AVAILABLE_CLOCKSOURCES}" ]]; then
+  echo "Linux clocksource metadata is unavailable" >&2
+  exit 1
+fi
+
+current_clocksource="$(< "${ACTIVE_CLOCKSOURCE}")"
+if [[ -z "${current_clocksource}" ]] || ! grep -qw -- "${current_clocksource}" "${AVAILABLE_CLOCKSOURCES}"; then
+  echo "active clocksource is not listed as available: ${current_clocksource:-unknown}" >&2
   exit 1
 fi
 
@@ -93,16 +96,13 @@ if [[ -r "${CHRONY_DRIFT_FILE}" ]] && awk -v limit="${MAX_SAFE_FREQUENCY_PPM}" '
     exit !(frequency > limit)
   }
 ' "${CHRONY_DRIFT_FILE}"; then
-  cp --preserve=mode,ownership,timestamps --backup=numbered --force \
-    "${CHRONY_DRIFT_FILE}" "${CHRONY_DRIFT_FILE}.rejected"
-  rm --force "${CHRONY_DRIFT_FILE}"
+  mv --backup=numbered --force "${CHRONY_DRIFT_FILE}" "${CHRONY_DRIFT_FILE}.rejected"
   echo "rejected Chrony drift above ${MAX_SAFE_FREQUENCY_PPM} ppm" >&2
 fi
 
-printf '%s\n' "kvm-clock" > "${ACTIVE_CLOCKSOURCE}"
-/usr/bin/busybox adjtimex -t 10000 -f 0 >/dev/null
+printf 'validated active clocksource: %s\n' "${current_clocksource}"
 HELPER
-chmod 0755 "${CLOCKSOURCE_HELPER}"
+chmod 0755 "${CLOCK_BASELINE_HELPER}"
 
 cat > "${TIME_SYNC_HELPER}" <<'HELPER'
 #!/usr/bin/env bash
@@ -126,16 +126,16 @@ fi
 HELPER
 chmod 0755 "${TIME_SYNC_HELPER}"
 
-cat > "${CLOCKSOURCE_UNIT}" <<'UNIT'
+cat > "${CLOCK_BASELINE_UNIT}" <<'UNIT'
 [Unit]
-Description=PawBridge KVM clocksource baseline
+Description=PawBridge clock baseline validation
 DefaultDependencies=no
 After=local-fs.target
 Before=chrony.service chronyd.service containerd.service kubelet.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/pawbridge-configure-clocksource
+ExecStart=/usr/local/sbin/pawbridge-validate-clock-baseline
 RemainAfterExit=yes
 
 [Install]
@@ -145,9 +145,9 @@ UNIT
 cat > "${TIME_SYNC_UNIT}" <<'UNIT'
 [Unit]
 Description=PawBridge time synchronization gate
-Requires=chrony.service pawbridge-clocksource.service
+Requires=chrony.service pawbridge-clock-baseline.service
 Wants=network-online.target
-After=chrony.service network-online.target pawbridge-clocksource.service
+After=chrony.service network-online.target pawbridge-clock-baseline.service
 Before=containerd.service kubelet.service
 
 [Service]
@@ -171,32 +171,23 @@ Requires=pawbridge-time-sync.service
 After=pawbridge-time-sync.service
 UNIT
 
+systemctl disable pawbridge-clocksource.service 2>/dev/null || true
+rm --force "${LEGACY_CLOCKSOURCE_UNIT}" "${LEGACY_CLOCKSOURCE_HELPER}"
+
 systemctl daemon-reload
-systemctl enable pawbridge-clocksource.service
+systemctl enable pawbridge-clock-baseline.service
 systemctl enable pawbridge-time-sync.service
 
-clock_baseline_was_restarted=false
-if ! systemctl is-active --quiet pawbridge-clocksource.service ||
-  [[ "$(< "${ACTIVE_CLOCKSOURCE}")" != "kvm-clock" ]]; then
-  systemctl restart pawbridge-clocksource.service
-  clock_baseline_was_restarted=true
+if [[ "${runtime_is_active}" == "true" ]]; then
+  echo "clock stability gate installed; activation is deferred until the next runtime start"
+  exit 0
 fi
 
-if [[ "$(< "${ACTIVE_CLOCKSOURCE}")" != "kvm-clock" ]]; then
-  echo "failed to activate kvm-clock" >&2
-  exit 1
-fi
+systemctl restart pawbridge-clock-baseline.service
 
 if [[ "${chrony_is_installed}" == "true" ]]; then
-  if [[ "${clock_baseline_was_restarted}" == "true" && "${runtime_is_active}" == "false" ]]; then
-    systemctl restart chrony.service
-  else
-    systemctl start chrony.service
-  fi
-  if [[ "${clock_baseline_was_restarted}" == "true" ]] ||
-    ! systemctl is-active --quiet pawbridge-time-sync.service; then
-    systemctl restart pawbridge-time-sync.service
-  fi
+  systemctl start chrony.service
+  systemctl restart pawbridge-time-sync.service
 fi
 
-echo "clock stability provisioning completed with kvm-clock"
+echo "clock stability provisioning completed with ${current_clocksource}"

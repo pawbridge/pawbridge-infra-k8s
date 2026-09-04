@@ -78,8 +78,12 @@ chronyc makestep 0.1 1
 chronyc burst 4/4
 chronyc waitsync 60 0.1 500 2
 
-if [[ "$(< /sys/devices/system/clocksource/clocksource0/current_clocksource)" != "kvm-clock" ]]; then
-  echo "kvm-clock is not the active clocksource" >&2
+readonly CLOCKSOURCE_DIR="/sys/devices/system/clocksource/clocksource0"
+readonly ACTIVE_CLOCKSOURCE="${CLOCKSOURCE_DIR}/current_clocksource"
+readonly AVAILABLE_CLOCKSOURCES="${CLOCKSOURCE_DIR}/available_clocksource"
+current_clocksource="$(< "${ACTIVE_CLOCKSOURCE}")"
+if [[ -z "${current_clocksource}" ]] || ! grep -qw -- "${current_clocksource}" "${AVAILABLE_CLOCKSOURCES}"; then
+  echo "active clocksource is not listed as available: ${current_clocksource:-unknown}" >&2
   exit 1
 fi
 
