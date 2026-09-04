@@ -1,0 +1,44 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: connect-configs
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: compact
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: connect-offsets
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 25
+  replicas: 1
+  config:
+    cleanup.policy: compact
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: connect-status
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 5
+  replicas: 1
+  config:
+    cleanup.policy: compact

@@ -1,0 +1,41 @@
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: pawbridge
+  namespace: kafka
+  labels:
+    app.kubernetes.io/name: pawbridge-kafka
+    app.kubernetes.io/part-of: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  kafka:
+    version: 4.1.2
+    metadataVersion: 4.1-IV1
+    image: quay.io/strimzi/kafka@sha256:39bce6f044fe43c62b1355b4e855866899685f316db15cd25a27f7f37fffa99f
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      auto.create.topics.enable: "false"
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+      log.retention.hours: 168
+  entityOperator:
+    topicOperator:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
