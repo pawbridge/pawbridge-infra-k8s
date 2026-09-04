@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pawbridge-kafka-connect
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: pawbridge-kafka-connect
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  project: pawbridge-kafka-connect-pilot
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/stateful/kafka-connect
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kafka
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true
+      - RespectIgnoreDifferences=true

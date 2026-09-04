@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-kafka-connect-pilot
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: pawbridge-kafka-connect-pilot
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  description: PawBridge Kafka Connect worker manual-sync GitOps pilot
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: kafka
+  namespaceResourceWhitelist:
+    - group: kafka.strimzi.io
+      kind: KafkaConnect
+  orphanedResources:
+    warn: true
