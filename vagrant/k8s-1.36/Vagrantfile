@@ -104,6 +104,10 @@ Vagrant.configure("2") do |config|
         virtualbox.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", "1000"]
       end
 
+      machine.vm.provision "clock-stability",
+        type: "shell",
+        run: "always",
+        path: File.join(__dir__, "scripts/clock-stability.sh")
       machine.vm.provision "file", source: VERSIONS_PATH, destination: "/tmp/pawbridge-k136-versions.env"
       machine.vm.provision "shell", path: File.join(__dir__, "scripts/common.sh"), args: [node[:name], node[:ip], node[:disk_gb]]
 
