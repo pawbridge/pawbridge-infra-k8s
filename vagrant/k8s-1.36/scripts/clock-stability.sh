@@ -17,6 +17,21 @@ readonly MAX_SAFE_LIVE_CORRECTION_SECONDS="0.1"
 
 trap 'echo "clock stability provisioning failed at line ${LINENO}" >&2' ERR
 
+declare -a staged_files=()
+
+cleanup_staged_files() {
+  local staged_file
+  for staged_file in "${staged_files[@]}"; do
+    rm -f -- "${staged_file}"
+  done
+}
+trap cleanup_staged_files EXIT
+
+stage_file() {
+  REPLY="$(mktemp "${1}.XXXXXX")"
+  staged_files+=("${REPLY}")
+}
+
 if [[ "${EUID}" -ne 0 ]]; then
   echo "clock stability provisioning must run as root" >&2
   exit 1
@@ -44,30 +59,22 @@ for runtime_unit in containerd.service kubelet.service; do
   fi
 done
 
-if [[ "${runtime_is_active}" == "true" ]]; then
-  if [[ "${chrony_is_installed}" != "true" ]]; then
-    echo "refusing to install the time gate after workloads started without Chrony health evidence" >&2
-    exit 1
-  fi
+install -d -m 0755 /etc/systemd/system/containerd.service.d /etc/systemd/system/kubelet.service.d
 
-  tracking_output="$(chronyc tracking)"
-  frequency_ppm="$(awk '/^Frequency/ { print $3 }' <<< "${tracking_output}")"
-  correction_seconds="$(awk '/^System time/ { print $4 }' <<< "${tracking_output}")"
-  leap_status="$(awk -F ': ' '/^Leap status/ { print $2 }' <<< "${tracking_output}")"
+stage_file "${CLOCK_BASELINE_HELPER}"
+clock_baseline_helper_stage="${REPLY}"
+stage_file "${TIME_SYNC_HELPER}"
+time_sync_helper_stage="${REPLY}"
+stage_file "${CLOCK_BASELINE_UNIT}"
+clock_baseline_unit_stage="${REPLY}"
+stage_file "${TIME_SYNC_UNIT}"
+time_sync_unit_stage="${REPLY}"
+stage_file /etc/systemd/system/containerd.service.d/10-pawbridge-time-sync.conf
+containerd_drop_in_stage="${REPLY}"
+stage_file /etc/systemd/system/kubelet.service.d/10-pawbridge-time-sync.conf
+kubelet_drop_in_stage="${REPLY}"
 
-  if [[ -z "${frequency_ppm}" || -z "${correction_seconds}" || "${leap_status}" != "Normal" ]] ||
-    ! awk -v frequency="${frequency_ppm}" -v correction="${correction_seconds}" \
-      -v frequency_limit="${MAX_SAFE_FREQUENCY_PPM}" -v correction_limit="${MAX_SAFE_LIVE_CORRECTION_SECONDS}" 'BEGIN {
-        if (frequency < 0) frequency = -frequency
-        if (correction < 0) correction = -correction
-        exit !(frequency <= frequency_limit && correction <= correction_limit)
-      }'; then
-    echo "refusing unsafe time gate installation while workloads are active" >&2
-    exit 1
-  fi
-fi
-
-cat > "${CLOCK_BASELINE_HELPER}" <<'HELPER'
+cat > "${clock_baseline_helper_stage}" <<'HELPER'
 #!/usr/bin/env bash
 
 set -Eeuo pipefail
@@ -102,14 +109,21 @@ fi
 
 printf 'validated active clocksource: %s\n' "${current_clocksource}"
 HELPER
-chmod 0755 "${CLOCK_BASELINE_HELPER}"
+chmod 0755 "${clock_baseline_helper_stage}"
 
-cat > "${TIME_SYNC_HELPER}" <<'HELPER'
+cat > "${time_sync_helper_stage}" <<'HELPER'
 #!/usr/bin/env bash
 
 set -Eeuo pipefail
 
 readonly MAX_SAFE_FREQUENCY_PPM="500"
+
+for runtime_unit in containerd.service kubelet.service; do
+  if systemctl is-active --quiet "${runtime_unit}"; then
+    echo "skipping time correction while ${runtime_unit} is active"
+    exit 0
+  fi
+done
 
 chronyc makestep 0.1 1
 chronyc burst 4/4
@@ -124,9 +138,9 @@ if [[ -z "${frequency_ppm}" ]] || ! awk -v frequency="${frequency_ppm}" -v limit
   exit 1
 fi
 HELPER
-chmod 0755 "${TIME_SYNC_HELPER}"
+chmod 0755 "${time_sync_helper_stage}"
 
-cat > "${CLOCK_BASELINE_UNIT}" <<'UNIT'
+cat > "${clock_baseline_unit_stage}" <<'UNIT'
 [Unit]
 Description=PawBridge clock baseline validation
 DefaultDependencies=no
@@ -142,7 +156,7 @@ RemainAfterExit=yes
 WantedBy=sysinit.target
 UNIT
 
-cat > "${TIME_SYNC_UNIT}" <<'UNIT'
+cat > "${time_sync_unit_stage}" <<'UNIT'
 [Unit]
 Description=PawBridge time synchronization gate
 Requires=chrony.service pawbridge-clock-baseline.service
@@ -159,24 +173,58 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 UNIT
 
-install -d -m 0755 /etc/systemd/system/containerd.service.d /etc/systemd/system/kubelet.service.d
-cat > /etc/systemd/system/containerd.service.d/10-pawbridge-time-sync.conf <<'UNIT'
+cat > "${containerd_drop_in_stage}" <<'UNIT'
 [Unit]
 Requires=pawbridge-time-sync.service
 After=pawbridge-time-sync.service
 UNIT
-cat > /etc/systemd/system/kubelet.service.d/10-pawbridge-time-sync.conf <<'UNIT'
+cat > "${kubelet_drop_in_stage}" <<'UNIT'
 [Unit]
 Requires=pawbridge-time-sync.service
 After=pawbridge-time-sync.service
 UNIT
 
-systemctl disable pawbridge-clocksource.service 2>/dev/null || true
-rm --force "${LEGACY_CLOCKSOURCE_UNIT}" "${LEGACY_CLOCKSOURCE_HELPER}"
+chmod 0644 "${clock_baseline_unit_stage}" "${time_sync_unit_stage}" \
+  "${containerd_drop_in_stage}" "${kubelet_drop_in_stage}"
+mv -- "${clock_baseline_helper_stage}" "${CLOCK_BASELINE_HELPER}"
+mv -- "${time_sync_helper_stage}" "${TIME_SYNC_HELPER}"
+mv -- "${clock_baseline_unit_stage}" "${CLOCK_BASELINE_UNIT}"
+mv -- "${time_sync_unit_stage}" "${TIME_SYNC_UNIT}"
+mv -- "${containerd_drop_in_stage}" /etc/systemd/system/containerd.service.d/10-pawbridge-time-sync.conf
+mv -- "${kubelet_drop_in_stage}" /etc/systemd/system/kubelet.service.d/10-pawbridge-time-sync.conf
 
 systemctl daemon-reload
 systemctl enable pawbridge-clock-baseline.service
 systemctl enable pawbridge-time-sync.service
+
+if [[ -e "${LEGACY_CLOCKSOURCE_UNIT}" ]]; then
+  systemctl disable pawbridge-clocksource.service
+  rm --force "${LEGACY_CLOCKSOURCE_UNIT}" "${LEGACY_CLOCKSOURCE_HELPER}"
+  systemctl daemon-reload
+fi
+
+if [[ "${runtime_is_active}" == "true" ]]; then
+  if [[ "${chrony_is_installed}" != "true" ]]; then
+    echo "refusing to activate the time gate after workloads started without Chrony health evidence" >&2
+    exit 1
+  fi
+
+  tracking_output="$(chronyc tracking)"
+  frequency_ppm="$(awk '/^Frequency/ { print $3 }' <<< "${tracking_output}")"
+  correction_seconds="$(awk '/^System time/ { print $4 }' <<< "${tracking_output}")"
+  leap_status="$(awk -F ': ' '/^Leap status/ { print $2 }' <<< "${tracking_output}")"
+
+  if [[ -z "${frequency_ppm}" || -z "${correction_seconds}" || "${leap_status}" != "Normal" ]] ||
+    ! awk -v frequency="${frequency_ppm}" -v correction="${correction_seconds}" \
+      -v frequency_limit="${MAX_SAFE_FREQUENCY_PPM}" -v correction_limit="${MAX_SAFE_LIVE_CORRECTION_SECONDS}" 'BEGIN {
+        if (frequency < 0) frequency = -frequency
+        if (correction < 0) correction = -correction
+        exit !(frequency <= frequency_limit && correction <= correction_limit)
+      }'; then
+    echo "refusing unsafe time gate activation while workloads are active" >&2
+    exit 1
+  fi
+fi
 
 if [[ "${runtime_is_active}" == "true" ]]; then
   echo "clock stability gate installed; activation is deferred until the next runtime start"
