@@ -1,0 +1,159 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: schema-changes.animal.outbox
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: schema-changes.community.outbox
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: schema-changes.payment
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: schema-changes.store-v2
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: schema-changes.user.outbox
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pawbridge-animal
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pawbridge-community
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: payment
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: store-v3
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: user
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    cleanup.policy: delete
+    retention.ms: -1
