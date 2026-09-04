@@ -11,7 +11,7 @@ metadata:
     strimzi.io/use-connector-resources: "true"
 spec:
   version: 4.1.2
-  image: quay.io/strimzi/kafka@sha256:39bce6f044fe43c62b1355b4e855866899685f316db15cd25a27f7f37fffa99f
+  image: docker.io/dorosiya/pawbridge-debezium-connect@sha256:cd51857d670c359d658e76ca86a097322daedff762311953193a7994b259f337
   replicas: 1
   bootstrapServers: pawbridge-kafka-bootstrap:9092
   groupId: pawbridge-connect
