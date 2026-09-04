@@ -97,7 +97,7 @@ Vagrant.configure("2") do |config|
         virtualbox.memory = node[:memory]
         virtualbox.gui = false
         virtualbox.customize ["modifyvm", :id, "--ioapic", "on"]
-        virtualbox.customize ["modifyvm", :id, "--paravirtprovider", "minimal"]
+        virtualbox.customize ["modifyvm", :id, "--paravirtprovider", "kvm"]
         virtualbox.customize ["modifyvm", :id, "--nictype1", "virtio"]
         virtualbox.customize ["modifyvm", :id, "--nictype2", "virtio"]
         virtualbox.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
