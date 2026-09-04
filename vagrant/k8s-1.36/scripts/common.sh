@@ -74,7 +74,14 @@ apt-get install --yes --no-install-recommends apt-transport-https ca-certificate
 
 timedatectl set-timezone Asia/Seoul
 systemctl enable --now chrony
-chronyc makestep || true
+chronyc makestep 0.1 1
+chronyc burst 4/4
+chronyc waitsync 60 0.1 500 2
+
+if [[ "$(< /sys/devices/system/clocksource/clocksource0/current_clocksource)" != "kvm-clock" ]]; then
+  echo "kvm-clock is not the active clocksource" >&2
+  exit 1
+fi
 
 swapoff --all
 sed -ri '/\sswap\s/s/^([^#])/#\1/' /etc/fstab
