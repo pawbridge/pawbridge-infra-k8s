@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: store-search-index-v001
+  namespace: argocd
+spec:
+  project: pawbridge-store-search-index
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/stateful/store-search-index
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: databases
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true

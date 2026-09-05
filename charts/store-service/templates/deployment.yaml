@@ -39,6 +39,22 @@ spec:
                   name: {{ .Values.mysqlSecretRef }}
                   key: mysql-password
             {{- end }}
+            {{- if .Values.elasticsearchSecretRef }}
+            - name: SPRING_ELASTICSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.elasticsearchSecretRef }}
+                  key: username
+            - name: SPRING_ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.elasticsearchSecretRef }}
+                  key: password
+            - name: SPRING_SSL_BUNDLE_PEM_STORESEARCH_TRUSTSTORE_CERTIFICATE
+              value: {{ printf "%s/ca.crt" .Values.elasticsearchCaMountPath | quote }}
+            - name: SPRING_ELASTICSEARCH_RESTCLIENT_SSL_BUNDLE
+              value: storesearch
+            {{- end }}
             # Legacy store-service-secrets may still expose Spring Cloud AWS
             # properties. Explicit env entries take precedence over envFrom.
             - name: SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY
@@ -66,6 +82,12 @@ spec:
             - secretRef:
                 name: {{ .Values.r2SecretRef }}
                 optional: false
+          {{- if .Values.elasticsearchCaSecretRef }}
+          volumeMounts:
+            - name: store-search-http-ca
+              mountPath: {{ .Values.elasticsearchCaMountPath | quote }}
+              readOnly: true
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.startupProbe }}
@@ -80,3 +102,12 @@ spec:
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           {{- end }}
+      {{- if .Values.elasticsearchCaSecretRef }}
+      volumes:
+        - name: store-search-http-ca
+          secret:
+            secretName: {{ .Values.elasticsearchCaSecretRef }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+      {{- end }}

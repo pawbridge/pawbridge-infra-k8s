@@ -1,0 +1,155 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: store-search-read-cutover-v001
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: store-search-read-cutover-v001
+    app.kubernetes.io/instance: pawbridge
+    app.kubernetes.io/component: search-cutover
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: store-search-read-cutover-v001
+        app.kubernetes.io/instance: pawbridge
+        app.kubernetes.io/component: search-cutover
+        app.kubernetes.io/part-of: pawbridge
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: promote-read-alias
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.15.5@sha256:8870d5b7b86235fa790c9112464f5fd3b693f89d73e757a630f8b5cda350f95b
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: ES_URL
+              value: https://store-search-es-http.databases.svc.cluster.local:9200
+            - name: ES_HOST
+              value: store-search-es-http.databases.svc.cluster.local
+            - name: ES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: store-search-bootstrap-auth
+                  key: username
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: store-search-bootstrap-auth
+                  key: password
+            - name: INDEX_NAME
+              value: store-products-v001
+            - name: WRITE_ALIAS
+              value: store-products-write
+            - name: READ_ALIAS
+              value: store-products-read
+          command:
+            - sh
+            - -ec
+          args:
+            - |
+              umask 077
+              NETRC=/tmp/store-search.netrc
+              RESPONSE=/tmp/response.json
+              cleanup() {
+                rm -f "${NETRC}" "${RESPONSE}"
+              }
+              trap cleanup EXIT
+              printf 'machine %s login %s password %s\n' \
+                "${ES_HOST}" "${ES_USERNAME}" "${ES_PASSWORD}" > "${NETRC}"
+              unset ES_USERNAME ES_PASSWORD
+
+              request() {
+                curl --silent --show-error --fail \
+                  --cacert /etc/store-search-ca/ca.crt \
+                  --netrc-file "${NETRC}" "$@"
+              }
+
+              request "${ES_URL}/${INDEX_NAME}/_mapping" --output "${RESPONSE}"
+              grep -Fq '"dynamic":"strict"' "${RESPONSE}"
+              grep -Fq '"contract":"store-products-v1"' "${RESPONSE}"
+
+              request "${ES_URL}/_alias/${WRITE_ALIAS}" --output "${RESPONSE}"
+              compact_alias="$(tr -d '[:space:]' < "${RESPONSE}")"
+              expected_alias="{\"${INDEX_NAME}\":{\"aliases\":{\"${WRITE_ALIAS}\":{\"is_write_index\":true}}}}"
+              [ "${compact_alias}" = "${expected_alias}" ] || {
+                echo "Write alias does not point exclusively to the cutover index" >&2
+                exit 1
+              }
+
+              request "${ES_URL}/${INDEX_NAME}/_count" --output "${RESPONSE}"
+              count="$(sed -n 's/.*"count":\([0-9][0-9]*\).*/\1/p' "${RESPONSE}")"
+              [ -n "${count}" ] && [ "${count}" -gt 0 ] || {
+                echo "Refusing read cutover because the target index is empty" >&2
+                exit 1
+              }
+
+              alias_status="$(curl --silent --show-error \
+                --cacert /etc/store-search-ca/ca.crt \
+                --netrc-file "${NETRC}" \
+                --output "${RESPONSE}" --write-out '%{http_code}' \
+                "${ES_URL}/_alias/${READ_ALIAS}")"
+              case "${alias_status}" in
+                404)
+                  printf '{"actions":[{"add":{"index":"%s","alias":"%s"}}]}' \
+                    "${INDEX_NAME}" "${READ_ALIAS}" > /tmp/alias.json
+                  request --request POST "${ES_URL}/_aliases" \
+                    --header 'Content-Type: application/json' \
+                    --data-binary @/tmp/alias.json --output "${RESPONSE}"
+                  rm -f /tmp/alias.json
+                  grep -Fq '"acknowledged":true' "${RESPONSE}"
+                  ;;
+                200)
+                  echo "Read alias already exists; validating the immutable target."
+                  ;;
+                *)
+                  echo "Failed to inspect read alias: HTTP ${alias_status}" >&2
+                  exit 1
+                  ;;
+              esac
+
+              request "${ES_URL}/_alias/${READ_ALIAS}" --output "${RESPONSE}"
+              compact_alias="$(tr -d '[:space:]' < "${RESPONSE}")"
+              expected_alias="{\"${INDEX_NAME}\":{\"aliases\":{\"${READ_ALIAS}\":{}}}}"
+              [ "${compact_alias}" = "${expected_alias}" ] || {
+                echo "Read alias does not point exclusively to the cutover index" >&2
+                exit 1
+              }
+              echo "Read alias promoted after mapping, write-alias, and non-empty-index checks."
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: ca
+              mountPath: /etc/store-search-ca
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 8Mi
+        - name: ca
+          secret:
+            secretName: store-search-es-http-certs-public
+            items:
+              - key: ca.crt
+                path: ca.crt

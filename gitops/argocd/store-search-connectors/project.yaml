@@ -1,19 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: pawbridge-elasticsearch-pilot
+  name: pawbridge-store-search-connectors
   namespace: argocd
 spec:
-  description: Store search Elasticsearch 8.15.5 manual-sync GitOps pilot
+  description: Separately gated Store Elasticsearch sink and MySQL outbox source applications
   sourceRepos:
     - https://github.com/pawbridge/pawbridge-infra-k8s.git
   destinations:
     - server: https://kubernetes.default.svc
-      namespace: databases
+      namespace: kafka
   namespaceResourceWhitelist:
-    - group: ""
-      kind: Secret
-    - group: elasticsearch.k8s.elastic.co
-      kind: Elasticsearch
+    - group: kafka.strimzi.io
+      kind: KafkaConnector
   orphanedResources:
     warn: true

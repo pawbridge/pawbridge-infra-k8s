@@ -1,0 +1,127 @@
+{{- if .Values.searchPreflight.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-search-preflight
+  labels:
+    app: {{ .Release.Name }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-search-preflight
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: verify-read-index
+          image: {{ .Values.searchPreflight.image | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: ES_URL
+              value: {{ .Values.env.SPRING_ELASTICSEARCH_URIS | quote }}
+            - name: ES_HOST
+              value: store-search-es-http.databases.svc.cluster.local
+            - name: ES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.elasticsearchSecretRef }}
+                  key: username
+            - name: ES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.elasticsearchSecretRef }}
+                  key: password
+            - name: READ_INDEX
+              value: {{ .Values.searchPreflight.index | quote }}
+            - name: EXPECTED_CONTRACT
+              value: {{ .Values.searchPreflight.expectedContract | quote }}
+          command:
+            - sh
+            - -ec
+          args:
+            - |
+              umask 077
+              NETRC=/tmp/store-search.netrc
+              RESPONSE=/tmp/response.json
+              cleanup() {
+                rm -f "${NETRC}" "${RESPONSE}"
+              }
+              trap cleanup EXIT
+              printf 'machine %s login %s password %s\n' \
+                "${ES_HOST}" "${ES_USERNAME}" "${ES_PASSWORD}" > "${NETRC}"
+              unset ES_USERNAME ES_PASSWORD
+
+              curl --silent --show-error --fail \
+                --cacert {{ printf "%s/ca.crt" .Values.elasticsearchCaMountPath }} \
+                --netrc-file "${NETRC}" \
+                "${ES_URL}/_alias/${READ_INDEX}" --output "${RESPONSE}"
+              alias_target_count="$(grep -o '"aliases"' "${RESPONSE}" | wc -l | tr -d '[:space:]')"
+              [ "${alias_target_count}" = 1 ] || {
+                echo "Read alias must resolve to exactly one index" >&2
+                exit 1
+              }
+              if grep -Fq '"is_write_index":true' "${RESPONSE}"; then
+                echo "Read alias must not be a write alias" >&2
+                exit 1
+              fi
+
+              curl --silent --show-error --fail \
+                --cacert {{ printf "%s/ca.crt" .Values.elasticsearchCaMountPath }} \
+                --netrc-file "${NETRC}" \
+                "${ES_URL}/${READ_INDEX}/_mapping" --output "${RESPONSE}"
+              grep -Fq "\"contract\":\"${EXPECTED_CONTRACT}\"" "${RESPONSE}" || {
+                echo "Store search mapping contract differs" >&2
+                exit 1
+              }
+
+              curl --silent --show-error --fail \
+                --cacert {{ printf "%s/ca.crt" .Values.elasticsearchCaMountPath }} \
+                --netrc-file "${NETRC}" \
+                "${ES_URL}/${READ_INDEX}/_count" --output "${RESPONSE}"
+              count="$(sed -n 's/.*"count":\([0-9][0-9]*\).*/\1/p' "${RESPONSE}")"
+              [ -n "${count}" ] && [ "${count}" -gt 0 ] || {
+                echo "Store search read index contains no products" >&2
+                exit 1
+              }
+              echo "Store search preflight passed with ${count} indexed SKU documents."
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: store-search-http-ca
+              mountPath: {{ .Values.elasticsearchCaMountPath | quote }}
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 8Mi
+        - name: store-search-http-ca
+          secret:
+            secretName: {{ .Values.elasticsearchCaSecretRef }}
+            items:
+              - key: ca.crt
+                path: ca.crt
+{{- end }}
