@@ -11,7 +11,7 @@ readonly VSO_DEPLOYMENT="vault-secrets-operator-controller-manager"
 readonly COMMAND_TIMEOUT_SECONDS="30"
 readonly KUBECTL_REQUEST_TIMEOUT="15s"
 readonly CLOUDFLARED_IMAGE="cloudflare/cloudflared:2026.8.3@sha256:51c9cefcb4569df44e1ad403ab1d3d8065aa8e84339bcfc6aee75502e1140339"
-readonly GATEWAY_IMAGE="dorosiya/pawbridge-api-gateway@sha256:073f3a048d3e5b995639edbbc5afa38a74075922c19f740369d34393b34d72f2"
+readonly GATEWAY_IMAGE="dorosiya/pawbridge-api-gateway@sha256:50e14fc972af4d6810781f10c4df445c4d318d9ccdc53e7a13f485e30d0e1af6"
 readonly -a CLOUDFLARE_EDGE_IPV4_CIDRS=(
   198.41.192.7/32
   198.41.192.27/32
@@ -173,7 +173,7 @@ verify_store_edge_ready() {
   gateway_image="$(kube -n "${NAMESPACE}" get deployment api-gateway -o jsonpath='{.spec.template.spec.containers[0].image}')"
   gateway_available="$(kube -n "${NAMESPACE}" get deployment api-gateway -o jsonpath='{.status.availableReplicas}')"
   gateway_automount="$(kube -n "${NAMESPACE}" get deployment api-gateway -o jsonpath='{.spec.template.spec.automountServiceAccountToken}')"
-  gateway_endpoints="$(kube -n "${NAMESPACE}" get endpointslice -l kubernetes.io/service-name=api-gateway -o jsonpath='{range .items[*].endpoints[?(@.conditions.ready==true)].addresses[*]}{.}{"\n"}{end}' | sed '/^$/d' | wc -l | tr -d '[:space:]')"
+  gateway_endpoints="$(kube -n "${NAMESPACE}" get endpointslice -l kubernetes.io/service-name=api-gateway -o go-template='{{range .items}}{{range .endpoints}}{{if .conditions.ready}}{{range .addresses}}{{.}}{{"\n"}}{{end}}{{end}}{{end}}{{end}}' | sed '/^$/d' | wc -l | tr -d '[:space:]')"
   gateway_endpoint_ports="$(kube -n "${NAMESPACE}" get endpointslice -l kubernetes.io/service-name=api-gateway -o jsonpath='{range .items[*].ports[*]}{.port}{"\n"}{end}' | sed '/^$/d' | sort -u)"
   gateway_ingress_backend_count="$(
     kube -n "${NAMESPACE}" get ingress -o go-template='{{range .items}}{{$name := .metadata.name}}{{with .spec.defaultBackend}}{{with .service}}{{printf "%s\t%s\n" $name .name}}{{end}}{{end}}{{range .spec.rules}}{{range .http.paths}}{{printf "%s\t%s\n" $name .backend.service.name}}{{end}}{{end}}{{end}}' |
@@ -187,7 +187,7 @@ verify_store_edge_ready() {
   expect_equal "${gateway_ingress_backend_count}" "0" "Ingress backends targeting API Gateway"
 
   store_service_port="$(kube -n "${NAMESPACE}" get service store-service -o jsonpath='{.spec.ports[0].port}')"
-  store_endpoints="$(kube -n "${NAMESPACE}" get endpointslice -l kubernetes.io/service-name=store-service -o jsonpath='{range .items[*].endpoints[?(@.conditions.ready==true)].addresses[*]}{.}{"\n"}{end}' | sed '/^$/d' | wc -l | tr -d '[:space:]')"
+  store_endpoints="$(kube -n "${NAMESPACE}" get endpointslice -l kubernetes.io/service-name=store-service -o go-template='{{range .items}}{{range .endpoints}}{{if .conditions.ready}}{{range .addresses}}{{.}}{{"\n"}}{{end}}{{end}}{{end}}{{end}}' | sed '/^$/d' | wc -l | tr -d '[:space:]')"
   store_endpoint_ports="$(kube -n "${NAMESPACE}" get endpointslice -l kubernetes.io/service-name=store-service -o jsonpath='{range .items[*].ports[*]}{.port}{"\n"}{end}' | sed '/^$/d' | sort -u)"
   expect_equal "${store_service_port}" "8083" "Store Service port"
   [[ "${store_endpoints}" -ge 1 ]] || fail "Store Service has no ready EndpointSlice address"
@@ -226,7 +226,7 @@ verify_store_edge_ready() {
 
   expect_equal "$(kube -n "${NAMESPACE}" get networkpolicy cloudflared-egress -o jsonpath='{.spec.podSelector.matchLabels.app}')" "cloudflared" "cloudflared NetworkPolicy pod selector"
   expect_equal "$(kube -n "${NAMESPACE}" get networkpolicy cloudflared-egress -o jsonpath='{.spec.policyTypes[*]}')" "Ingress Egress" "cloudflared NetworkPolicy types"
-  expect_equal "$(kube -n "${NAMESPACE}" get networkpolicy cloudflared-egress -o go-template='{{len .spec.ingress}}')" "0" "cloudflared NetworkPolicy ingress rule count"
+  expect_equal "$(kube -n "${NAMESPACE}" get networkpolicy cloudflared-egress -o go-template='{{if .spec.ingress}}{{len .spec.ingress}}{{else}}0{{end}}')" "0" "cloudflared NetworkPolicy ingress rule count"
   expect_equal "$(kube -n "${NAMESPACE}" get networkpolicy cloudflared-egress -o go-template='{{len .spec.egress}}')" "3" "cloudflared NetworkPolicy egress rule count"
   expect_equal "$(kube -n "${NAMESPACE}" get networkpolicy cloudflared-egress -o jsonpath='{.spec.egress[0].to[0].namespaceSelector.matchLabels.kubernetes\.io/metadata\.name}')" "kube-system" "cloudflared DNS namespace selector"
   expect_equal "$(kube -n "${NAMESPACE}" get networkpolicy cloudflared-egress -o jsonpath='{.spec.egress[0].to[0].podSelector.matchLabels.k8s-app}')" "kube-dns" "cloudflared DNS pod selector"
