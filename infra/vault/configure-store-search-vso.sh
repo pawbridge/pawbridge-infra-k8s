@@ -93,6 +93,12 @@ vault_cli() {
     env HOME="${TOKEN_SESSION_DIR}" vault "$@"
 }
 
+vault_cli_stdin() {
+  [[ -n "${TOKEN_SESSION_DIR}" ]] || fail "Vault CLI session is not initialized"
+  kube -n "${VAULT_NAMESPACE}" exec -i "${VAULT_POD}" -- \
+    env HOME="${TOKEN_SESSION_DIR}" vault "$@"
+}
+
 cleanup() {
   local exit_code=$?
   local cleanup_failed=false
@@ -351,19 +357,49 @@ ensure_credential() {
   local actual_username
   local actual_password
   local actual_roles=""
+  local credential_exists=false
+  local credential_matches=false
+  local credential_version=""
+  local -a put_arguments=(kv put -mount="${KV_MOUNT}")
 
-  if ! kv_exists "${path}"; then
-    [[ "${MODE}" == apply ]] || fail "Vault credential is missing: ${path}"
-    actual_password="$(openssl rand -hex 32)"
+  if kv_exists "${path}"; then
+    credential_exists=true
+    credential_version="$(vault_cli read -field=current_version "${KV_MOUNT}/metadata/${path}")" || \
+      fail "failed to read Vault credential version: ${path}"
+    [[ "${credential_version}" =~ ^[1-9][0-9]*$ ]] || fail "invalid Vault credential version: ${path}"
+    actual_username="$(vault_cli kv get -mount="${KV_MOUNT}" -field=username "${path}")" || \
+      fail "failed to read Vault credential username: ${path}"
+    actual_password="$(vault_cli kv get -mount="${KV_MOUNT}" -field=password "${path}")" || \
+      fail "failed to read Vault credential password: ${path}"
     if [[ -n "${roles}" ]]; then
-      printf '%s' "${actual_password}" | vault_cli kv put -mount="${KV_MOUNT}" -cas=0 \
-        "${path}" username="${username}" password=- roles="${roles}" >/dev/null
+      actual_roles="$(vault_cli kv get -mount="${KV_MOUNT}" -field=roles "${path}")" || \
+        fail "failed to read Vault credential role: ${path}"
+    fi
+    if [[ "${actual_username}" == "${username}" && "${actual_password}" =~ ^[0-9a-f]{64}$ ]] && \
+      [[ -z "${roles}" || "${actual_roles}" == "${roles}" ]]; then
+      credential_matches=true
+    fi
+  fi
+
+  if [[ "${credential_matches}" == false ]]; then
+    [[ "${MODE}" == apply ]] || fail "Vault credential is missing or invalid: ${path}"
+    actual_password="$(openssl rand -hex 32)"
+    [[ "${actual_password}" =~ ^[0-9a-f]{64}$ ]] || fail "failed to generate Vault credential: ${path}"
+    if [[ "${credential_exists}" == false ]]; then
+      put_arguments+=(-cas=0)
     else
-      printf '%s' "${actual_password}" | vault_cli kv put -mount="${KV_MOUNT}" -cas=0 \
-        "${path}" username="${username}" password=- >/dev/null
+      put_arguments+=(-cas="${credential_version}")
+    fi
+    put_arguments+=("${path}" username="${username}" password=-)
+    if [[ -n "${roles}" ]]; then
+      put_arguments+=(roles="${roles}")
+    fi
+    if ! printf '%s' "${actual_password}" | vault_cli_stdin "${put_arguments[@]}" >/dev/null; then
+      actual_password=""
+      fail "failed to create or repair Vault credential: ${path}"
     fi
     actual_password=""
-    echo "Created Vault credential without printing its value: ${path}"
+    echo "Created or repaired Vault credential without printing its value: ${path}"
   fi
 
   actual_username="$(vault_cli kv get -mount="${KV_MOUNT}" -field=username "${path}")"
