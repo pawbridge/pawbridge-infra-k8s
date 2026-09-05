@@ -1,7 +1,7 @@
 image:
   repository: dorosiya/pawbridge-api-gateway
-  tag: k8s-v1
-  digest: sha256:073f3a048d3e5b995639edbbc5afa38a74075922c19f740369d34393b34d72f2
+  tag: sha-dabe6e1293bd2a5c9b7b6e3fea7f6cb521639129
+  digest: sha256:50e14fc972af4d6810781f10c4df445c4d318d9ccdc53e7a13f485e30d0e1af6
   pullPolicy: IfNotPresent
 
 service:
