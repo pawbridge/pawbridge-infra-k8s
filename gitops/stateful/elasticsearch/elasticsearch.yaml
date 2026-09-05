@@ -1,0 +1,120 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: store-search
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: store-search
+    app.kubernetes.io/instance: pawbridge
+    app.kubernetes.io/component: search
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  version: 8.15.5
+  image: docker.elastic.co/elasticsearch/elasticsearch:8.15.5@sha256:8870d5b7b86235fa790c9112464f5fd3b693f89d73e757a630f8b5cda350f95b
+  revisionHistoryLimit: 3
+  volumeClaimDeletePolicy: DeleteOnScaledownOnly
+  nodeSets:
+    - name: default
+      count: 1
+      config:
+        node.roles:
+          - master
+          - data
+          - ingest
+        xpack.ml.enabled: false
+      podTemplate:
+        metadata:
+          labels:
+            app.kubernetes.io/name: store-search
+            app.kubernetes.io/instance: pawbridge
+            app.kubernetes.io/component: search
+            app.kubernetes.io/part-of: pawbridge
+        spec:
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          terminationGracePeriodSeconds: 180
+          securityContext:
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          nodeSelector:
+            kubernetes.io/hostname: pawbridge-k136-w1
+          initContainers:
+            - name: max-map-count-check
+              command:
+                - sh
+                - -ec
+                - |
+                  current="$(cat /proc/sys/vm/max_map_count)"
+                  if [ "${current}" -lt 262144 ]; then
+                    echo "vm.max_map_count=${current}; expected at least 262144" >&2
+                    exit 1
+                  fi
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  cpu: 50m
+                  memory: 32Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+            - name: install-analysis-nori
+              command:
+                - sh
+                - -ec
+                - |
+                  bin/elasticsearch-plugin remove --purge analysis-nori >/dev/null 2>&1 || true
+                  bin/elasticsearch-plugin install --batch analysis-nori
+                  bin/elasticsearch-plugin list | grep -Fxq analysis-nori
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                runAsNonRoot: true
+          containers:
+            - name: elasticsearch
+              resources:
+                requests:
+                  cpu: 500m
+                  memory: 1536Mi
+                limits:
+                  cpu: 1500m
+                  memory: 2Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+            labels:
+              app.kubernetes.io/name: store-search
+              app.kubernetes.io/instance: pawbridge
+              app.kubernetes.io/component: search
+              app.kubernetes.io/part-of: pawbridge
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName: local-path
+            resources:
+              requests:
+                storage: 10Gi

@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-elasticsearch-pilot
+  namespace: argocd
+spec:
+  description: Store search Elasticsearch 8.15.5 manual-sync GitOps pilot
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: databases
+  namespaceResourceWhitelist:
+    - group: elasticsearch.k8s.elastic.co
+      kind: Elasticsearch
+  orphanedResources:
+    warn: true
