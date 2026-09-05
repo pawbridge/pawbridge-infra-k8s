@@ -17,9 +17,8 @@ spec:
     connection.username: '${secrets:kafka/store-search-writer-auth:username}'
     connection.password: '${secrets:kafka/store-search-writer-auth:password}'
     elastic.security.protocol: SSL
-    elastic.https.ssl.truststore.location: /mnt/store-search-trust/truststore.p12
-    elastic.https.ssl.truststore.password: '${secrets:kafka/store-search-trust:truststore-password}'
-    elastic.https.ssl.truststore.type: PKCS12
+    elastic.https.ssl.truststore.location: /mnt/store-search-trust/ca.crt
+    elastic.https.ssl.truststore.type: PEM
     elastic.https.ssl.endpoint.identification.algorithm: https
     external.resource.usage: ALIAS_INDEX
     topic.to.external.resource.mapping: store.product-sku.events:store-products-write

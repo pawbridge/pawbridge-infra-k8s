@@ -53,16 +53,16 @@ infra/vault/configure-store-search-vso.sh apply bootstrap
    - ECK가 reader/writer/bootstrap file-realm 계정과 세 역할을 반영한다.
    - Elasticsearch가 `Ready`이고 ECK HTTP CA Secret을 만들 때까지 다음 단계로 가지 않는다.
 3. ECK 신뢰 자료와 runtime VSO
-   - `infra/vault/configure-store-search-vso.sh apply trust`로 현재 ECK CA와 PKCS12 truststore를 Vault에 기록한다.
-   - 이어 `store-search-runtime-vso`를 동기화하고 `pawbridge`의 reader·PEM CA, `kafka`의 writer·PKCS12·MySQL CDC destination이 모두 Ready인지 확인한다.
-   - CA fingerprint와 PKCS12 hash를 스크립트가 검증하며 값 자체는 출력하지 않는다.
+   - `infra/vault/configure-store-search-vso.sh apply trust`로 현재 ECK HTTP CA를 PEM 형식으로 Vault에 기록한다.
+   - 이어 `store-search-runtime-vso`를 동기화하고 `pawbridge`의 reader·PEM CA, `kafka`의 writer·PEM CA·MySQL CDC destination이 모두 Ready인지 확인한다.
+   - CA fingerprint와 PEM 인증서 내용을 스크립트가 검증하며 값 자체는 출력하지 않는다.
 4. `store-search-index-v001`
    - 기존 동명 인덱스나 write alias가 있으면 실패한다.
    - strict mapping과 `store-products-write`만 원자적으로 만든다.
    - `store-products-read`는 아직 만들지 않는다.
 5. `pawbridge-kafka-connect`
-   - Secret config provider, 최소 Secret `get` RBAC, PKCS12 truststore mount를 반영한다.
-   - Connect worker가 Ready이고 세 Secret만 읽을 수 있는지 확인한다.
+   - Secret config provider, writer·MySQL CDC Secret만 허용하는 최소 `get` RBAC, PEM CA mount를 반영한다.
+   - Connect worker가 Ready이고 Secret config provider가 writer·MySQL CDC 두 credential Secret만 `get`하며 ECK HTTP CA는 read-only volume으로 mount되는지 확인한다.
 6. `store-search-sink`
    - Connector와 task가 `RUNNING`인지 확인한다.
    - ECK HTTPS 연결과 write alias 접근이 성공해야 한다.
@@ -95,5 +95,5 @@ infra/vault/configure-store-search-vso.sh apply bootstrap
 
 - Store reader Secret 변경은 VSO가 Store Deployment 재시작을 요청한다.
 - ECK file-realm Secret 변경은 ECK 상태가 다시 Ready가 된 뒤 사용한다.
-- KafkaConnector는 VSO의 자동 restart 대상이 아니다. writer, MySQL CDC 또는 truststore를 회전하면 `gitops/stateful/kafka-connect/kafka-connect.yaml`의 `pawbridge.kr/store-search-secret-epoch` 값을 올려 GitOps rolling restart를 만들고, Sink 다음 Source 순서로 상태를 확인한다.
+- KafkaConnector는 VSO의 자동 restart 대상이 아니다. writer, MySQL CDC 또는 ECK HTTP CA를 회전하면 `gitops/stateful/kafka-connect/kafka-connect.yaml`의 `pawbridge.kr/store-search-secret-epoch` 값을 올려 GitOps rolling restart를 만들고, Sink 다음 Source 순서로 상태를 확인한다.
 - 이전 credential은 새 worker와 connector가 정상인 것을 확인한 뒤에만 폐기한다.

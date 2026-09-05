@@ -53,8 +53,8 @@ spec:
           secret:
             secretName: store-search-trust
             items:
-              - key: truststore.p12
-                path: truststore.p12
+              - key: ca.crt
+                path: ca.crt
     connectContainer:
       volumeMounts:
         - name: store-search-trust
