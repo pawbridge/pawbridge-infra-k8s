@@ -103,7 +103,7 @@ spec:
               printf ',\n  "aliases": {\n    "%s": {"is_write_index": true}\n  }\n}\n' \
                 "${WRITE_ALIAS}" >> "${INDEX_BODY}"
 
-              curl --silent --show-error --fail-with-body \
+              curl --silent --show-error --fail \
                 --cacert /etc/store-search-ca/ca.crt \
                 --netrc-file "${NETRC}" \
                 --header 'Content-Type: application/json' \
