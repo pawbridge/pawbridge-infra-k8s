@@ -30,7 +30,7 @@ spec:
             - name: ES_URL
               value: {{ .Values.env.SPRING_ELASTICSEARCH_URIS | quote }}
             - name: ES_HOST
-              value: store-search-es-http.databases.svc.cluster.local
+              value: store-search-es-http.databases.svc
             - name: ES_USERNAME
               valueFrom:
                 secretKeyRef:
