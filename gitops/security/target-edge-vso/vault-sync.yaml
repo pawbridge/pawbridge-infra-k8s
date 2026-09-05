@@ -1,0 +1,52 @@
+# VSO materializes only the allowlisted keys; secret values remain in Vault.
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: api-gateway-jwt
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  vaultAuthRef: api-gateway-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/target-edge/api-gateway-jwt
+  refreshAfter: 1m
+  hmacSecretData: true
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: api-gateway
+  destination:
+    create: true
+    overwrite: false
+    name: api-gateway-secrets-vso
+    transformation:
+      excludeRaw: true
+      includes:
+        - ^JWT_SECRET$
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: cloudflare-tunnel-token
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  vaultAuthRef: cloudflare-tunnel-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/target-edge/cloudflare-tunnel
+  refreshAfter: 1m
+  hmacSecretData: true
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: cloudflared
+  destination:
+    create: true
+    overwrite: false
+    name: cloudflare-tunnel-token-vso
+    transformation:
+      excludeRaw: true
+      includes:
+        - ^token$

@@ -1,0 +1,27 @@
+image:
+  repository: dorosiya/pawbridge-api-gateway
+  tag: k8s-v1
+  digest: sha256:073f3a048d3e5b995639edbbc5afa38a74075922c19f740369d34393b34d72f2
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  nodePort: null
+
+ingress:
+  enabled: false
+
+serviceMonitor:
+  enabled: false
+
+networkPolicy:
+  enabled: true
+
+secretRef: api-gateway-secrets-vso
+secretRefOptional: false
+automountServiceAccountToken: false
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2

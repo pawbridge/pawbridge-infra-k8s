@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-target-edge-vso
+  namespace: argocd
+spec:
+  description: API Gateway JWT and Cloudflare Tunnel token VSO manual-sync pilot
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: pawbridge
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ServiceAccount
+    - group: secrets.hashicorp.com
+      kind: VaultConnection
+    - group: secrets.hashicorp.com
+      kind: VaultAuth
+    - group: secrets.hashicorp.com
+      kind: VaultStaticSecret
+  orphanedResources:
+    warn: true

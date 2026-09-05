@@ -6,7 +6,12 @@ metadata:
   labels:
     app: cloudflared
 spec:
-  replicas: 1
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app: cloudflared
@@ -15,22 +20,41 @@ spec:
       labels:
         app: cloudflared
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 40
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: cloudflared
       containers:
         - name: cloudflared
-          image: cloudflare/cloudflared:latest
+          image: cloudflare/cloudflared:2026.8.3@sha256:51c9cefcb4569df44e1ad403ab1d3d8065aa8e84339bcfc6aee75502e1140339
+          imagePullPolicy: IfNotPresent
           args:
             - tunnel
             - --no-autoupdate
             - --protocol
             - http2
             - --metrics=0.0.0.0:2000
+            - --grace-period
+            - 30s
             - run
-          env:
-            - name: TUNNEL_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: cloudflare-tunnel-token
-                  key: token
+            - --token-file
+            - /etc/cloudflared/token
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          volumeMounts:
+            - name: tunnel-token
+              mountPath: /etc/cloudflared
+              readOnly: true
           resources:
             requests:
               cpu: 10m
@@ -45,3 +69,17 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 2000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: tunnel-token
+          secret:
+            secretName: cloudflare-tunnel-token-vso
+            items:
+              - key: token
+                path: token

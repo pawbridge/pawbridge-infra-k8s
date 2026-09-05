@@ -4,6 +4,8 @@ replicaCount: 1
 image:
   repository: dorosiya/pawbridge-api-gateway
   tag: k8s-v1
+  # Production cutovers should pin an immutable digest. When set, digest wins over tag.
+  digest: ""
   pullPolicy: Always
 
 service:
@@ -20,6 +22,41 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+
+serviceMonitor:
+  enabled: true
+
+networkPolicy:
+  enabled: false
+  cloudflaredPodSelector:
+    app: cloudflared
+  dns:
+    namespaceSelector:
+      kubernetes.io/metadata.name: kube-system
+    podSelector:
+      k8s-app: kube-dns
+  sameNamespaceServices:
+    - podSelector:
+        app: user-service
+      port: 8080
+    - podSelector:
+        app: animal-service
+      port: 8081
+    - podSelector:
+        app: community-service
+      port: 8082
+    - podSelector:
+        app: store-service
+      port: 8083
+    - podSelector:
+        app: payment-service
+      port: 8084
+  crossNamespaceServices:
+    - namespaceSelector:
+        kubernetes.io/metadata.name: tracing
+      podSelector:
+        app.kubernetes.io/name: zipkin
+      port: 9411
 
 resources:
   requests:
@@ -41,6 +78,11 @@ env:
 
 # Secret 참조 (민감정보)
 secretRef: api-gateway-secrets
+secretRefOptional: true
+
+# Source dev keeps the chart's historical behavior. Target pilots disable this
+# because the Gateway does not call the Kubernetes API.
+automountServiceAccountToken: true
 
 # Probe 설정
 startupProbe:
