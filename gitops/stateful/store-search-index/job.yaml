@@ -31,9 +31,9 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: ES_URL
-              value: https://store-search-es-http.databases.svc.cluster.local:9200
+              value: https://store-search-es-http.databases.svc:9200
             - name: ES_HOST
-              value: store-search-es-http.databases.svc.cluster.local
+              value: store-search-es-http.databases.svc
             - name: ES_USERNAME
               valueFrom:
                 secretKeyRef:

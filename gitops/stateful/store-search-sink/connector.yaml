@@ -13,7 +13,7 @@ spec:
   state: running
   config:
     topics: store.product-sku.events
-    connection.url: https://store-search-es-http.databases.svc.cluster.local:9200
+    connection.url: https://store-search-es-http.databases.svc:9200
     connection.username: '${secrets:kafka/store-search-writer-auth:username}'
     connection.password: '${secrets:kafka/store-search-writer-auth:password}'
     elastic.security.protocol: SSL
