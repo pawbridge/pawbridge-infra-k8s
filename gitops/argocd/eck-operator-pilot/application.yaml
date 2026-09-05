@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: eck-operator-pilot
+  namespace: argocd
+spec:
+  project: pawbridge-eck-operator-pilot
+  sources:
+    - repoURL: https://helm.elastic.co
+      chart: eck-operator
+      targetRevision: 3.5.0
+      helm:
+        releaseName: elastic-operator
+        skipTests: true
+        valueFiles:
+          - $values/gitops/cluster-addons/eck-operator/values.yaml
+    - repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+      targetRevision: dev
+      ref: values
+      path: gitops/cluster-addons/eck-operator
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: elastic-system
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: elastic-operator-webhook-cert
+      namespace: elastic-system
+      jsonPointers:
+        - /data
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      name: elastic-operator.elastic-system.k8s.elastic.co
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

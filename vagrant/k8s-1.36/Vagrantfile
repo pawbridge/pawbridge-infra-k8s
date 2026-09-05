@@ -38,7 +38,7 @@ JOIN_SERVER_PORT = 18_080
 
 NODES = [
   { name: "pawbridge-k136-cp1", ip: CONTROL_PLANE_IP, cpus: 4, memory: 4096, disk_gb: 60, role: :control_plane },
-  { name: "pawbridge-k136-w1", ip: "192.168.57.12", cpus: 4, memory: 6144, disk_gb: 80, role: :worker },
+  { name: "pawbridge-k136-w1", ip: "192.168.57.12", cpus: 4, memory: 6144, disk_gb: 80, role: :worker, elasticsearch_host: true },
   { name: "pawbridge-k136-w2", ip: "192.168.57.13", cpus: 4, memory: 6144, disk_gb: 80, role: :worker }
 ].freeze
 
@@ -108,6 +108,12 @@ Vagrant.configure("2") do |config|
         type: "shell",
         run: "always",
         path: File.join(__dir__, "scripts/clock-stability.sh")
+      if node[:elasticsearch_host]
+        machine.vm.provision "elasticsearch-host",
+          type: "shell",
+          run: "always",
+          path: File.join(__dir__, "scripts/elasticsearch-host.sh")
+      end
       machine.vm.provision "file", source: VERSIONS_PATH, destination: "/tmp/pawbridge-k136-versions.env"
       machine.vm.provision "shell", path: File.join(__dir__, "scripts/common.sh"), args: [node[:name], node[:ip], node[:disk_gb]]
 

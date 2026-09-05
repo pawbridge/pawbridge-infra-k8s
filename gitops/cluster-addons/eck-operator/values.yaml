@@ -1,0 +1,57 @@
+managedNamespaces:
+  - databases
+
+installCRDs: true
+createClusterScopedResources: true
+replicaCount: 1
+
+image:
+  repository: docker.elastic.co/eck/eck-operator
+  pullPolicy: IfNotPresent
+  tag: 3.5.0
+  digest: sha256:b6f261372d9d9af7b00aab03efea25263314d16063c4d440ac322e52c2fdf314
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 150Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+
+podDisruptionBudget:
+  enabled: false
+
+telemetry:
+  disabled: true
+  distributionChannel: helm
+
+webhook:
+  enabled: true
+  failurePolicy: Fail
+  manageCerts: true
+  namespaceSelector:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values:
+          - databases
+
+config:
+  logVerbosity: "0"
+  validateStorageClass: true
+  metrics:
+    port: "0"
