@@ -82,11 +82,8 @@ spec:
     name: store-search-trust
     transformation:
       excludeRaw: true
-      templates:
-        truststore.p12:
-          text: '{{ get .Secrets "truststore.p12-b64" | b64dec }}'
-        truststore-password:
-          text: '{{ get .Secrets "truststore-password" }}'
+      includes:
+        - ^ca[.]crt$
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret

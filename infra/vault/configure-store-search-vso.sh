@@ -60,9 +60,9 @@ bootstrap handles the three least-privilege Vault policies and Kubernetes auth
 roles, Elasticsearch file-realm credentials, and the dedicated MySQL CDC
 account. It does not require an Elasticsearch cluster or ECK HTTP CA.
 
-trust verifies or stores the current ECK HTTP CA and its PKCS12 truststore after
-Elasticsearch has become Ready. all runs bootstrap and trust for an existing
-cluster. check never changes state; apply creates or repairs the selected phase.
+trust verifies or stores the current ECK HTTP CA as PEM after Elasticsearch has
+become Ready. all runs bootstrap and trust for an existing cluster. check never
+changes state; apply creates or repairs the selected phase.
 Existing application credentials are reused and are not routinely rotated.
 
 Secret values stay in isolated temporary files or shell memory, are never
@@ -177,9 +177,13 @@ validate_local_inputs() {
       ;;
   esac
 
-  for command_name in kubectl timeout base64 openssl keytool sha256sum jq; do
+  for command_name in kubectl timeout base64 openssl awk grep sed tr; do
     require_command "${command_name}"
   done
+
+  if [[ "${PHASE}" == trust || "${PHASE}" == all ]]; then
+    require_command sha256sum
+  fi
 
   if [[ "${PHASE}" == bootstrap || "${PHASE}" == all ]]; then
     for policy_name in "${POLICY_DATABASES}" "${POLICY_PAWBRIDGE}" "${POLICY_KAFKA}"; do
@@ -384,9 +388,7 @@ read_eck_ca() {
 trust_material_matches() {
   local expected_ca_hash
   local actual_ca_hash
-  local expected_truststore_hash
-  local actual_truststore_hash
-  local truststore_password
+  local legacy_field
 
   kv_exists "${ES_TRUST_PATH}" || return 1
   expected_ca_hash="$(sha256sum "${LOCAL_TEMP_DIR}/ca.crt" | awk '{print $1}')"
@@ -395,52 +397,25 @@ trust_material_matches() {
 
   vault_cli kv get -mount="${KV_MOUNT}" -field=ca.crt "${ES_TRUST_PATH}" > "${LOCAL_TEMP_DIR}/vault-ca.crt"
   [[ "$(sha256sum "${LOCAL_TEMP_DIR}/vault-ca.crt" | awk '{print $1}')" == "${expected_ca_hash}" ]] || return 1
+  openssl x509 -in "${LOCAL_TEMP_DIR}/vault-ca.crt" -noout -checkend 86400 >/dev/null 2>&1 || return 1
 
-  vault_cli kv get -mount="${KV_MOUNT}" -field=truststore.p12-b64 "${ES_TRUST_PATH}" \
-    | base64 --decode > "${LOCAL_TEMP_DIR}/truststore.p12"
-  expected_truststore_hash="$(vault_cli kv get -mount="${KV_MOUNT}" -field=truststore-sha256 "${ES_TRUST_PATH}" 2>/dev/null || true)"
-  actual_truststore_hash="$(sha256sum "${LOCAL_TEMP_DIR}/truststore.p12" | awk '{print $1}')"
-  [[ "${actual_truststore_hash}" == "${expected_truststore_hash}" ]] || return 1
-
-  truststore_password="$(vault_cli kv get -mount="${KV_MOUNT}" -field=truststore-password "${ES_TRUST_PATH}")"
-  [[ "${truststore_password}" =~ ^[0-9a-f]{64}$ ]] || return 1
-  keytool -list -storetype PKCS12 -keystore "${LOCAL_TEMP_DIR}/truststore.p12" \
-    -storepass "${truststore_password}" -alias store-search-http-ca >/dev/null 2>&1 || return 1
-  truststore_password=""
+  for legacy_field in truststore.p12-b64 truststore-password truststore-sha256; do
+    if vault_cli kv get -mount="${KV_MOUNT}" -field="${legacy_field}" "${ES_TRUST_PATH}" >/dev/null 2>&1; then
+      return 1
+    fi
+  done
 }
 
 write_trust_material() {
   local ca_hash
-  local truststore_hash
-  local truststore_password
-
-  truststore_password="$(openssl rand -hex 32)"
-  printf '%s' "${truststore_password}" > "${LOCAL_TEMP_DIR}/truststore-password"
-  keytool -importcert -noprompt -storetype PKCS12 \
-    -alias store-search-http-ca \
-    -file "${LOCAL_TEMP_DIR}/ca.crt" \
-    -keystore "${LOCAL_TEMP_DIR}/truststore.p12" \
-    -storepass "${truststore_password}" >/dev/null 2>&1
-  base64 --wrap=0 "${LOCAL_TEMP_DIR}/truststore.p12" > "${LOCAL_TEMP_DIR}/truststore.p12.b64"
   ca_hash="$(sha256sum "${LOCAL_TEMP_DIR}/ca.crt" | awk '{print $1}')"
-  truststore_hash="$(sha256sum "${LOCAL_TEMP_DIR}/truststore.p12" | awk '{print $1}')"
-
-  jq -n \
-    --rawfile ca "${LOCAL_TEMP_DIR}/ca.crt" \
-    --rawfile truststore "${LOCAL_TEMP_DIR}/truststore.p12.b64" \
-    --rawfile password "${LOCAL_TEMP_DIR}/truststore-password" \
-    --arg ca_hash "${ca_hash}" \
-    --arg truststore_hash "${truststore_hash}" \
-    '{"ca.crt": $ca, "ca-sha256": $ca_hash, "truststore.p12-b64": $truststore, "truststore-password": $password, "truststore-sha256": $truststore_hash}' \
-    > "${LOCAL_TEMP_DIR}/trust.json"
 
   timeout --foreground "${COMMAND_TIMEOUT_SECONDS}s" \
     kubectl --request-timeout="${KUBECTL_REQUEST_TIMEOUT}" \
     -n "${VAULT_NAMESPACE}" exec -i "${VAULT_POD}" -- \
-    env HOME="${TOKEN_SESSION_DIR}" vault kv put -mount="${KV_MOUNT}" "${ES_TRUST_PATH}" - \
-    < "${LOCAL_TEMP_DIR}/trust.json" >/dev/null
-  truststore_password=""
-  echo "Stored ECK CA and PKCS12 trust material in Vault without printing values."
+    env HOME="${TOKEN_SESSION_DIR}" vault kv put -mount="${KV_MOUNT}" "${ES_TRUST_PATH}" \
+    ca.crt=- ca-sha256="${ca_hash}" < "${LOCAL_TEMP_DIR}/ca.crt" >/dev/null
+  echo "Stored ECK HTTP CA as PEM in Vault without printing its value."
 }
 
 ensure_trust_material() {
@@ -452,7 +427,7 @@ ensure_trust_material() {
   [[ "${MODE}" == apply ]] || fail "Vault trust material is missing, invalid, or stale"
   write_trust_material
   trust_material_matches || fail "Vault trust material verification failed after write"
-  echo "Verified Vault trust material hashes and PKCS12 contents."
+  echo "Verified Vault ECK HTTP CA fingerprint and PEM contents."
 }
 
 read_mysql_root_password() {
