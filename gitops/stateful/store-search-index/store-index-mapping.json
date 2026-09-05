@@ -1,0 +1,80 @@
+{
+  "settings": {
+    "analysis": {
+      "tokenizer": {
+        "nori_user_dict": {
+          "type": "nori_tokenizer",
+          "decompound_mode": "mixed"
+        }
+      },
+      "analyzer": {
+        "korean": {
+          "type": "custom",
+          "tokenizer": "nori_user_dict"
+        }
+      }
+    },
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "_meta": {
+      "contract": "store-products-v1",
+      "document_id": "skuId",
+      "primary_sku": "lowest price, then lowest skuId",
+      "status": "ProductStatus enum name"
+    },
+    "properties": {
+      "skuId": {
+        "type": "long"
+      },
+      "productId": {
+        "type": "long"
+      },
+      "categoryId": {
+        "type": "long"
+      },
+      "productName": {
+        "type": "text",
+        "analyzer": "korean",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "skuCode": {
+        "type": "keyword"
+      },
+      "optionName": {
+        "type": "text",
+        "analyzer": "korean"
+      },
+      "price": {
+        "type": "long"
+      },
+      "stockQuantity": {
+        "type": "integer"
+      },
+      "totalStockQuantity": {
+        "type": "integer"
+      },
+      "isPrimarySku": {
+        "type": "boolean"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "imageUrl": {
+        "type": "keyword"
+      },
+      "createdAt": {
+        "type": "date"
+      },
+      "updatedAt": {
+        "type": "date"
+      }
+    }
+  }
+}

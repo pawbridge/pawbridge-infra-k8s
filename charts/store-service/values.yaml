@@ -39,6 +39,14 @@ secretRef: store-service-secrets
 r2SecretRef: store-service-r2-secrets
 redisSecretRef: ""
 mysqlSecretRef: ""
+elasticsearchSecretRef: ""
+elasticsearchCaSecretRef: ""
+elasticsearchCaMountPath: /etc/pawbridge/elasticsearch
+searchPreflight:
+  enabled: false
+  image: docker.elastic.co/elasticsearch/elasticsearch:8.15.5@sha256:8870d5b7b86235fa790c9112464f5fd3b693f89d73e757a630f8b5cda350f95b
+  index: store-products-read
+  expectedContract: store-products-v1
 
 startupProbe:
   httpGet:

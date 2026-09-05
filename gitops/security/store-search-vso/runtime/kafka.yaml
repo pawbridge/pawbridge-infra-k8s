@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: store-search-kafka-vault-auth
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultConnection
+metadata:
+  name: store-search-kafka-vault-connection
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  address: https://vault.vault.svc.cluster.local:8200
+  caCertSecretRef: vault-internal-ca
+  skipTLSVerify: false
+  tlsServerName: vault.vault.svc.cluster.local
+  timeout: 10s
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: store-search-kafka-vault-auth
+  namespace: kafka
+spec:
+  vaultConnectionRef: store-search-kafka-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: store-search-kafka-read
+    serviceAccount: store-search-kafka-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: store-search-writer-auth
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  vaultAuthRef: store-search-kafka-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/store/elasticsearch/writer
+  refreshAfter: 1m
+  hmacSecretData: true
+  destination:
+    create: true
+    overwrite: false
+    name: store-search-writer-auth
+    type: kubernetes.io/basic-auth
+    transformation:
+      excludeRaw: true
+      includes:
+        - ^username$
+        - ^password$
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: store-search-trust
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  vaultAuthRef: store-search-kafka-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/store/elasticsearch/trust
+  refreshAfter: 1m
+  hmacSecretData: true
+  destination:
+    create: true
+    overwrite: false
+    name: store-search-trust
+    transformation:
+      excludeRaw: true
+      templates:
+        truststore.p12:
+          text: '{{ get .Secrets "truststore.p12-b64" | b64dec }}'
+        truststore-password:
+          text: '{{ get .Secrets "truststore-password" }}'
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: store-mysql-cdc-auth
+  namespace: kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  vaultAuthRef: store-search-kafka-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/store/mysql-cdc
+  refreshAfter: 1m
+  hmacSecretData: true
+  destination:
+    create: true
+    overwrite: false
+    name: store-mysql-cdc-auth
+    type: kubernetes.io/basic-auth
+    transformation:
+      excludeRaw: true
+      includes:
+        - ^username$
+        - ^password$

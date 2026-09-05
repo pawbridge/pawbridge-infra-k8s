@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: store-search-runtime-vso
+  namespace: argocd
+spec:
+  project: pawbridge-store-search-vso
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/security/store-search-vso/runtime
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true

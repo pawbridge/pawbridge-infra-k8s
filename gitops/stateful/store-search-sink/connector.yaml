@@ -1,0 +1,41 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: store-es-sink-connector
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge-connect
+    app.kubernetes.io/name: store-es-sink-connector
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  class: io.confluent.connect.elasticsearch.ElasticsearchSinkConnector
+  tasksMax: 1
+  state: running
+  config:
+    topics: store.product-sku.events
+    connection.url: https://store-search-es-http.databases.svc.cluster.local:9200
+    connection.username: '${secrets:kafka/store-search-writer-auth:username}'
+    connection.password: '${secrets:kafka/store-search-writer-auth:password}'
+    elastic.security.protocol: SSL
+    elastic.https.ssl.truststore.location: /mnt/store-search-trust/truststore.p12
+    elastic.https.ssl.truststore.password: '${secrets:kafka/store-search-trust:truststore-password}'
+    elastic.https.ssl.truststore.type: PKCS12
+    elastic.https.ssl.endpoint.identification.algorithm: https
+    external.resource.usage: ALIAS_INDEX
+    topic.to.external.resource.mapping: store.product-sku.events:store-products-write
+    key.ignore: false
+    schema.ignore: true
+    write.method: INSERT
+    behavior.on.null.values: FAIL
+    behavior.on.malformed.documents: fail
+    drop.invalid.message: false
+    errors.tolerance: none
+    errors.deadletterqueue.topic.name: store.product-sku.es.dlq
+    errors.deadletterqueue.topic.replication.factor: 1
+    errors.deadletterqueue.context.headers.enable: true
+    errors.log.enable: true
+    errors.log.include.messages: false
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: false
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: false

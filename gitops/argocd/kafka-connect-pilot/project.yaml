@@ -16,5 +16,9 @@ spec:
   namespaceResourceWhitelist:
     - group: kafka.strimzi.io
       kind: KafkaConnect
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
   orphanedResources:
     warn: true

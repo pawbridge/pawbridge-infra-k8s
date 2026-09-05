@@ -6,6 +6,12 @@ image:
 r2SecretRef: store-service-r2-secrets-vso
 redisSecretRef: redis-auth
 mysqlSecretRef: store-mysql-auth
+elasticsearchSecretRef: store-search-reader-auth
+elasticsearchCaSecretRef: store-search-http-ca
+searchPreflight:
+  enabled: true
+  index: store-products-read
+  expectedContract: store-products-v1
 
 env:
   # Force Dev Profile
@@ -25,7 +31,8 @@ env:
   SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
 
   # 3. Elasticsearch
-  SPRING_ELASTICSEARCH_URIS: http://elasticsearch-master.databases.svc.cluster.local:9200
+  SPRING_ELASTICSEARCH_URIS: https://store-search-es-http.databases.svc.cluster.local:9200
+  STORE_PRODUCT_SEARCH_INDEX: store-products-read
 
   # 4. Zipkin
   MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans

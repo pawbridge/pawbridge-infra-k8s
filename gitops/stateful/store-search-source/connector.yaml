@@ -1,0 +1,40 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: store-outbox-connector
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pawbridge-connect
+    app.kubernetes.io/name: store-outbox-connector
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  class: io.debezium.connector.mysql.MySqlConnector
+  tasksMax: 1
+  state: running
+  config:
+    database.hostname: mysql.databases.svc.cluster.local
+    database.port: 3306
+    database.user: '${secrets:kafka/store-mysql-cdc-auth:username}'
+    database.password: '${secrets:kafka/store-mysql-cdc-auth:password}'
+    database.connectionTimeZone: Asia/Seoul
+    database.server.id: 2004
+    topic.prefix: store-v3
+    snapshot.mode: no_data
+    database.include.list: pawbridge_store
+    table.include.list: pawbridge_store.outbox
+    schema.history.internal.kafka.bootstrap.servers: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
+    schema.history.internal.kafka.topic: schema-changes.store-v2
+    transforms: outbox
+    transforms.outbox.type: io.debezium.transforms.outbox.EventRouter
+    transforms.outbox.table.field.event.id: id
+    transforms.outbox.table.field.event.key: aggregate_id
+    transforms.outbox.table.field.event.timestamp: created_at
+    transforms.outbox.table.field.event.payload: payload
+    transforms.outbox.table.fields.additional.placement: event_type:header:eventType
+    transforms.outbox.route.topic.replacement: 'store.${routedByValue}.events'
+    transforms.outbox.route.by.field: aggregate_type
+    transforms.outbox.table.expand.json.payload: true
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: false
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: false

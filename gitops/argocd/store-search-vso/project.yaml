@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-store-search-vso
+  namespace: argocd
+spec:
+  description: Separately gated Store search ECK identity and runtime trust VSO applications
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: databases
+    - server: https://kubernetes.default.svc
+      namespace: pawbridge
+    - server: https://kubernetes.default.svc
+      namespace: kafka
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ServiceAccount
+    - group: secrets.hashicorp.com
+      kind: VaultConnection
+    - group: secrets.hashicorp.com
+      kind: VaultAuth
+    - group: secrets.hashicorp.com
+      kind: VaultStaticSecret
+  orphanedResources:
+    warn: true

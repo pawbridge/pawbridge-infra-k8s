@@ -1,0 +1,30 @@
+pawbridge_store_reader:
+  cluster: []
+  indices:
+    - names:
+        - store-products-read
+      privileges:
+        - read
+        - view_index_metadata
+
+pawbridge_store_writer:
+  cluster:
+    - monitor
+  indices:
+    - names:
+        - store-products-write
+      privileges:
+        - read
+        - write
+        - view_index_metadata
+
+pawbridge_store_bootstrap:
+  cluster:
+    - monitor
+  indices:
+    - names:
+        - store-products-*
+      privileges:
+        - create_index
+        - manage
+        - view_index_metadata

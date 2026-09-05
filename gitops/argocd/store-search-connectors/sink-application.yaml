@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: store-search-sink
+  namespace: argocd
+spec:
+  project: pawbridge-store-search-connectors
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/stateful/store-search-sink
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kafka
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true

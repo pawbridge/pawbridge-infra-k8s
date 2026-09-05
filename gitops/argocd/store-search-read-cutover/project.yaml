@@ -1,21 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: pawbridge-store-pilot
+  name: pawbridge-store-search-read-cutover
   namespace: argocd
 spec:
-  description: Store Service manual-sync pilot
+  description: Non-empty Store search read alias promotion manual-sync gate
   sourceRepos:
     - https://github.com/pawbridge/pawbridge-infra-k8s.git
   destinations:
     - server: https://kubernetes.default.svc
-      namespace: pawbridge
+      namespace: databases
   namespaceResourceWhitelist:
     - group: batch
       kind: Job
-    - group: apps
-      kind: Deployment
-    - group: ""
-      kind: Service
-    - group: autoscaling
-      kind: HorizontalPodAutoscaler
+  orphanedResources:
+    warn: true

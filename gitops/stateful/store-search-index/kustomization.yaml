@@ -1,16 +1,16 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - elasticsearch.yaml
-secretGenerator:
-  - name: store-search-file-realm-roles
+  - job.yaml
+configMapGenerator:
+  - name: store-search-index-v001-mapping
     namespace: databases
     files:
-      - roles.yml
+      - store-index-mapping.json
 generatorOptions:
   disableNameSuffixHash: true
   labels:
-    app.kubernetes.io/name: store-search
+    app.kubernetes.io/name: store-search-index-v001
     app.kubernetes.io/instance: pawbridge
-    app.kubernetes.io/component: search-authz
+    app.kubernetes.io/component: search-bootstrap
     app.kubernetes.io/part-of: pawbridge
