@@ -1,0 +1,31 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: api-gateway-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: target-edge-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: api-gateway-jwt-read
+    serviceAccount: api-gateway-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: cloudflare-tunnel-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: target-edge-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: cloudflare-tunnel-read
+    serviceAccount: cloudflare-tunnel-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600

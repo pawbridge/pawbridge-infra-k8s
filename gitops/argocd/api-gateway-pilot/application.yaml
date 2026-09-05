@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: api-gateway-dev
+  namespace: argocd
+spec:
+  project: pawbridge-api-gateway-pilot
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: charts/api-gateway
+    helm:
+      releaseName: api-gateway
+      valueFiles:
+        - ../../environments/dev/values/api-gateway.yaml
+        - ../../environments/dev/values/api-gateway-pilot.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - RespectIgnoreDifferences=true
+      - FailOnSharedResource=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: api-gateway
+      namespace: pawbridge
+      jsonPointers:
+        - /spec/replicas
