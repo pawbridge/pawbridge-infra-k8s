@@ -11,6 +11,7 @@
 - ECK 기본 `elastic` superuser는 운영 애플리케이션에서 사용하지 않는다.
 - Store는 reader, Kafka sink는 writer, 인덱스 Job은 bootstrap 계정을 사용한다.
 - Writer와 bootstrap의 cluster 권한은 Elasticsearch 버전 확인과 readiness에 필요한 읽기 전용 `monitor`로 제한한다.
+- Bootstrap의 `store-products-*` `read` 권한은 read cutover 전 물리 인덱스의 문서 수(`_count`) 검증에만 사용한다.
 - ECK HTTP 인증서의 호스트 검증과 CA 검증을 끄지 않는다.
 - Source의 `snapshot.mode=no_data`는 기존 outbox를 재발행하지 않는다. 전체 상품은 `sync-to-es.sql`을 정확히 한 번 실행해 새 이벤트로 발행한다.
 

@@ -27,4 +27,5 @@ pawbridge_store_bootstrap:
       privileges:
         - create_index
         - manage
+        - read
         - view_index_metadata
