@@ -1,3 +1,19 @@
+replicaCount: 1
+
+image:
+  # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
+  digest: sha256:0f62790cbdf2f285cf86808700bf7c0814af8f7e87223263c8ba34e7aea8d01a
+  pullPolicy: IfNotPresent
+
+automountServiceAccountToken: false
+secretRefOptional: false
+
+autoscaling:
+  enabled: false
+
+serviceMonitor:
+  enabled: false
+
 redisSecretRef: redis-auth
 
 env:

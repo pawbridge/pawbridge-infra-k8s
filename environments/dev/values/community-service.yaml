@@ -1,3 +1,19 @@
+replicaCount: 1
+
+image:
+  # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
+  digest: sha256:0f4cae3626243ccf737441abc7617d20b3dd8fe8f9936f35b483ded734273934
+  pullPolicy: IfNotPresent
+
+automountServiceAccountToken: false
+secretRefOptional: false
+
+autoscaling:
+  enabled: false
+
+serviceMonitor:
+  enabled: false
+
 env:
   # Force Dev Profile
   SPRING_PROFILES_ACTIVE: dev

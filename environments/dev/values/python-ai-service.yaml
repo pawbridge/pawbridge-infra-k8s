@@ -1,3 +1,13 @@
+replicaCount: 1
+
+image:
+  # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
+  digest: sha256:492364edaba59031b0613d006fa9538b471500025698141ed99529956b6a588b
+  pullPolicy: IfNotPresent
+
+automountServiceAccountToken: false
+secretRefOptional: false
+
 env:
   ES_URL: http://elasticsearch-master.databases.svc.cluster.local:9200
   LLM_PROVIDER: gemini

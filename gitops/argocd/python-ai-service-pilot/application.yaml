@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: python-ai-service-dev
+  namespace: argocd
+spec:
+  project: pawbridge-python-ai-service-pilot
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: charts/python-ai-service
+    helm:
+      releaseName: python-ai-service
+      valueFiles:
+        - ../../environments/dev/values/python-ai-service.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true

@@ -4,6 +4,8 @@ replicaCount: 1
 image:
   repository: dorosiya/pawbridge-animal-service
   tag: k8s-v1
+  # Production cutovers should pin an immutable digest. When set, digest wins over tag.
+  digest: ""
   pullPolicy: Always
 
 service:
@@ -27,7 +29,15 @@ env:
   MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
 secretRef: animal-service-secrets
+secretRefOptional: true
 redisSecretRef: ""
+
+# Source dev keeps the chart's historical behavior. Target pilots disable this
+# because the service does not call the Kubernetes API.
+automountServiceAccountToken: true
+
+serviceMonitor:
+  enabled: true
 
 startupProbe:
   httpGet:
