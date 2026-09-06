@@ -35,6 +35,7 @@ env:
 
 secretRef: community-service-secrets
 secretRefOptional: true
+mysqlSecretRef: ""
 r2SecretRef: community-service-r2-secrets
 r2SecretRefOptional: true
 

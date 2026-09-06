@@ -8,7 +8,8 @@ image:
   pullPolicy: IfNotPresent
 
 automountServiceAccountToken: false
-secretRefOptional: false
+secretRefOptional: true
+mysqlSecretRef: community-mysql-auth
 r2SecretRef: community-service-r2-secrets-vso
 r2SecretRefOptional: false
 
@@ -30,6 +31,7 @@ env:
 
   # 1. Database
   SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_community
+  SPRING_DATASOURCE_USERNAME: pawbridge_community_app
 
   # 2. Kafka
   SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
