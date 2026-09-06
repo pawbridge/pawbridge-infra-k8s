@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: animal-service-dev
+  namespace: argocd
+spec:
+  project: pawbridge-animal-service-pilot
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: charts/animal-service
+    helm:
+      releaseName: animal-service
+      valueFiles:
+        - ../../environments/dev/values/animal-service.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true

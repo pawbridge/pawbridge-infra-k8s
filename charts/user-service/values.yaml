@@ -4,6 +4,8 @@ replicaCount: 1
 image:
   repository: dorosiya/pawbridge-user-service
   tag: k8s-v1
+  # Production cutovers should pin an immutable digest. When set, digest wins over tag.
+  digest: ""
   pullPolicy: Always
 
 service:
@@ -32,7 +34,15 @@ env:
 
 # Secret 참조 (민감정보)
 secretRef: user-service-secrets
+secretRefOptional: true
 redisSecretRef: ""
+
+# Source dev keeps the chart's historical behavior. Target pilots disable this
+# because the service does not call the Kubernetes API.
+automountServiceAccountToken: true
+
+serviceMonitor:
+  enabled: true
 
 # Probe 설정
 startupProbe:

@@ -3,6 +3,8 @@ replicaCount: 1
 image:
   repository: dorosiya/pawbridge-python-ai-service
   tag: k8s-v1
+  # Production cutovers should pin an immutable digest. When set, digest wins over tag.
+  digest: ""
   pullPolicy: Always
 
 service:
@@ -21,6 +23,11 @@ env:
   ES_URL: http://elasticsearch-master.databases.svc.cluster.local:9200
 
 secretRef: python-ai-service-secrets
+secretRefOptional: true
+
+# Source dev keeps the chart's historical behavior. Target pilots disable this
+# because the service does not call the Kubernetes API.
+automountServiceAccountToken: true
 
 startupProbe:
   httpGet:
