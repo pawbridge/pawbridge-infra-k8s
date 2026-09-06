@@ -26,6 +26,13 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- if .Values.mysqlSecretRef }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysqlSecretRef }}
+                  key: mysql-password
+            {{- end }}
           {{- if or .Values.secretRef .Values.r2SecretRef }}
           envFrom:
             {{- if .Values.secretRef }}
