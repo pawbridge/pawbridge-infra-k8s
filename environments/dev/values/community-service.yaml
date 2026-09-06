@@ -9,6 +9,8 @@ image:
 
 automountServiceAccountToken: false
 secretRefOptional: false
+r2SecretRef: community-service-r2-secrets-vso
+r2SecretRefOptional: false
 
 autoscaling:
   enabled: false
@@ -45,3 +47,9 @@ env:
 
   # 6. Redis (URL Style)
   SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
+
+  # 7. Cloudflare R2 public object storage
+  R2_ENDPOINT: https://3e28b8ba8375b9010f6a426c1cb9755f.r2.cloudflarestorage.com
+  R2_BUCKET_NAME: pawbridge-public-images
+  R2_PUBLIC_BASE_URL: https://images.pawbridge.kr
+  R2_REGION: auto
