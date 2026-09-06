@@ -28,8 +28,15 @@ env:
   USER_SERVICE_URL: http://user-service.pawbridge.svc.cluster.local:8080
   MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
+  R2_ENDPOINT: https://3e28b8ba8375b9010f6a426c1cb9755f.r2.cloudflarestorage.com
+  R2_BUCKET_NAME: pawbridge-public-images
+  R2_PUBLIC_BASE_URL: https://images.pawbridge.kr
+  R2_REGION: auto
+
 secretRef: community-service-secrets
 secretRefOptional: true
+r2SecretRef: community-service-r2-secrets
+r2SecretRefOptional: true
 
 # Source dev keeps the chart's historical behavior. Target pilots disable this
 # because the service does not call the Kubernetes API.

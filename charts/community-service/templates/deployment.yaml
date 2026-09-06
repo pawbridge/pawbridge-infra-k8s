@@ -26,11 +26,18 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-          {{- if .Values.secretRef }}
+          {{- if or .Values.secretRef .Values.r2SecretRef }}
           envFrom:
+            {{- if .Values.secretRef }}
             - secretRef:
                 name: {{ .Values.secretRef }}
                 optional: {{ .Values.secretRefOptional }}
+            {{- end }}
+            {{- if .Values.r2SecretRef }}
+            - secretRef:
+                name: {{ .Values.r2SecretRef }}
+                optional: {{ .Values.r2SecretRefOptional }}
+            {{- end }}
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
