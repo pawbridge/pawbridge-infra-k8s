@@ -41,3 +41,35 @@ pawbridge_community_writer:
         - read
         - write
         - view_index_metadata
+
+pawbridge_animal_writer:
+  cluster: []
+  indices:
+    - names:
+        - animals
+      privileges:
+        - read
+        - write
+        - view_index_metadata
+
+pawbridge_python_writer:
+  cluster: []
+  indices:
+    - names:
+        - animals
+      privileges:
+        - read
+        - write
+        - view_index_metadata
+
+pawbridge_animal_bootstrap:
+  cluster:
+    - monitor
+  indices:
+    - names:
+        - animals
+        - animals-recovered-v001
+      privileges:
+        - manage
+        - read
+        - view_index_metadata
