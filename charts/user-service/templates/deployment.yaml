@@ -26,6 +26,20 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- if .Values.mysqlSecretRef }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysqlSecretRef }}
+                  key: mysql-password
+            {{- end }}
+            {{- if .Values.jwtSecretRef }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.jwtSecretRef }}
+                  key: JWT_SECRET
+            {{- end }}
             {{- if .Values.redisSecretRef }}
             - name: SPRING_DATA_REDIS_PASSWORD
               valueFrom:
