@@ -18,6 +18,7 @@ spec:
       - secretName: store-search-reader-auth
       - secretName: store-search-writer-auth
       - secretName: store-search-bootstrap-auth
+      - secretName: community-search-writer-auth
     roles:
       - secretName: store-search-file-realm-roles
   nodeSets:

@@ -38,6 +38,9 @@ secretRefOptional: true
 mysqlSecretRef: ""
 r2SecretRef: community-service-r2-secrets
 r2SecretRefOptional: true
+elasticsearchSecretRef: ""
+elasticsearchCaSecretRef: ""
+elasticsearchCaMountPath: /etc/pawbridge/elasticsearch
 
 # Source dev keeps the chart's historical behavior. Target pilots disable this
 # because the service does not call the Kubernetes API.

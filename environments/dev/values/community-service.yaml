@@ -12,6 +12,8 @@ secretRefOptional: true
 mysqlSecretRef: community-mysql-auth
 r2SecretRef: community-service-r2-secrets-vso
 r2SecretRefOptional: false
+elasticsearchSecretRef: community-search-writer-auth
+elasticsearchCaSecretRef: community-search-http-ca
 
 autoscaling:
   enabled: false
@@ -37,7 +39,7 @@ env:
   SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
 
   # 3. Elasticsearch
-  SPRING_ELASTICSEARCH_URIS: http://elasticsearch-master.databases.svc.cluster.local:9200
+  SPRING_ELASTICSEARCH_URIS: https://store-search-es-http.databases.svc:9200
 
   # 4. Zipkin
   MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
