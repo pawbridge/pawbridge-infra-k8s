@@ -29,3 +29,15 @@ pawbridge_store_bootstrap:
         - manage
         - read
         - view_index_metadata
+
+pawbridge_community_writer:
+  cluster: []
+  indices:
+    - names:
+        - posts
+      privileges:
+        - create_index
+        - manage
+        - read
+        - write
+        - view_index_metadata
