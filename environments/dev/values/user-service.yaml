@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: dorosiya/pawbridge-user-service
-  tag: sha-f9bb4fffae43e88dcc5a6e5769679433a2f3050a
-  digest: sha256:e988ab39e411045d2afa3d7cbd47f70e32c4887bee61846605cd2d5fc583dfab
+  tag: sha-8c65c8ca0d9b3ea7dd0b9153fc61e561a0f7d4ee
+  digest: sha256:db381c36d87c8354fb77181b4af65f609c8d7ae12f62cedc98de8c96e0da5ccc
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
