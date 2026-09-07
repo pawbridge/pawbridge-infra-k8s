@@ -35,6 +35,8 @@ env:
 # Secret 참조 (민감정보)
 secretRef: user-service-secrets
 secretRefOptional: true
+mysqlSecretRef: ""
+jwtSecretRef: ""
 redisSecretRef: ""
 
 # Source dev keeps the chart's historical behavior. Target pilots disable this

@@ -1,0 +1,15 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: user-mysql-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: user-mysql-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: user-mysql-auth-read
+    serviceAccount: user-mysql-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600
