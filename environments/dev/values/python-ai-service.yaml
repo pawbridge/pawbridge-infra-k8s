@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: dorosiya/pawbridge-python-ai-service
-  tag: sha-ed3507469a72dc52547bc43bf17ac3355315bd24
-  digest: sha256:a37bc60401b931bd48f2f9f705eff9f11afe6e5ba9712a329dbfd62030d24730
+  tag: sha-04da24d726e032030896994b258a7fbf9ba2b5d9
+  digest: sha256:0e4459f2262116d1a2c3a37ab64d914306dccbd7cafc16f5516cb48999c3251e
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
