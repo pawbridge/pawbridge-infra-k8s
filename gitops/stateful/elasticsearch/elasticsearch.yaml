@@ -19,6 +19,9 @@ spec:
       - secretName: store-search-writer-auth
       - secretName: store-search-bootstrap-auth
       - secretName: community-search-writer-auth
+      - secretName: animal-search-writer-auth
+      - secretName: animal-search-bootstrap-auth
+      - secretName: python-search-writer-auth
     roles:
       - secretName: store-search-file-realm-roles
   nodeSets:
