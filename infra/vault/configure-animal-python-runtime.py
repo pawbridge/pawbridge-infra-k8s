@@ -6,6 +6,7 @@ check never changes policies, roles, KV data or MySQL accounts. Both modes
 create/revoke an isolated login token. apply saves a fresh Raft snapshot before
 any persistent change. Copy the resulting backup off the VM before rollout.
 Existing KV values are reused, never rotated. No deployment or ES mutation.
+validate checks the bundled policy files offline, without login or backup.
 """
 
 import argparse
@@ -21,6 +22,7 @@ import secrets
 import signal
 import subprocess
 import sys
+import warnings
 from urllib.parse import urlparse
 
 CONTEXT = "pawbridge-vbox-k136"
@@ -28,7 +30,7 @@ PREFIX = "pawbridge/dev/"
 DB = "pawbridge_animal"
 DB_USER = "pawbridge_animal_app"
 POLICY_PATHS = {
-    "animal": ["animal/mysql", "animal/runtime", "animal-python/internal", "store/r2"],
+    "animal": ["animal/mysql", "animal/runtime", "store/r2", "animal-python/internal"],
     "python": ["python/runtime", "animal-python/internal"],
 }
 BATCH_TABLES = {
@@ -45,6 +47,29 @@ class Failure(Exception):
 def require(condition, message):
     if not condition:
         raise Failure(message)
+
+
+def prompt_secret(label):
+    """Confirm receipt without echoing keys or treating empty paste as failure."""
+    while True:
+        print(label + ": paste once (Shift+Insert), then press Enter. Ctrl+C cancels.")
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", getpass.GetPassWarning)
+                value = getpass.getpass(label + " (hidden): ").strip()
+        except getpass.GetPassWarning:
+            raise Failure("Secure hidden input unavailable; refusing visible input") from None
+        if not value:
+            print("Received 0 characters. Nothing saved; please paste again.")
+            continue
+        if any(ord(c) < 32 or ord(c) == 127 for c in value):
+            print("Unsupported control character. Nothing saved; please paste again.")
+            continue
+        print("Received " + str(len(value)) + " characters (content hidden).")
+        print("This confirms input length only, not API key validity.")
+        if input("Use this value? Type y and Enter; anything else retries: ").strip().lower() == "y":
+            return value
+        print("Input discarded. Please paste again.")
 
 
 def execute(args, *, data=None, timeout=40):
@@ -109,8 +134,23 @@ class Bootstrap:
     def read(self, path, *, optional=False):
         result = self.vault("read", "-format=json", path)
         # An authorization/server/network error MUST NOT be mistaken for absence.
-        if optional and result.returncode == 2 and result.stderr.decode().strip() == "No value found at " + path:
+        # kubectl exec adds its own exact exit trailer to Vault's stderr.
+        missing = ("No value found at " + path + "\n").encode()
+        envelopes = (missing, missing + b"command terminated with exit code 2\n")
+        if optional and result.returncode == 2 and not result.stdout and result.stderr in envelopes:
             return None
+        if result.returncode != 0:
+            # Report only fixed categories/codes, never raw remote error text.
+            status = re.search(rb"(?m)^Code: ([0-9]{3})\.", result.stderr)
+            category = "http-" + status.group(1).decode() if status else "unclassified"
+            if b"permission denied" in result.stderr:
+                category = "permission-denied"
+            elif b"connection refused" in result.stderr:
+                category = "connection-refused"
+            elif result.stderr in envelopes:
+                category = "missing-or-unexpected-envelope"
+            raise Failure("Vault read " + path + " failed (exit=" + str(result.returncode)
+                          + ", category=" + category + "; raw output suppressed)")
         return parse_json(checked(result, "Vault read " + path))["data"]
 
     def write(self, path, data):
@@ -178,10 +218,10 @@ class Bootstrap:
                 data = {"INTERNAL_API_KEY": secrets.token_hex(32)}
             elif path == "animal/runtime":
                 data = {"APMS_API_BASE_URL": "https://apis.data.go.kr/1543061/abandonmentPublicService_v2",
-                        "APMS_API_SERVICE_KEY": getpass.getpass("APMS service key (hidden): ").strip(),
+                        "APMS_API_SERVICE_KEY": prompt_secret("APMS service key"),
                         "CHATBOT_IP_HASH_SECRET": secrets.token_hex(32)}
             else:
-                data = {"GEMINI_API_KEY": getpass.getpass("Gemini API key (hidden): ").strip()}
+                data = {"GEMINI_API_KEY": prompt_secret("Gemini API key")}
             validate_fields(path, data)
             self.write("secret/data/" + PREFIX + path, {"options": {"cas": 0}, "data": data})
             saved = self.read("secret/data/" + PREFIX + path)["data"]
@@ -190,13 +230,22 @@ class Bootstrap:
         print("Verified Vault credential fields:", path)
         return data
 
-    def policies(self):
+    def policy_documents(self):
+        documents = {}
         for service, paths in POLICY_PATHS.items():
             name = service + "-runtime-read"
             expected = "\n\n".join('path "secret/' + kind + '/' + PREFIX + path + '" {\n  capabilities = ["read"]\n}'
                                      for path in paths for kind in ["data", "metadata"]) + "\n"
             policy_file = Path(__file__).parent / "policies" / (name + ".hcl")
-            require(policy_file.read_text().strip() == expected.strip(), "Policy file violates exact read-only paths")
+            require(policy_file.read_text().strip() == expected.strip(),
+                    "Policy file violates exact read-only paths: " + name)
+            documents[name] = expected
+        return documents
+
+    def policies(self):
+        # Validate both local files before the first remote read or write.
+        for name, expected in self.policy_documents().items():
+            service = name.removesuffix("-runtime-read")
             existing = self.read("sys/policies/acl/" + name, optional=True)
             if not existing or existing["policy"].strip() != expected.strip():
                 require(self.mode == "apply", "Policy missing or differs: " + name)
@@ -275,12 +324,16 @@ def main():
 
     signal.signal(signal.SIGTERM, interrupted)
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["check", "apply"])
+    parser.add_argument("mode", choices=["validate", "check", "apply"])
     parser.add_argument("--backup-dir", help="existing private /tmp/pawbridge-* directory; required for apply")
     args = parser.parse_args()
     os.umask(0o077)
     bootstrap = Bootstrap(args.mode, args.backup_dir)
     try:
+        bootstrap.policy_documents()
+        if args.mode == "validate":
+            print("Offline policy validation passed. No login, backup or remote change performed.")
+            return
         require(args.mode != "apply" or args.backup_dir, "apply requires --backup-dir")
         bootstrap.preflight()
         bootstrap.login()
