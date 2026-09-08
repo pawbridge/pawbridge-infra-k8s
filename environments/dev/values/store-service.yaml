@@ -1,3 +1,6 @@
+nodeSelector:
+  kubernetes.io/hostname: pawbridge-k136-w2
+
 image:
   repository: dorosiya/pawbridge-store-service
   tag: sha-55bf5a8c873a900d176511803e83b42582262466

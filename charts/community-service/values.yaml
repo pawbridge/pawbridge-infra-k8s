@@ -1,5 +1,6 @@
 # Default values for community-service
 replicaCount: 1
+nodeSelector: {}
 
 image:
   repository: dorosiya/pawbridge-community-service
