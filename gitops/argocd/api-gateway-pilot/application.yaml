@@ -18,6 +18,11 @@ spec:
     server: https://kubernetes.default.svc
     namespace: pawbridge
   syncPolicy:
+    automated:
+      enabled: true
+      selfHeal: true
+      prune: false
+      allowEmpty: false
     syncOptions:
       - Prune=false
       - RespectIgnoreDifferences=true
