@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: python-runtime-vault-auth
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultConnection
+metadata:
+  name: python-runtime-vault-connection
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  address: https://vault.vault.svc.cluster.local:8200
+  caCertSecretRef: vault-internal-ca
+  skipTLSVerify: false
+  tlsServerName: vault.vault.svc.cluster.local
+  timeout: 10s
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: python-runtime-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: python-runtime-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: python-runtime-read
+    serviceAccount: python-runtime-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: python-runtime-auth
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  vaultAuthRef: python-runtime-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/python/runtime
+  refreshAfter: 1m
+  hmacSecretData: true
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: python-ai-service
+  destination:
+    create: true
+    overwrite: false
+    name: python-runtime-auth
+    transformation:
+      excludeRaw: true
+      includes:
+        - ^GEMINI_API_KEY$
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: python-internal-auth
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  vaultAuthRef: python-runtime-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/animal-python/internal
+  refreshAfter: 1m
+  hmacSecretData: true
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: python-ai-service
+  destination:
+    create: true
+    overwrite: false
+    name: python-internal-auth
+    transformation:
+      excludeRaw: true
+      includes:
+        - ^INTERNAL_API_KEY$
