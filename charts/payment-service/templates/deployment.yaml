@@ -15,6 +15,10 @@ spec:
         app: {{ .Release.Name }}
     spec:
       automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}{{- if .Values.image.digest }}@{{ .Values.image.digest }}{{- else }}:{{ .Values.image.tag }}{{- end }}"
@@ -25,6 +29,13 @@ spec:
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
+            {{- end }}
+            {{- if .Values.mysqlSecretRef }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysqlSecretRef }}
+                  key: mysql-password
             {{- end }}
           {{- if .Values.secretRef }}
           envFrom:
