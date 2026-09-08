@@ -8,11 +8,17 @@ pod=deployment["spec"]["template"]["spec"]
 container=pod["containers"][0]
 env={v["name"]:v for v in container["env"]}
 assert len(env)==len(container["env"]), "duplicate env"
+expected_kinds={"Deployment","Service"}
+if service=="animal-service":
+ expected_kinds.add("CronJob")
+ if mode=="default":
+  expected_kinds.update({"HorizontalPodAutoscaler","ServiceMonitor"})
+cronjob=next((d for d in docs if d["kind"]=="CronJob"),None)
+assert {d["kind"] for d in docs}==expected_kinds and len(docs)==len(expected_kinds)
 if mode=="dev":
  assert pod["automountServiceAccountToken"] is False
  assert pod["nodeSelector"]=={"kubernetes.io/hostname":"pawbridge-k136-w2"}
  assert "@sha256:" in container["image"]
- assert {d["kind"] for d in docs}=={"Deployment","Service"} and len(docs)==2
  assert all(x["secretRef"]["optional"] is False for x in container["envFrom"])
  assert container["volumeMounts"][0]["readOnly"] is True
  refs=[e["valueFrom"]["secretKeyRef"]["name"] for e in env.values() if "valueFrom" in e]
@@ -41,4 +47,24 @@ else:
  assert "nodeSelector" not in pod
  assert "volumes" not in pod
  assert all("value" in v for v in env.values())
+if service=="animal-service":
+ assert cronjob is not None
+ spec=cronjob["spec"]
+ assert spec["schedule"]=="*/30 * * * *"
+ assert spec["timeZone"]=="Asia/Seoul"
+ assert spec["suspend"] is True
+ assert spec["concurrencyPolicy"]=="Forbid"
+ assert spec["successfulJobsHistoryLimit"]==3 and spec["failedJobsHistoryLimit"]==3
+ job=spec["jobTemplate"]["spec"]
+ assert job["activeDeadlineSeconds"]==600 and job["backoffLimit"]==0
+ batch_pod=job["template"]["spec"]
+ assert batch_pod["restartPolicy"]=="Never"
+ assert batch_pod["automountServiceAccountToken"] is False
+ assert batch_pod["enableServiceLinks"] is False
+ assert batch_pod["securityContext"]=={"runAsNonRoot":True,"runAsUser":100,"runAsGroup":101,"seccompProfile":{"type":"RuntimeDefault"}}
+ batch=batch_pod["containers"][0]
+ assert batch["image"]=="curlimages/curl:8.5.0" and batch["imagePullPolicy"]=="IfNotPresent"
+ assert batch["resources"]=={"requests":{"cpu":"25m","memory":"64Mi"},"limits":{"cpu":"250m","memory":"256Mi"}}
+ assert batch["securityContext"]=={"allowPrivilegeEscalation":False,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":True,"runAsNonRoot":True}
+ assert batch["args"]==["--fail","--max-time","300","-X","POST","http://animal-service.pawbridge.svc.cluster.local:8081/api/v1/batch/apms/sync"]
 print(service,mode,"render contract PASS",len(docs),"resources")

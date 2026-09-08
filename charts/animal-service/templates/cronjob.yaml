@@ -7,18 +7,32 @@ metadata:
     app: {{ .Release.Name }}-batch
 spec:
   schedule: {{ .Values.cronjob.schedule | quote }}
+  timeZone: {{ .Values.cronjob.timeZone | quote }}
+  suspend: {{ .Values.cronjob.suspend }}
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
       activeDeadlineSeconds: 600
+      backoffLimit: 0
       template:
         spec:
-          restartPolicy: OnFailure
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          securityContext:
+            runAsNonRoot: true
+            # curlimages/curl:8.5.0 config names curl_user; the published
+            # amd64 image maps it to UID 100 and GID 101.
+            runAsUser: 100
+            runAsGroup: 101
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: batch-trigger
-              image: {{ .Values.cronjob.image }}
+              image: {{ .Values.cronjob.image | quote }}
+              imagePullPolicy: {{ .Values.cronjob.imagePullPolicy }}
               args:
                 - --fail
                 - --max-time
@@ -26,4 +40,13 @@ spec:
                 - -X
                 - POST
                 - "http://{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}/api/v1/batch/apms/sync"
+              resources:
+                {{- toYaml .Values.cronjob.resources | nindent 16 }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
 {{- end }}

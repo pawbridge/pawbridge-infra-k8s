@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: payment-outbox-source
+  namespace: argocd
+spec:
+  project: pawbridge-outbox-connectors
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/stateful/payment-outbox-source
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kafka
+  syncPolicy:
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true

@@ -1,5 +1,6 @@
 pawbridge_store_reader:
-  cluster: []
+  cluster:
+    - monitor
   indices:
     - names:
         - store-products-read
@@ -31,7 +32,8 @@ pawbridge_store_bootstrap:
         - view_index_metadata
 
 pawbridge_community_writer:
-  cluster: []
+  cluster:
+    - monitor
   indices:
     - names:
         - posts
@@ -43,7 +45,8 @@ pawbridge_community_writer:
         - view_index_metadata
 
 pawbridge_animal_writer:
-  cluster: []
+  cluster:
+    - monitor
   indices:
     - names:
         - animals
