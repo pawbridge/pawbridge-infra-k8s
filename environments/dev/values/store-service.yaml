@@ -3,8 +3,8 @@ nodeSelector:
 
 image:
   repository: dorosiya/pawbridge-store-service
-  tag: sha-55bf5a8c873a900d176511803e83b42582262466
-  digest: sha256:2a6dcbdb826263133e26b59f7ed1873e1de80d23d20f2670042151c501c492ba
+  tag: sha-bcaab7a15cde0402bcd7a3d3407e22a17b190c07
+  digest: sha256:e2e856d2bb14336482aac192321cd5781ddeab91f316e595478865b8bf4f09ff
 
 r2SecretRef: store-service-r2-secrets-vso
 redisSecretRef: redis-auth
