@@ -54,5 +54,5 @@ env:
   JWT_REFRESH_TOKEN_EXPIRATION: "1209600000"
 
   # 8. Google OAuth callback and frontend landing URL
-  REDIRECT_URI: https://api-shadow.pawbridge.kr/login/oauth2/code/google
+  REDIRECT_URI: https://api.pawbridge.kr/login/oauth2/code/google
   OAUTH2_REDIRECT_URI: https://www.pawbridge.kr/oauth/callback
