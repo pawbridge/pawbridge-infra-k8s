@@ -1,5 +1,6 @@
 # Default values for animal-service
 replicaCount: 1
+nodeSelector: {}
 
 image:
   repository: dorosiya/pawbridge-animal-service
@@ -31,6 +32,12 @@ env:
 secretRef: animal-service-secrets
 secretRefOptional: true
 redisSecretRef: ""
+mysqlSecretRef: ""
+r2SecretRef: ""
+internalApiSecretRef: ""
+elasticsearchSecretRef: ""
+elasticsearchCaSecretRef: ""
+elasticsearchCaMountPath: /etc/pawbridge/animal-search-ca
 
 # Source dev keeps the chart's historical behavior. Target pilots disable this
 # because the service does not call the Kubernetes API.

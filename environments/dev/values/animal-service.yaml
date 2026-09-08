@@ -1,4 +1,7 @@
 replicaCount: 1
+nodeSelector:
+  # Target pilot: keep new workloads off the ES/Vault worker.
+  kubernetes.io/hostname: pawbridge-k136-w2
 
 image:
   repository: dorosiya/pawbridge-animal-service
@@ -9,6 +12,12 @@ image:
 
 automountServiceAccountToken: false
 secretRefOptional: false
+secretRef: animal-runtime-auth
+mysqlSecretRef: animal-mysql-auth
+r2SecretRef: animal-r2-auth
+internalApiSecretRef: animal-python-internal-auth
+elasticsearchSecretRef: animal-search-writer-auth
+elasticsearchCaSecretRef: animal-search-http-ca
 
 autoscaling:
   enabled: false
@@ -27,19 +36,23 @@ env:
 
   # JPA — validate: 기동 시 스키마 검증만 (update 시 api_source ALTER 반복·MDL 유발)
   SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+  # Restored Batch tables are required; startup must not create or alter them.
+  SPRING_BATCH_JDBC_INITIALIZE_SCHEMA: never
+  SPRING_BATCH_JOB_ENABLED: "false"
   SPRING_JPA_SHOW_SQL: "false"
   SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
   SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "false"
 
   # 1. Database (MySQL)
   SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_animal?rewriteBatchedStatements=true
+  SPRING_DATASOURCE_USERNAME: pawbridge_animal_app
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "30"
 
   # 2. Kafka (Strimzi)
   SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
   
   # 3. Elasticsearch
-  SPRING_ELASTICSEARCH_URIS: http://elasticsearch-master.databases.svc.cluster.local:9200
+  SPRING_ELASTICSEARCH_URIS: https://store-search-es-http.databases.svc:9200
 
   # 4. Zipkin (Tracing)
   MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
@@ -52,6 +65,11 @@ env:
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
   PYTHON_AI_SERVICE_URL: http://python-ai-service.pawbridge.svc.cluster.local:8000
+
+  R2_ENDPOINT: https://3e28b8ba8375b9010f6a426c1cb9755f.r2.cloudflarestorage.com
+  R2_REGION: auto
+  R2_BUCKET_NAME: pawbridge-public-images
+  R2_PUBLIC_BASE_URL: https://images.pawbridge.kr
 
   # 7. Redis (Explicit Host/Port for Redisson)
   SPRING_DATA_REDIS_HOST: redis-master.databases.svc.cluster.local

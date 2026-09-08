@@ -1,4 +1,7 @@
 replicaCount: 1
+nodeSelector:
+  # Target pilot: keep new workloads off the ES/Vault worker.
+  kubernetes.io/hostname: pawbridge-k136-w2
 
 image:
   repository: dorosiya/pawbridge-python-ai-service
@@ -9,9 +12,13 @@ image:
 
 automountServiceAccountToken: false
 secretRefOptional: false
+internalApiSecretRef: python-internal-auth
+elasticsearchSecretRef: python-search-writer-auth
+elasticsearchCaSecretRef: python-search-http-ca
 
 env:
-  ES_URL: http://elasticsearch-master.databases.svc.cluster.local:9200
+  ES_URL: https://store-search-es-http.databases.svc:9200
   LLM_PROVIDER: gemini
+  GEMINI_MODEL: gemini-3.5-flash-lite
 
-secretRef: python-ai-service-secrets
+secretRef: python-runtime-auth

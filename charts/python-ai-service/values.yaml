@@ -1,4 +1,5 @@
 replicaCount: 1
+nodeSelector: {}
 
 image:
   repository: dorosiya/pawbridge-python-ai-service
@@ -24,6 +25,10 @@ env:
 
 secretRef: python-ai-service-secrets
 secretRefOptional: true
+internalApiSecretRef: ""
+elasticsearchSecretRef: ""
+elasticsearchCaSecretRef: ""
+elasticsearchCaMountPath: /etc/pawbridge/python-search-ca
 
 # Source dev keeps the chart's historical behavior. Target pilots disable this
 # because the service does not call the Kubernetes API.
