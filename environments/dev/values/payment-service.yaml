@@ -8,7 +8,11 @@ image:
   pullPolicy: IfNotPresent
 
 automountServiceAccountToken: false
+secretRef: payment-runtime-auth
 secretRefOptional: false
+mysqlSecretRef: payment-mysql-auth
+nodeSelector:
+  kubernetes.io/hostname: pawbridge-k136-w2
 
 autoscaling:
   enabled: false
@@ -20,14 +24,16 @@ env:
   # Force Dev Profile
   SPRING_PROFILES_ACTIVE: dev
 
-  # JPA Settings (테이블 자동 생성)
-  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+  # Validate the restored schema; never create or alter payment tables at startup.
+  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+  SPRING_SQL_INIT_MODE: never
   SPRING_JPA_SHOW_SQL: "false"
   SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
   SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "false"
 
   # 1. Database
   SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_payment
+  SPRING_DATASOURCE_USERNAME: pawbridge_payment_app
 
   # 2. Kafka
   SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
@@ -39,5 +45,5 @@ env:
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
 
-  # 5. Redis (URL Style)
-  SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
+  # Payment has no Redis consumer. Keep internal health details private.
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never

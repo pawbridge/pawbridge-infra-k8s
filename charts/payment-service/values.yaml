@@ -29,6 +29,8 @@ env:
 
 secretRef: payment-service-secrets
 secretRefOptional: true
+mysqlSecretRef: ""
+nodeSelector: {}
 
 # Source dev keeps the chart's historical behavior. Target pilots disable this
 # because the service does not call the Kubernetes API.
