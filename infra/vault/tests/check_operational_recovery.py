@@ -182,6 +182,14 @@ def verify_roles_and_timezones():
 
 
 def verify_held_apms_cronjob():
+    project = yaml.safe_load((ROOT / "gitops/argocd/animal-service-pilot/project.yaml").read_text())["spec"]
+    require(project["destinations"] == [{"server": "https://kubernetes.default.svc", "namespace": "pawbridge"}],
+            "Animal project destination must remain scoped to pawbridge")
+    require(project["namespaceResourceWhitelist"] == [
+        {"group": "apps", "kind": "Deployment"},
+        {"group": "", "kind": "Service"},
+        {"group": "batch", "kind": "CronJob"},
+    ], "Animal project must permit its held CronJob without widening other resource permissions")
     defaults = yaml.safe_load((ROOT / "charts/animal-service/values.yaml").read_text())["cronjob"]
     dev = yaml.safe_load((ROOT / "environments/dev/values/animal-service.yaml").read_text())
     require(defaults["enabled"] is True and defaults["suspend"] is True and

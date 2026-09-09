@@ -15,5 +15,7 @@ spec:
       kind: Deployment
     - group: ""
       kind: Service
+    - group: batch
+      kind: CronJob
   orphanedResources:
     warn: true

@@ -1,6 +1,7 @@
 # Default values for animal-service
 replicaCount: 1
 nodeSelector: {}
+affinity: {}
 
 image:
   repository: dorosiya/pawbridge-animal-service
