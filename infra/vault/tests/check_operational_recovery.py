@@ -103,7 +103,6 @@ def verify_connectors():
         require(config["transforms"] == "outbox" and
                 config["transforms.outbox.type"] == "io.debezium.transforms.outbox.EventRouter" and
                 config["transforms.outbox.table.field.event.key"] == "aggregate_id" and
-                config["transforms.outbox.table.field.event.timestamp"] == "created_at" and
                 config["transforms.outbox.table.field.event.payload"] == "payload" and
                 config["transforms.outbox.table.expand.json.payload"] is True,
                 "Wrong EventRouter contract: " + name)
@@ -178,6 +177,15 @@ def verify_roles_and_timezones():
             "Timezone must be limited to Animal, User, Community, and Store")
 
 
+def verify_outbox_record_timestamps():
+    source_paths = [*CONNECTOR_PATHS.values(), ROOT / "gitops/stateful/store-search-source/connector.yaml"]
+    for path in source_paths:
+        config = load(path)[0]["spec"]["config"]
+        # Local DATETIME values must not replace Debezium's absolute event timestamp.
+        require("transforms.outbox.table.field.event.timestamp" not in config,
+                "Outbox must use the default Debezium event timestamp: " + str(path))
+
+
 def verify_connect_memory():
     connect = load(ROOT / "gitops/stateful/kafka-connect/kafka-connect.yaml")[0]["spec"]
     require(connect.get("jvmOptions") == {"-Xms": "512m", "-Xmx": "768m"},
@@ -219,6 +227,7 @@ def verify_apms_cronjob():
 
 if __name__ == "__main__":
     verify_connectors()
+    verify_outbox_record_timestamps()
     verify_argo()
     verify_roles_and_timezones()
     verify_connect_memory()
