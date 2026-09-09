@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline contract checks for the held APMS and MySQL outbox rollout."""
+"""Offline contract checks for the resumed dev APMS and MySQL outbox rollout."""
 from pathlib import Path
 
 import yaml
@@ -181,7 +181,7 @@ def verify_roles_and_timezones():
             "Timezone must be limited to Animal, User, Community, and Store")
 
 
-def verify_held_apms_cronjob():
+def verify_apms_cronjob():
     project = yaml.safe_load((ROOT / "gitops/argocd/animal-service-pilot/project.yaml").read_text())["spec"]
     require(project["destinations"] == [{"server": "https://kubernetes.default.svc", "namespace": "pawbridge"}],
             "Animal project destination must remain scoped to pawbridge")
@@ -189,7 +189,7 @@ def verify_held_apms_cronjob():
         {"group": "apps", "kind": "Deployment"},
         {"group": "", "kind": "Service"},
         {"group": "batch", "kind": "CronJob"},
-    ], "Animal project must permit its held CronJob without widening other resource permissions")
+    ], "Animal project must permit its CronJob without widening other resource permissions")
     defaults = yaml.safe_load((ROOT / "charts/animal-service/values.yaml").read_text())["cronjob"]
     dev = yaml.safe_load((ROOT / "environments/dev/values/animal-service.yaml").read_text())
     require(defaults["enabled"] is True and defaults["suspend"] is True and
@@ -198,8 +198,8 @@ def verify_held_apms_cronjob():
     require(defaults["resources"] == {"requests": {"cpu": "25m", "memory": "64Mi"},
                                       "limits": {"cpu": "250m", "memory": "256Mi"}},
             "APMS CronJob resource defaults changed")
-    require(dev["cronjob"] == {"enabled": True, "suspend": True, "timeZone": "Asia/Seoul"},
-            "Dev APMS CronJob must remain explicitly held")
+    require(dev["cronjob"] == {"enabled": True, "suspend": False, "timeZone": "Asia/Seoul"},
+            "Dev APMS CronJob must be explicitly resumed")
     require(dev["env"]["SPRING_BATCH_JOB_ENABLED"] == "false", "Batch jobs must remain disabled at startup")
     template = (ROOT / "charts/animal-service/templates/cronjob.yaml").read_text()
     for expected in ("timeZone: {{ .Values.cronjob.timeZone | quote }}", "suspend: {{ .Values.cronjob.suspend }}",
@@ -214,5 +214,5 @@ if __name__ == "__main__":
     verify_connectors()
     verify_argo()
     verify_roles_and_timezones()
-    verify_held_apms_cronjob()
+    verify_apms_cronjob()
     print("Operational recovery contracts PASS")

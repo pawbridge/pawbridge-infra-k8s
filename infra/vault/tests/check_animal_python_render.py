@@ -71,7 +71,7 @@ if service=="animal-service":
  spec=cronjob["spec"]
  assert spec["schedule"]=="*/30 * * * *"
  assert spec["timeZone"]=="Asia/Seoul"
- assert spec["suspend"] is True
+ assert spec["suspend"] is (mode=="default"), "Default APMS stays held; dev APMS is resumed"
  assert spec["concurrencyPolicy"]=="Forbid"
  assert spec["successfulJobsHistoryLimit"]==3 and spec["failedJobsHistoryLimit"]==3
  job=spec["jobTemplate"]["spec"]
