@@ -1,7 +1,25 @@
 replicaCount: 1
-nodeSelector:
-  # Target pilot: keep new workloads off the ES/Vault worker.
-  kubernetes.io/hostname: pawbridge-k136-w2
+nodeSelector: {}
+affinity:
+  nodeAffinity:
+    # Keep application pods on workers; permit w1 when w2 cannot fit a new pod.
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - pawbridge-k136-w1
+                - pawbridge-k136-w2
+    # A scheduling preference, not live-usage balancing or guaranteed placement.
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - pawbridge-k136-w2
 
 image:
   repository: dorosiya/pawbridge-animal-service

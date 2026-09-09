@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify Helm output on stdin: SERVICE {dev,default}; requires PyYAML."""
 import sys,yaml
+from pathlib import Path
 service,mode=sys.argv[1:3]
 docs=[d for d in yaml.safe_load_all(sys.stdin) if d]
 deployment=next(d for d in docs if d["kind"]=="Deployment")
@@ -17,7 +18,24 @@ cronjob=next((d for d in docs if d["kind"]=="CronJob"),None)
 assert {d["kind"] for d in docs}==expected_kinds and len(docs)==len(expected_kinds)
 if mode=="dev":
  assert pod["automountServiceAccountToken"] is False
- assert pod["nodeSelector"]=={"kubernetes.io/hostname":"pawbridge-k136-w2"}
+ if service=="animal-service":
+  assert not pod.get("nodeSelector"), "Animal must not be hard-pinned to w2"
+  assert pod["affinity"]=={"nodeAffinity":{
+   "requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[
+    {"key":"kubernetes.io/hostname","operator":"In","values":["pawbridge-k136-w1","pawbridge-k136-w2"]}
+   ]}]},
+   "preferredDuringSchedulingIgnoredDuringExecution":[{"weight":100,"preference":{"matchExpressions":[
+    {"key":"kubernetes.io/hostname","operator":"In","values":["pawbridge-k136-w2"]}
+   ]}}]
+  }}, "Animal must allow both workers and prefer w2"
+  project=yaml.safe_load((Path(__file__).resolve().parents[3]/"gitops/argocd/animal-service-pilot/project.yaml").read_text())["spec"]
+  allowed={(r["group"],r["kind"]) for r in project["namespaceResourceWhitelist"]}
+  for document in docs:
+   group=document["apiVersion"].split("/")[0] if "/" in document["apiVersion"] else ""
+   assert (group,document["kind"]) in allowed, "Rendered resource is not permitted by Animal AppProject"
+ else:
+  assert pod["nodeSelector"]=={"kubernetes.io/hostname":"pawbridge-k136-w2"}
+  assert "affinity" not in pod, "Python placement is outside this change"
  assert "@sha256:" in container["image"]
  assert all(x["secretRef"]["optional"] is False for x in container["envFrom"])
  assert container["volumeMounts"][0]["readOnly"] is True
@@ -45,6 +63,7 @@ if mode=="dev":
   assert env["LLM_PROVIDER"]["value"]=="gemini"
 else:
  assert "nodeSelector" not in pod
+ assert "affinity" not in pod
  assert "volumes" not in pod
  assert all("value" in v for v in env.values())
 if service=="animal-service":
