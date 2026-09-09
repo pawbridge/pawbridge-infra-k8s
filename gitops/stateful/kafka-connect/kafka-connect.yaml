@@ -28,13 +28,17 @@ spec:
     value.converter.schemas.enable: false
     config.providers: secrets
     config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
+  # Bound heap separately so the larger container limit leaves room for native memory.
+  jvmOptions:
+    "-Xms": "512m"
+    "-Xmx": "768m"
   resources:
     requests:
       cpu: 200m
       memory: 512Mi
     limits:
       cpu: "1"
-      memory: 1Gi
+      memory: 1280Mi
   logging:
     type: inline
     loggers:

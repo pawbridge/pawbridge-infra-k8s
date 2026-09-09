@@ -178,6 +178,16 @@ def verify_roles_and_timezones():
             "Timezone must be limited to Animal, User, Community, and Store")
 
 
+def verify_connect_memory():
+    connect = load(ROOT / "gitops/stateful/kafka-connect/kafka-connect.yaml")[0]["spec"]
+    require(connect.get("jvmOptions") == {"-Xms": "512m", "-Xmx": "768m"},
+            "Connect must explicitly cap heap independently from the container limit")
+    require(connect["resources"] == {
+        "requests": {"cpu": "200m", "memory": "512Mi"},
+        "limits": {"cpu": "1", "memory": "1280Mi"},
+    }, "Connect must preserve requests and CPU while allowing 512Mi beyond max heap")
+
+
 def verify_apms_cronjob():
     project = yaml.safe_load((ROOT / "gitops/argocd/animal-service-pilot/project.yaml").read_text())["spec"]
     require(project["destinations"] == [{"server": "https://kubernetes.default.svc", "namespace": "pawbridge"}],
@@ -211,5 +221,6 @@ if __name__ == "__main__":
     verify_connectors()
     verify_argo()
     verify_roles_and_timezones()
+    verify_connect_memory()
     verify_apms_cronjob()
     print("Operational recovery contracts PASS")
