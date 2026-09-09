@@ -44,10 +44,9 @@ serviceMonitor:
   enabled: false
 
 cronjob:
-  # The CronJob is rendered for review but cannot run before an approved,
-  # verified APMS backend image and controlled first execution.
+  # Resume after the controlled APMS run and identity/vector preservation checks.
   enabled: true
-  suspend: true
+  suspend: false
   timeZone: Asia/Seoul
 
 redisSecretRef: redis-auth
