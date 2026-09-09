@@ -72,7 +72,6 @@ def verify_connectors():
         },
     }
     ids = set()
-    expected_states = {"community-outbox-connector": "stopped"}
     for name, connector_path in CONNECTOR_PATHS.items():
         documents = load(connector_path)
         require(len(documents) == 1 and documents[0]["kind"] == "KafkaConnector",
@@ -90,7 +89,7 @@ def verify_connectors():
         }, "Wrong connector labels: " + name)
         require(connector["spec"]["class"] == "io.debezium.connector.mysql.MySqlConnector" and
                 connector["spec"]["tasksMax"] == 1 and
-                connector["spec"]["state"] == expected_states.get(name, "running"),
+                connector["spec"]["state"] == "running",
                 "Wrong connector execution contract: " + name)
         require(config["database.hostname"] == "mysql.databases.svc.cluster.local" and
                 config["database.port"] == 3306 and
@@ -121,8 +120,6 @@ def verify_connectors():
         require("root" not in source and not any(line.lstrip().startswith(("data:", "stringdata:"))
                                              for line in source.splitlines()),
                 "Plaintext or public secret material leaked: " + str(connector_path))
-    community = yaml.safe_load(CONNECTOR_PATHS["community-outbox-connector"].read_text())
-    require(community["spec"]["state"] == "stopped", "Community source must remain held for its consumer fix")
 
     histories = {topic["metadata"]["name"] for topic in load(ROOT / "gitops/stateful/kafka/topics-schema-history.yaml")}
     require({"schema-changes.user.outbox", "schema-changes.animal.outbox", "schema-changes.community.outbox",

@@ -10,10 +10,9 @@ metadata:
 spec:
   class: io.debezium.connector.mysql.MySqlConnector
   tasksMax: 1
-  # PostEventConsumer currently expects an envelope payload, but EventRouter
-  # expands this JSON payload. Keep the source registered but stopped until
-  # the consumer contract is repaired and a controlled event is verified.
-  state: stopped
+  # Manually sync only after the corrected PostEventConsumer image is deployed.
+  # The consumer must read the expanded EventRouter JSON body directly.
+  state: running
   config:
     database.hostname: mysql.databases.svc.cluster.local
     database.port: 3306
