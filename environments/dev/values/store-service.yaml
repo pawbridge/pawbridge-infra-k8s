@@ -40,10 +40,14 @@ env:
   # 4. Zipkin
   MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
 
-  # 5. Service Discovery
+  # 5. Timezone (KST)
+  TZ: "Asia/Seoul"
+  JAVA_TOOL_OPTIONS: "-Duser.timezone=Asia/Seoul"
+
+  # 6. Service Discovery
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
 
-  # 6. Redis (Explicit Host/Port for Redisson)
+  # 7. Redis (Explicit Host/Port for Redisson)
   SPRING_DATA_REDIS_HOST: redis-master.databases.svc.cluster.local
   SPRING_DATA_REDIS_PORT: "6379"

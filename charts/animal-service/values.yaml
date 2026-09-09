@@ -73,8 +73,20 @@ readinessProbe:
 # CronJob 설정 (배치 스케줄)
 cronjob:
   enabled: true
+  # Keep the trigger declared but held until its backend image and first run
+  # have passed the separately controlled operational gate.
+  suspend: true
   schedule: "*/30 * * * *"
+  timeZone: Asia/Seoul
   image: curlimages/curl:8.5.0
+  imagePullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
 
 # HPA 설정
 autoscaling:

@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-outbox-connectors
+  namespace: argocd
+spec:
+  description: Separately gated User, Animal, Community, and Payment MySQL outbox sources
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: kafka
+  namespaceResourceWhitelist:
+    - group: kafka.strimzi.io
+      kind: KafkaConnector
+  orphanedResources:
+    warn: true
