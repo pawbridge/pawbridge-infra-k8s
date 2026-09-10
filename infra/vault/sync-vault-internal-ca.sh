@@ -11,7 +11,12 @@ readonly SOURCE_KEY="ca.crt"
 readonly TARGET_SECRET="vault-internal-ca"
 readonly KUBECTL_REQUEST_TIMEOUT="15s"
 readonly COMMAND_TIMEOUT_SECONDS="30"
-readonly TARGET_NAMESPACES=(databases pawbridge kafka)
+# Preserve the existing default; monitoring is an explicit, isolated target.
+case "${2:-applications}" in
+  applications) readonly TARGET_NAMESPACES=(databases pawbridge kafka) ;;
+  monitoring) readonly TARGET_NAMESPACES=(monitoring) ;;
+  *) echo "ERROR: target must be applications or monitoring" >&2; exit 1 ;;
+esac
 
 fail() {
   echo "ERROR: $*" >&2
@@ -20,7 +25,7 @@ fail() {
 
 kube() {
   timeout --foreground "${COMMAND_TIMEOUT_SECONDS}s" \
-    kubectl --request-timeout="${KUBECTL_REQUEST_TIMEOUT}" "$@"
+    kubectl --context="${EXPECTED_CONTEXT}" --request-timeout="${KUBECTL_REQUEST_TIMEOUT}" "$@"
 }
 
 validate_target() {
@@ -42,14 +47,16 @@ source_ca_data() {
 
 target_ca_data() {
   local namespace="${1:?namespace is required}"
-  kube -n "${namespace}" get secret "${TARGET_SECRET}" \
-    -o "jsonpath={.data.${SOURCE_KEY//./\\.}}" 2>/dev/null || true
+  kube -n "${namespace}" get secret "${TARGET_SECRET}" --ignore-not-found \
+    -o "jsonpath={.data.${SOURCE_KEY//./\\.}}" 2>/dev/null
 }
 
 main() {
   local encoded_ca
   local actual_ca
   local namespace
+
+  [[ "$#" -le 2 ]] || fail "usage: sync-vault-internal-ca.sh [check|apply] [applications|monitoring]"
 
   case "${MODE}" in
     check | apply) ;;
@@ -89,4 +96,4 @@ main() {
   echo "Vault internal CA ${MODE} completed without printing certificate data."
 }
 
-main
+main "$@"

@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: observability-slack-vault-auth
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: observability-slack-vault-auth
+  namespace: monitoring
+spec:
+  vaultConnectionRef: observability-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: observability-slack-read
+    serviceAccount: observability-slack-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: monitoring-slack-webhook
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  vaultAuthRef: observability-slack-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/observability/slack
+  refreshAfter: 1m
+  hmacSecretData: true
+  # No restart targets: Grafana DB password rotation is not a Secret restart.
+  # Slack delivery is enabled separately, never as a side effect of registration.
+  destination:
+    create: true
+    overwrite: false
+    name: monitoring-slack-webhook
+    transformation:
+      excludeRaw: true
+      includes:
+        - ^url$
