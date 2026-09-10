@@ -5,6 +5,45 @@
 현재 구성은 **수동 동기화 후보**이며 Git 병합만으로 설치하거나 Slack에 전송하지 않는다.
 기존 `infra/install-infra.sh`나 `infra/monitoring/values.yaml`을 실행하지 않는다.
 
+## VM·서비스·파드별 사용량 확인
+
+Grafana의 PawBridge 폴더에서 다음 화면을 선택한다. 각 화면 위 링크로 이동할 수 있다.
+
+1. **운영 현황**: VM 세 대를 이름으로 비교한다. 네임스페이스를 선택하면 app별 메모리와
+   CPU를 개별 막대로 표시한다. 서비스 막대의 링크를 누르면 해당 서비스 상세로 이동한다.
+2. **서비스 상세**: 네임스페이스와 서비스를 선택한다. 위쪽 합계는 해당 서비스의 모든 파드를
+   포함한다. 아래쪽은 선택한 파드마다 행과 그래프를 반복한다. 파드 선택으로 서비스 합계를 바꾸지 않는다.
+3. **VM·파드 상세**: VM, 네임스페이스, 파드 순서로 선택한다. 위쪽은 해당 VM의 파드별 비교,
+   아래쪽은 선택한 파드 하나의 사용량이다. app 이름표가 없는 배치·인프라 파드도 이 화면에서 찾는다.
+
+CPU 단위 1은 한 코어다. 메모리는 working set이다. 요청량·제한량 비교선은 일반 컨테이너의
+합계이며, 실제 사용량이나 스케줄러의 전체 파드 자원 계산과 같지 않다. 제한 미설정 컨테이너가
+있으면 제한 합계를 파드 전체의 강제 상한으로 해석하지 않는다.
+네트워크 속도는 bytes/second, 기간 누적 트래픽은 bytes다. 내부 통신을 포함한 증가량 추정치이며
+과금용 계량이 아니다. hostNetwork 파드는 호스트 네트워크를 공유하므로 개별 앱 트래픽으로
+해석하지 않는다. 수집 공백은 0이나 정상으로 채우지 않는다.
+VM 루트 디스크 여유 공간은 파드별 저장 용량이 아니다.
+JVM 힙·GC·HTTP 응답시간은 이 수집 범위에 없으며 대시보드 설치만으로 생기지 않는다.
+
+서비스 연결은 기존 pod의 app 이름표를 사용한다. KSM에 pods=[app] 하나만 허용하며
+전체 label·annotation 수집, 새 exporter, 앱 설정 변경은 하지 않는다.
+적용 시 KSM Deployment의 수집 인자가 바뀌므로 해당 관측 파드가 교체된다.
+app 이름표 수집을 시작하기 전 과거 서비스별 합계는 소급 생성되지 않는다.
+상세 파드 행은 Grafana의 반복 행 기능을 사용하며 여러 파드를 한 선 묶음으로 합치지 않는다.
+
+변경 검증:
+
+```bash
+python3 gitops/observability/tests/test_dashboard_queries.py /absolute/path/to/promtool
+python3 gitops/observability/tests/test_grafana_contract.py /path/to/helm-render.yaml /path/to/resources-render.yaml
+```
+
+첫 검사는 네임스페이스 격리·복수 파드 합계·네트워크 집계·사라진 파드의 기간 트래픽을 검증한다.
+두 번째 검사는 세 JSON의 실제 ConfigMap 포함과 Grafana 보안 설정을 검사한다.
+반영 후에는 서비스 선택 목록, 두 파드의 반복 행, VM 이름, 빈 결과 표시를 실제 브라우저에서 확인한다.
+소스·조회식·등록 API 검사만으로 브라우저 화면까지 확인했다고 기록하지 않는다.
+롤백은 이전 Git revision으로 관측 Application을 동기화한다. 대시보드 DB를 직접 수정하거나 PVC를 삭제하지 않는다.
+
 ## 고정 입력
 
 - Helm chart: `kube-prometheus-stack 89.2.4`
@@ -17,7 +56,7 @@
   Helm 렌더 검증은 통과했지만 이 조합의 실제 기동·로그인·저장 검증은 설치 게이트로 남는다.
 - Operator `v0.93.1`, KSM `v2.20.0`, node-exporter `v1.12.1-distroless`,
   인증서 생성 Job `1.8.8`은 고정 chart의 종속 버전이다. 버전 변경 시 재렌더한다.
-- 대상 context: `kubernetes-admin@pawbridge-vbox-k136`, namespace `monitoring`.
+- 대상 context: `pawbridge-vbox-k136`, namespace `monitoring`.
 - Argo App: `observability-baseline`. automated sync·prune는 설정하지 않는다.
 
 ## 범위와 자원 승인 게이트
@@ -139,6 +178,32 @@ NetworkPolicy로 실제 수집하는 검증·자원/방화벽·관리자 Secret�
 
 ## 오프라인 검증
 
+### 최초 설치 순서
+
+`failurePolicy: Fail`과 TLS 검증을 유지한 채 아래 순서로 **전체 App을 동기화**한다.
+개별 리소스만 선택해 동기화하면 인증서 hook이 실행되지 않으므로 최초 설치와 복구에는 사용하지 않는다.
+
+1. `PreSync`: 고정 chart의 기존 Job이 인증서 Secret을 생성한다. 기존 인증서는 재사용한다.
+2. `Sync` wave 0: Operator와 webhook 설정을 적용하고 정상 기동을 기다린다.
+3. `Sync` wave 1: 기존 admission-patch Job이 webhook에 신뢰할 CA를 등록한다.
+4. `Sync` wave 2: CA 등록 성공 후 일반 Git 관리 리소스인 `PrometheusRule`을 적용한다.
+
+chart 기본값의 admission-patch는 `PostSync`라서 인증서 신뢰가 없는 최초 설치에서
+규칙 등록과 서로 기다릴 수 있다. `values.yaml`의 Argo hook annotation으로 이 Job만
+`Sync`로 옮긴다. 기존 인증서 Job용 RBAC는 `PreSync/PostSync`로 유지한다.
+Argo는 성공한 hook 정리를 동기화 완료 때 수행하므로 CA 등록 중 필요한 권한이 유지된다.
+`BeforeHookCreation,HookSucceeded`로 다음 전체 동기화에서도 patch Job을 다시 실행한다.
+CA 등록 실패 시 규칙 적용으로 넘어가지 않으며 실패 Job은 조사할 수 있도록 남긴다.
+
+기존 관측 App의 전체 동기화도 같은 순서를 사용한다. 이번 변경은 앱 Pod template,
+PVC, 이미지 버전, 데이터 보관 기간을 변경하지 않는다. 오프라인 순서 검사가
+실제 빈 클러스터의 설치 성공을 증명하는 것은 아니다.
+
+근거: [Argo hook 처리](https://argo-cd.readthedocs.io/en/stable/user-guide/helm/#helm-hooks),
+[단계·순서·hook 정리](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/).
+
+### 렌더와 검사
+
 설치된 Helm, Python/PyYAML, promtool, amtool을 사용한다. 스크립트는 도구를 설치하지 않는다.
 고정 chart를 사용하여 다음 두 조합 모두 렌더한다. `--include-crds --kube-version 1.36.0`
 옵션을 포함하고 Kubernetes API에는 제출하지 않는다.
@@ -149,6 +214,8 @@ NetworkPolicy로 실제 수집하는 검증·자원/방화벽·관리자 Secret�
 ```bash
 kubectl kustomize gitops/observability > /tmp/render-resources.yaml
 kubectl kustomize gitops/argocd/observability > /tmp/render-argocd.yaml
+kubectl kustomize gitops/argocd/observability-slack > /tmp/render-argocd-slack.yaml
+python3 gitops/observability/tests/test_install_order.py /tmp/render-base.yaml /tmp/render-resources.yaml /tmp/render-argocd.yaml /tmp/render-argocd-slack.yaml
 python3 gitops/observability/tests/check_render.py /tmp/render-base.yaml --resources /tmp/render-resources.yaml
 python3 gitops/observability/tests/check_render.py /tmp/render-slack.yaml --resources /tmp/render-resources.yaml --slack
 python3 gitops/observability/tests/test_rules.py /path/to/promtool
@@ -194,6 +261,44 @@ amtool로 opt-in 설정·한국어 템플릿을 검증할 때는 임시 가짜 �
 8. 서비스/배치의 비밀 없는 sentinel을 Loki·Grafana에서 조회한다. Alloy 재시작 gap/중복,
    Loki 재시작 전후 로그/PVC 보존, 실제 유입량·drop/WAL 오류 지표를 검증한다.
    72h 보관 만료/삭제는 해당 시간이 지난 실제 증거가 있어야 완료로 표시한다.
+
+### Slack 발송을 선택적으로 활성화
+
+기본 `gitops/argocd/observability`는 발송하지 않는다. Slack Secret의 `url` 키가
+준비되고 실제 발송을 승인받았으면 아래 형제 overlay를 렌더·검토한 뒤 적용한다.
+기본 Application을 복사하지 않고 `slack-values.yaml` 참조만 추가한다.
+
+```bash
+kubectl kustomize gitops/argocd/observability-slack
+# 운영 적용 승인 후에만 실행
+kubectl --context=pawbridge-vbox-k136 apply -k gitops/argocd/observability-slack
+```
+
+Application 변경 후 승인된 Git revision으로 전체 수동 동기화한다. 자동 동기화와 prune는
+계속 꺼 둔다. Secret 마운트 추가로 Alertmanager 파드는 교체될 수 있으며 잠깐 알림 공백이
+생길 수 있다. 기존 서비스·DB·Vault 파드는 재시작하지 않는다.
+활성화하면 현재 발생 중인 `PawBridge.*` 경보도 전송 대상이다. 테스트만 전송한다고 가정하지 않는다.
+의도적인 서비스 장애 대신 식별 가능한 테스트 경보를 사용하고 한국어 발생·복구 수신을 확인한다.
+Slack API 요청 성공과 사용자가 채널에서 실제 확인한 결과를 구분해 기록한다.
+
+발송 롤백은 기본 `gitops/argocd/observability`를 다시 적용한 후 전체 수동 동기화한다.
+이 작업은 발송 설정만 되돌리며 Secret, PVC, 과거 지표·로그를 삭제하지 않는다.
+
+### Grafana 비공개 접속
+
+Kubernetes에 접근할 수 있는 터미널에서 아래 명령은 **해당 컴퓨터의** localhost만 연다.
+VM에서 실행하면 Windows localhost가 되는 것이 아니므로 Windows에서 접속할 때는
+별도의 localhost 전용 SSH 전달을 사용한다. `--address 0.0.0.0` 또는 공개 터널로 바꾸지 않는다.
+
+```bash
+kubectl --context=pawbridge-vbox-k136 -n monitoring port-forward --address 127.0.0.1 service/pawbridge-observability-grafana 3000:80
+```
+
+브라우저 주소는 `http://127.0.0.1:3000`이다. 초기 관리자 이름은 `pawbridge-admin`이며
+비밀번호는 운영자가 Vault의 `secret/pawbridge/dev/observability/grafana`에서 확인한다.
+비밀번호를 채팅이나 명령줄에 붙이지 않는다. 이미 변경한 Grafana 암호는 Vault 초기값과
+다를 수 있다. 비로그인 차단·한국어 대시보드·Prometheus 지표·Loki 로그 조회를 확인하고,
+접속이 끝나면 port-forward 또는 SSH 전달 프로세스만 종료한다.
 
 ## 롤백 경계
 

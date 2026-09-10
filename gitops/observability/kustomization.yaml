@@ -23,3 +23,5 @@ configMapGenerator:
       disableNameSuffixHash: true
     files:
       - pawbridge-overview.json=dashboards/pawbridge-overview.json
+      - pawbridge-service.json=dashboards/pawbridge-service.json
+      - pawbridge-pods.json=dashboards/pawbridge-pods.json

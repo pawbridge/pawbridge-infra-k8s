@@ -70,10 +70,15 @@ def validate_grafana(objects):
     dashboards = next(o for o in objects if o['kind'] == 'ConfigMap'
                       and o['metadata']['name'] == 'pawbridge-observability-dashboards')
     assert dashboards['metadata']['namespace'] == 'monitoring'
-    dashboard = json.loads(dashboards['data']['pawbridge-overview.json'])
-    assert dashboard == json.loads((ROOT / 'dashboards/pawbridge-overview.json').read_text())
-    assert dashboard['timezone'] == 'Asia/Seoul' and len(dashboard['panels']) == 6
-    assert all(panel['datasource']['uid'] == 'pawbridge-prometheus' for panel in dashboard['panels'])
+    expected = {'pawbridge-overview.json', 'pawbridge-service.json', 'pawbridge-pods.json'}
+    assert set(dashboards['data']) == expected
+    for name in expected:
+        dashboard = json.loads(dashboards['data'][name])
+        assert dashboard == json.loads((ROOT / 'dashboards' / name).read_text())
+        assert dashboard['timezone'] == 'Asia/Seoul'
+        assert dashboard['templating']['list'], 'Dashboard filters must be provisioned'
+        assert all(panel['datasource']['uid'] == 'pawbridge-prometheus'
+                   for panel in dashboard['panels'] if panel.get('targets'))
 
 
 def validate(objects, slack):

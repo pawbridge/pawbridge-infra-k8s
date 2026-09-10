@@ -260,6 +260,12 @@ prometheusOperator:
   admissionWebhooks:
     failurePolicy: Fail
     patch:
+      # PreSync creates the certificate; Sync wave 0 starts the Operator.
+      # Patch trust before PrometheusRule (wave 2), not in Helm PostSync.
+      annotations:
+        argocd.argoproj.io/hook: Sync
+        argocd.argoproj.io/sync-wave: "1"
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
       nodeSelector: *collectorNode
       tolerations: *controlPlaneToleration
       resources:
@@ -293,7 +299,8 @@ kube-state-metrics:
     requests: {cpu: 10m, memory: 32Mi}
     limits: {cpu: 200m, memory: 64Mi}
   collectors: [nodes, pods, deployments, statefulsets, daemonsets, persistentvolumeclaims]
-  metricLabelsAllowlist: []
+  # Only the existing application name; never collect arbitrary pod labels.
+  metricLabelsAllowlist: ['pods=[app]']
   metricAnnotationsAllowList: []
 
 prometheus-node-exporter:

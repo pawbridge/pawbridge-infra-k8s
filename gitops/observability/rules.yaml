@@ -3,6 +3,8 @@ kind: PrometheusRule
 metadata:
   name: pawbridge-baseline
   namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
   labels:
     pawbridge-monitoring: baseline
 spec:
