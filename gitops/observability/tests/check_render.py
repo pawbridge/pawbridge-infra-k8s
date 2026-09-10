@@ -22,6 +22,31 @@ ChartLoader.add_constructor('tag:yaml.org,2002:value', ChartLoader.construct_sca
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
+def validate_grafana_access(objects):
+    services = [o for o in objects if o['kind'] == 'Service']
+    grafana = [o for o in services if o['metadata']['name'] == 'pawbridge-observability-grafana']
+    assert len(grafana) == 1
+    service = grafana[0]['spec']
+    assert service['type'] == 'NodePort'
+    assert service['externalTrafficPolicy'] == 'Local', 'Preserve client IP for /32 ingress'
+    assert service['ports'] == [{'name': 'http-web', 'port': 80, 'protocol': 'TCP',
+                                 'targetPort': 'grafana', 'nodePort': 30300}]
+    for obj in services:
+        assert not obj['spec'].get('externalIPs')
+        if obj is not grafana[0]:
+            assert obj['spec'].get('type', 'ClusterIP') == 'ClusterIP'
+    policies = [o for o in objects if o['kind'] == 'NetworkPolicy'
+                and o['metadata']['name'] == 'grafana-windows-access']
+    assert len(policies) == 1 and policies[0]['metadata']['namespace'] == 'monitoring'
+    assert policies[0]['spec'] == {
+        'podSelector': {'matchLabels': {'app.kubernetes.io/name': 'grafana',
+                                       'app.kubernetes.io/instance': 'pawbridge-observability'}},
+        'policyTypes': ['Ingress'],
+        'ingress': [{'from': [{'ipBlock': {'cidr': '192.168.57.1/32'}}],
+                     'ports': [{'protocol': 'TCP', 'port': 3000}]}],
+    }
+
+
 def validate_grafana(objects):
     matches = [o for o in objects if o['kind'] == 'Deployment'
                and o['metadata'].get('labels', {}).get('app.kubernetes.io/name') == 'grafana']
@@ -83,6 +108,7 @@ def validate_grafana(objects):
 
 def validate(objects, slack):
     validate_grafana(objects)
+    validate_grafana_access(objects)
     def one(kind):
         found = [o for o in objects if o['kind'] == kind]
         assert len(found) == 1, (kind, len(found))
@@ -101,9 +127,6 @@ def validate(objects, slack):
         assert {'group': group, 'kind': obj['kind']} in whitelist, (group, obj['kind'])
         if namespace:
             assert namespace in allowed_ns
-        if obj['kind'] == 'Service':
-            assert obj['spec'].get('type', 'ClusterIP') == 'ClusterIP'
-            assert not obj['spec'].get('externalIPs')
         assert obj['kind'] not in ['Ingress', 'HTTPRoute']
     for kind in ['Prometheus', 'Alertmanager']:
         spec = one(kind)['spec']
@@ -119,7 +142,7 @@ def validate(objects, slack):
     assert rules['metadata']['namespace'] == 'monitoring'
     assert one('Namespace')['metadata']['name'] == 'monitoring'
     policies = [o for o in objects if o['kind'] == 'NetworkPolicy']
-    assert len(policies) == 2 and all(o['spec']['policyTypes'] == ['Ingress'] for o in policies)
+    assert len(policies) == 3 and all(o['spec']['policyTypes'] == ['Ingress'] for o in policies)
     for rule in rules['spec']['groups'][0]['rules']:
         assert rule['alert'].startswith('PawBridge') and rule['for']
         assert rule['labels']['severity'] in ['warning', 'critical']

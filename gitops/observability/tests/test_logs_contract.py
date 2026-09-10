@@ -67,7 +67,8 @@ def validate(objects):
     logs = one('NetworkPolicy', 'observability-logs')['spec']
     assert logs['ingress'][0]['from'] == [{'podSelector': {'matchExpressions': [
         {'key': 'app.kubernetes.io/name', 'operator': 'In', 'values': ['pawbridge-alloy', 'grafana', 'prometheus']} ]}}]
-    assert len(policies) == 2
+    assert {p['metadata']['name'] for p in policies} == {
+        'observability-internal', 'observability-logs', 'grafana-windows-access'}
 
 
 def main():

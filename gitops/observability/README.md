@@ -100,8 +100,8 @@ Grafana는 2Gi PVC로 사용자·설정 DB를 보존하며 local-path 특성상 
 
 ## Grafana 화면·인증과 로그 단계
 
-- Grafana는 ClusterIP/비공개 접근만 사용한다. 익명 접근·공개 회원가입·자동 플러그인
-  설치를 구성하지 않는다. 승인된 port-forward로 접속하고 공개 도메인은 추가하지 않는다.
+- Grafana는 VM host-only 네트워크의 NodePort로 접근한다. PC IP 한 개를 추가 허용하며
+  익명 접근·공개 회원가입·자동 플러그인 설치·공개 도메인은 구성하지 않는다.
 - 초기 관리자 자격 증명은 미리 준비할 `monitoring/monitoring-grafana-admin` Secret의
   `admin-user`/`admin-password` 키를 참조한다. 등록·Vault/VSO 연결 소스와 승인 후 실행 순서는
   [관측성 비밀값 실행 계약](../../infra/vault/observability-runtime.md)을 따른다. 운영 적용은 아직 하지 않았다.
@@ -161,7 +161,7 @@ NetworkPolicy로 실제 수집하는 검증·자원/방화벽·관리자 Secret�
    수집 실패를 고친다. `insecureSkipVerify: true`로 우회하지 않는다.
 2. Prometheus/Alertmanager 서비스는 ClusterIP만 사용한다. 공개 도메인·NodePort를 만들지 않는다.
    내부 HTTP 지표와 관리 UI는 NetworkPolicy로 제한한다. 클러스터 내부 전체 mTLS를
-   구현했다고 주장하지 않는다. UI 점검은 승인된 port-forward로만 한다.
+   구현했다고 주장하지 않는다. 이 두 서비스의 UI 점검은 승인된 port-forward로만 한다.
 3. node-exporter는 호스트 네트워크 통계를 위해 hostNetwork와 읽기 전용 호스트 mount를
    사용한다. hostPID는 끈다. 일반 Pod NetworkPolicy만으로 9100 포트를 보호할 수 없으므로
    VM NIC·Windows/VM 방화벽에서 외부 접근이 차단되는지 설치 전에 확인한다.
@@ -286,19 +286,28 @@ Slack API 요청 성공과 사용자가 채널에서 실제 확인한 결과를 
 
 ### Grafana 비공개 접속
 
-Kubernetes에 접근할 수 있는 터미널에서 아래 명령은 **해당 컴퓨터의** localhost만 연다.
-VM에서 실행하면 Windows localhost가 되는 것이 아니므로 Windows에서 접속할 때는
-별도의 localhost 전용 SSH 전달을 사용한다. `--address 0.0.0.0` 또는 공개 터널로 바꾸지 않는다.
+Windows에서 `http://192.168.57.11:30300`에 접속한다. 별도 터미널이나 Windows 예약 작업은
+필요 없다. VM과 Grafana가 실행 중이어야 하며 호스트 절전 중에는 접속할 수 없다.
 
-```bash
-kubectl --context=pawbridge-vbox-k136 -n monitoring port-forward --address 127.0.0.1 service/pawbridge-observability-grafana 3000:80
-```
+Grafana Service만 NodePort 30300을 사용한다. `externalTrafficPolicy: Local`은 외부 요청의
+원래 IP를 보존한다. Grafana가 cp1에 고정되어 있으므로 워커 주소로는 접속하지 않는다.
+`grafana-windows-access`는 PC의 host-only IP `192.168.57.1/32`에서 Grafana의 TCP3000으로
+오는 트래픽을 허용한다. 기존 monitoring 내부 통신 허용은 유지한다.
 
-브라우저 주소는 `http://127.0.0.1:3000`이다. 초기 관리자 이름은 `pawbridge-admin`이며
+이 정책은 노드 자체 트래픽까지 격리하는 방화벽이 아니다. NodePort의 노드 인터페이스
+설정을 전역 변경하지 않으며, NAT와 host-only 구성을 유지한다. 브리지 NIC나 공유기 포트
+전달을 추가하지 않는다. HTTP는 암호화되지 않으므로 외부 네트워크로 확장할 때는 TLS를
+먼저 설계한다. PC IP나 Grafana 배치 노드가 바뀌면 접근 정책과 주소를 함께 검토한다.
+
+초기 관리자 이름은 `pawbridge-admin`이며
 비밀번호는 운영자가 Vault의 `secret/pawbridge/dev/observability/grafana`에서 확인한다.
 비밀번호를 채팅이나 명령줄에 붙이지 않는다. 이미 변경한 Grafana 암호는 Vault 초기값과
-다를 수 있다. 비로그인 차단·한국어 대시보드·Prometheus 지표·Loki 로그 조회를 확인하고,
-접속이 끝나면 port-forward 또는 SSH 전달 프로세스만 종료한다.
+다를 수 있다. 비로그인 차단·한국어 대시보드·Prometheus 지표·Loki 로그 조회를 확인한다.
+
+반영 시 PC의 로그인 화면 및 health 성공, 허용하지 않은 출발지의 접속 실패를 모두 확인한다.
+기존 Windows SSH 예약 작업은 이 검증 뒤에만 제거한다. 실패하면 Service를 ClusterIP로
+되돌리고 `nodePort`와 `externalTrafficPolicy`를 제거한다. 새 접근 정책만 삭제하며 기존
+내부 정책과 PVC는 유지한다. Git 원복 시 prune가 꺼져 있으므로 새 정책의 별도 제거도 확인한다.
 
 ## 롤백 경계
 

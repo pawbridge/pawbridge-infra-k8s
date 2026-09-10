@@ -23,7 +23,11 @@ grafana:
     requests: {cpu: 50m, memory: 128Mi}
     limits: {cpu: 300m, memory: 256Mi}
   service:
-    type: ClusterIP
+    type: NodePort
+    nodePort: 30300
+    # Preserve the Windows host source IP for the Grafana-only /32 policy.
+    # Grafana is pinned to cp1; workers have no local endpoint.
+    externalTrafficPolicy: Local
   ingress:
     enabled: false
   persistence:
