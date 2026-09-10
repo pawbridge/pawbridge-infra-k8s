@@ -1,0 +1,421 @@
+{
+  "uid": "pawbridge-service",
+  "title": "PawBridge 서비스 상세",
+  "schemaVersion": 39,
+  "version": 2,
+  "timezone": "Asia/Seoul",
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "editable": false,
+  "tags": [
+    "pawbridge"
+  ],
+  "links": [
+    { "type": "link", "title": "운영 현황", "url": "/d/pawbridge-overview", "includeVars": false, "keepTime": true, "targetBlank": false },
+    { "type": "link", "title": "서비스 상세", "url": "/d/pawbridge-service", "includeVars": false, "keepTime": true, "targetBlank": false },
+    { "type": "link", "title": "VM·파드 상세", "url": "/d/pawbridge-pods", "includeVars": false, "keepTime": true, "targetBlank": false }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "label": "네임스페이스",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+        "query": { "query": "label_values(kube_pod_info, namespace)", "refId": "namespace" },
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "options": [],
+        "current": { "text": "pawbridge", "value": "pawbridge" },
+        "hide": 0
+      },
+      {
+        "name": "service",
+        "label": "마이크로서비스 · app",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+        "query": {
+          "query": "label_values(kube_pod_labels{namespace=\"$namespace\",label_app!=\"\"}, label_app)",
+          "refId": "service"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "options": [],
+        "current": { "text": "animal-service", "value": "animal-service" },
+        "hide": 0
+      },
+      {
+        "name": "pod",
+        "label": "파드 · 각각 별도 표시",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+        "query": {
+          "query": "label_values(kube_pod_labels{namespace=\"$namespace\",label_app=\"$service\"}, pod)",
+          "refId": "pod"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "options": [],
+        "current": { "text": "All", "value": "$__all" },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 7,
+      "type": "text",
+      "title": "보는 방법",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 3 },
+      "options": { "mode": "markdown", "content": "위쪽은 **선택한 서비스의 모든 파드 합계**, 아래쪽은 **파드마다 별도 그래프**입니다. 파드 선택은 아래 상세에만 적용됩니다. CPU 1 = 한 코어, 메모리 = working set, 네트워크 = 내부 통신을 포함한 송수신량입니다. JVM 힙·GC·HTTP 응답시간은 아직 수집하지 않습니다." }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "$service · 전체 메모리",
+      "description": "",
+      "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+      "gridPos": { "x": 0, "y": 3, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "min": 0, "noValue": "수집값 없음" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((sum by(namespace,pod) (container_memory_working_set_bytes{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",container!=\"\",container!=\"POD\"})) and on(namespace,pod) (max by(namespace,pod) (kube_pod_labels{namespace=\"$namespace\",label_app=\"$service\"})))",
+          "legendFormat": "서비스 합계",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "$service · 전체 CPU",
+      "description": "",
+      "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+      "gridPos": { "x": 12, "y": 3, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "cores", "min": 0, "noValue": "수집값 없음" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((sum by(namespace,pod) (rate(container_cpu_usage_seconds_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",container!=\"\",container!=\"POD\"}[$__rate_interval]))) and on(namespace,pod) (max by(namespace,pod) (kube_pod_labels{namespace=\"$namespace\",label_app=\"$service\"})))",
+          "legendFormat": "서비스 합계",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "$service · 네트워크 속도",
+      "description": "",
+      "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+      "gridPos": { "x": 0, "y": 11, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "Bps", "min": 0, "noValue": "수집값 없음" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((sum by(namespace,pod) (rate(container_network_receive_bytes_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",interface!=\"lo\"}[$__rate_interval]))) and on(namespace,pod) (max by(namespace,pod) (kube_pod_labels{namespace=\"$namespace\",label_app=\"$service\"})))",
+          "legendFormat": "수신",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum((sum by(namespace,pod) (rate(container_network_transmit_bytes_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",interface!=\"lo\"}[$__rate_interval]))) and on(namespace,pod) (max by(namespace,pod) (kube_pod_labels{namespace=\"$namespace\",label_app=\"$service\"})))",
+          "legendFormat": "송신",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "$service · 선택 기간 누적 트래픽",
+      "description": "선택한 시간 범위의 증가량 추정치입니다. 내부 통신을 포함하며 과금용 계량이 아닙니다. 수집 공백은 복원하지 못합니다.",
+      "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+      "gridPos": { "x": 12, "y": 11, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "min": 0, "noValue": "수집값 없음" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((sum by(namespace,pod) (increase(container_network_receive_bytes_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",interface!=\"lo\"}[$__range]))) and on(namespace,pod) (max by(namespace,pod) (max_over_time(kube_pod_labels{namespace=\"$namespace\",label_app=\"$service\"}[$__range]))))",
+          "legendFormat": "수신",
+          "instant": true,
+          "range": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum((sum by(namespace,pod) (increase(container_network_transmit_bytes_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",interface!=\"lo\"}[$__range]))) and on(namespace,pod) (max by(namespace,pod) (max_over_time(kube_pod_labels{namespace=\"$namespace\",label_app=\"$service\"}[$__range]))))",
+          "legendFormat": "송신",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": "row",
+      "title": "파드별 상세 · $pod",
+      "gridPos": { "x": 0, "y": 19, "w": 24, "h": 1 },
+      "collapsed": false,
+      "repeat": "pod",
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "$pod · 메모리",
+      "description": "일반 컨테이너의 합계입니다. 요청은 예약 기준이지 실제 사용량이 아닙니다. 제한 미설정 컨테이너는 제한 합계에 포함되지 않으므로 전체 파드의 강제 상한으로 해석하지 마세요. Pod-level resources와 init container는 이 비교선에 포함하지 않습니다.",
+      "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "min": 0, "noValue": "수집값 없음" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(namespace,pod) (container_memory_working_set_bytes{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",pod=~\"$pod\",container!=\"\",container!=\"POD\"})",
+          "legendFormat": "실사용",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum by(namespace,pod)(kube_pod_container_resource_requests{namespace=\"$namespace\",pod=~\"$pod\",resource=\"memory\"})",
+          "legendFormat": "컨테이너 요청 합계",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "C",
+          "expr": "sum by(namespace,pod)(kube_pod_container_resource_limits{namespace=\"$namespace\",pod=~\"$pod\",resource=\"memory\"})",
+          "legendFormat": "컨테이너 제한 합계",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "$pod · CPU",
+      "description": "일반 컨테이너의 합계입니다. 요청은 예약 기준이지 실제 사용량이 아닙니다. 제한 미설정 컨테이너는 제한 합계에 포함되지 않으므로 전체 파드의 강제 상한으로 해석하지 마세요. Pod-level resources와 init container는 이 비교선에 포함하지 않습니다.",
+      "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "cores", "min": 0, "noValue": "수집값 없음" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(namespace,pod) (rate(container_cpu_usage_seconds_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",pod=~\"$pod\",container!=\"\",container!=\"POD\"}[$__rate_interval]))",
+          "legendFormat": "실사용",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum by(namespace,pod)(kube_pod_container_resource_requests{namespace=\"$namespace\",pod=~\"$pod\",resource=\"cpu\"})",
+          "legendFormat": "컨테이너 요청 합계",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "C",
+          "expr": "sum by(namespace,pod)(kube_pod_container_resource_limits{namespace=\"$namespace\",pod=~\"$pod\",resource=\"cpu\"})",
+          "legendFormat": "컨테이너 제한 합계",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "$pod · 네트워크 속도",
+      "description": "",
+      "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "Bps", "min": 0, "noValue": "수집값 없음" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(namespace,pod) (rate(container_network_receive_bytes_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",pod=~\"$pod\",interface!=\"lo\"}[$__rate_interval]))",
+          "legendFormat": "수신",
+          "instant": false,
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum by(namespace,pod) (rate(container_network_transmit_bytes_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",pod=~\"$pod\",interface!=\"lo\"}[$__rate_interval]))",
+          "legendFormat": "송신",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "$pod · 재시작 횟수 (선택 기간)",
+      "description": "선택 기간의 카운터 증가 추정값입니다. 파드 교체 횟수가 아닙니다.",
+      "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+      "gridPos": { "x": 12, "y": 28, "w": 6, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "noValue": "수집값 없음" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(namespace,pod)(increase(kube_pod_container_status_restarts_total{namespace=\"$namespace\",pod=~\"$pod\"}[$__range]))",
+          "legendFormat": "재시작",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "$pod · 현재 배치 VM / Ready",
+      "description": "1은 Ready, 0은 Not Ready입니다. 수집값이 없으면 상태를 판단할 수 없습니다.",
+      "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
+      "gridPos": { "x": 18, "y": 28, "w": 6, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "noValue": "수집값 없음" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(namespace,pod,node)(kube_pod_info{namespace=\"$namespace\",pod=~\"$pod\"}) * on(namespace,pod) group_left() max by(namespace,pod)(kube_pod_status_ready{namespace=\"$namespace\",pod=~\"$pod\",condition=\"true\"})",
+          "legendFormat": "{{node}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      }
+    }
+  ]
+}

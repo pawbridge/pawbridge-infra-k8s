@@ -72,13 +72,13 @@ for name,text in d['files'].items():
  p=pathlib.Path('/config')/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text);p.chmod(0o644)
 for name in ['/loki','/grafana']: os.chmod(name,0o777)
 p=pathlib.Path('/grafana/dashboards/pawbridge');p.mkdir(parents=True)
-(p/'pawbridge-overview.json').write_text(d['dashboard'])
+for name, content in d['dashboards'].items(): (p/name).write_text(content)
 '''
         docker('run', '--rm', '-i', '--pull=never', '--network=none', '--cap-drop=ALL',
                '--security-opt=no-new-privileges', '--memory=96m', '--cpus=1',
                '-v', volumes[0] + ':/config', '-v', volumes[1] + ':/loki', '-v', volumes[2] + ':/grafana',
                PYTHON, 'python', '-c', setup, data=json.dumps({'files': files,
-                   'dashboard': (ROOT / 'dashboards/pawbridge-overview.json').read_text()}))
+                   'dashboards': {p.name: p.read_text() for p in (ROOT / 'dashboards').glob('*.json')}}))
         common = ['--pull=never', '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges',
                   '--cpus=1', '--tmpfs', '/tmp:rw,nosuid,nodev,size=64m,mode=1777',
                   '-v', volumes[0] + ':/etc/validation:ro']
@@ -173,7 +173,8 @@ d=json.load(sys.stdin); auth='Basic '+base64.b64encode(('local-fixture-admin:'+d
 def get(path):
  with urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:3000'+path,headers={'Authorization':auth}),timeout=10) as r: return json.load(r)
 assert get('/api/datasources/uid/pawbridge-loki')['type']=='loki'
-assert len(get('/api/dashboards/uid/pawbridge-overview')['dashboard']['panels'])==6
+for uid in ['pawbridge-overview','pawbridge-service','pawbridge-pods']:
+ assert get('/api/dashboards/uid/'+uid)['dashboard']['templating']['list']
 result=get('/api/datasources/proxy/uid/pawbridge-loki/loki/api/v1/query_range?'+urllib.parse.urlencode({'query':'{app="animal-service"}','limit':1000}))['data']['result']
 assert any(v[1]==d['sentinel'] for s in result for v in s['values'])
 print('Grafana: authenticated dashboard and Loki datasource proxy query passed')
