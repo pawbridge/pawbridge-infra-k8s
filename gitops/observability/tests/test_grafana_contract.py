@@ -5,7 +5,7 @@ import sys
 
 import yaml
 
-from check_render import ChartLoader, validate_grafana
+from check_render import ChartLoader, validate_grafana, validate_grafana_access
 
 
 def main():
@@ -37,6 +37,33 @@ def main():
         else:
             raise AssertionError('Unsafe render accepted: ' + name)
     print('Grafana offline positive and 5 negative checks passed')
+    validate_grafana_access(objects)
+    def service(items, name='pawbridge-observability-grafana'):
+        return next(o['spec'] for o in items if o['kind'] == 'Service' and o['metadata']['name'] == name)
+    def policy(items):
+        return next(o['spec'] for o in items if o['kind'] == 'NetworkPolicy'
+                    and o['metadata']['name'] == 'grafana-windows-access')
+    access_mutations = {
+        'source IP masquerade': lambda items: service(items).update(externalTrafficPolicy='Cluster'),
+        'unexpected NodePort': lambda items: service(items)['ports'][0].update(nodePort=30301),
+        'external IP exposure': lambda items: service(items).update(externalIPs=['192.0.2.1']),
+        'other UI NodePort': lambda items: service(items, 'pawbridge-observability-prometheus').update(type='NodePort'),
+        'broad allowed CIDR': lambda items: policy(items)['ingress'][0]['from'][0]['ipBlock'].update(cidr='0.0.0.0/0'),
+        'all monitoring pods': lambda items: policy(items).update(podSelector={}),
+        'all Grafana ports': lambda items: policy(items)['ingress'][0].pop('ports'),
+        'missing access policy': lambda items: items.remove(next(o for o in items if o['kind'] == 'NetworkPolicy'
+            and o['metadata']['name'] == 'grafana-windows-access')),
+    }
+    for name, mutate in access_mutations.items():
+        altered = copy.deepcopy(objects)
+        mutate(altered)
+        try:
+            validate_grafana_access(altered)
+        except AssertionError:
+            print('Rejected:', name)
+        else:
+            raise AssertionError('Unsafe access render accepted: ' + name)
+    print('Grafana access positive and 8 negative checks passed')
 
 
 if __name__ == '__main__':

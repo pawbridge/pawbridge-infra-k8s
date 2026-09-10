@@ -18,3 +18,22 @@ spec:
     - ports:
         - protocol: TCP
           port: 10250
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: grafana-windows-access
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+      app.kubernetes.io/instance: pawbridge-observability
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 192.168.57.1/32
+      ports:
+        - protocol: TCP
+          port: 3000
