@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vault-private-access
+  namespace: vault
+  annotations:
+    # Install the access boundary before exposing the NodePort service.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+      app.kubernetes.io/instance: vault
+      component: server
+  policyTypes: [Ingress]
+  ingress:
+    # Preserve the controller's API access for every existing VaultStaticSecret.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vault-secrets-operator-system
+      ports:
+        - protocol: TCP
+          port: 8200
+    # Keep same-namespace Vault API and Raft communication available.
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8200
+        - protocol: TCP
+          port: 8201
+    # VirtualBox host-only Windows adapter. No LAN or Internet CIDR is allowed.
+    - from:
+        - ipBlock:
+            cidr: 192.168.57.1/32
+      ports:
+        - protocol: TCP
+          port: 8200

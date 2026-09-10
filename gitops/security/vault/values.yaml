@@ -107,9 +107,16 @@ server:
         }
 
 ui:
-  # The built-in UI is enabled in the Vault server configuration above.
-  # Keep the chart's extra UI service disabled and access the ClusterIP service locally.
-  enabled: false
+  # Separate UI/API entry point; the internal 8200/8201 services stay unchanged.
+  enabled: true
+  serviceType: NodePort
+  serviceNodePort: 30820
+  externalPort: 8200
+  targetPort: 8200
+  externalTrafficPolicy: Local
+  # A sealed single-node Vault must remain reachable for manual unseal.
+  publishNotReadyAddresses: true
+  activeVaultPodOnly: false
 
 csi:
   enabled: false
