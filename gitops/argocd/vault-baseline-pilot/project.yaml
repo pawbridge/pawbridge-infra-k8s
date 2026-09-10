@@ -17,6 +17,8 @@ spec:
     - group: rbac.authorization.k8s.io
       kind: ClusterRoleBinding
   namespaceResourceWhitelist:
+    - group: networking.k8s.io
+      kind: NetworkPolicy
     - group: ""
       kind: ConfigMap
     - group: ""
