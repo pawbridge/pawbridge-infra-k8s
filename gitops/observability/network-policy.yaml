@@ -1,0 +1,20 @@
+# hostNetwork node-exporter is outside this policy: verify VM NIC/firewall.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: observability-internal
+  namespace: monitoring
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: NotIn
+        values: [pawbridge-loki, pawbridge-alloy]
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+    # API-server admission traffic: operator TLS webhook port only.
+    - ports:
+        - protocol: TCP
+          port: 10250

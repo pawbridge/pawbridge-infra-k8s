@@ -1,0 +1,212 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pawbridge-alloy
+  namespace: monitoring
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pawbridge-observability-pod-logs
+  namespace: pawbridge
+rules:
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list, watch]
+  - apiGroups: ['']
+    resources: [pods/log]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pawbridge-observability-pod-logs
+  namespace: pawbridge
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pawbridge-observability-pod-logs
+subjects:
+  - kind: ServiceAccount
+    name: pawbridge-alloy
+    namespace: monitoring
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pawbridge-loki-data
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  storageClassName: local-path
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pawbridge-loki
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: pawbridge-loki}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: pawbridge-loki}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 90
+      # Capacity gate: cp1 RAM must be approved before this manual-sync pilot.
+      nodeSelector:
+        kubernetes.io/hostname: pawbridge-k136-cp1
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: loki
+          image: grafana/loki:3.6.16@sha256:79f3fbf2a3eca97dd735e2aa0871a2fc15365a81c68dea67f639b092c301f454
+          args: [-config.file=/etc/loki/loki.yaml, -target=all]
+          env:
+            - {name: GOMEMLIMIT, value: 640MiB}
+          resources:
+            requests: {cpu: 50m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 768Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          ports:
+            - {name: http, containerPort: 3100}
+          startupProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+          volumeMounts:
+            - {name: config, mountPath: /etc/loki, readOnly: true}
+            - {name: data, mountPath: /var/lib/loki}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: config
+          configMap: {name: pawbridge-loki-config}
+        - name: data
+          persistentVolumeClaim: {claimName: pawbridge-loki-data}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pawbridge-alloy
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: pawbridge-alloy}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: pawbridge-alloy}
+    spec:
+      serviceAccountName: pawbridge-alloy
+      automountServiceAccountToken: true
+      terminationGracePeriodSeconds: 60
+      nodeSelector:
+        kubernetes.io/hostname: pawbridge-k136-cp1
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 473
+        runAsGroup: 473
+        fsGroup: 473
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.18.1@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33
+          args:
+            - run
+            - --stability.level=generally-available
+            - --disable-reporting
+            - --server.http.listen-addr=0.0.0.0:12345
+            - --storage.path=/var/lib/alloy
+            - /etc/alloy/config.alloy
+          env:
+            - {name: GOMEMLIMIT, value: 200MiB}
+          resources:
+            requests: {cpu: 25m, memory: 96Mi}
+            limits: {cpu: 250m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          ports:
+            - {name: http, containerPort: 12345}
+          startupProbe:
+            httpGet: {path: /-/ready, port: http}
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: {path: /-/ready, port: http}
+          volumeMounts:
+            - {name: config, mountPath: /etc/alloy, readOnly: true}
+            - {name: data, mountPath: /var/lib/alloy}
+      volumes:
+        - name: config
+          configMap: {name: pawbridge-alloy-config}
+        - name: data
+          emptyDir: {sizeLimit: 64Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pawbridge-loki
+  namespace: monitoring
+  labels: {pawbridge-log-metrics: 'true'}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: pawbridge-loki}
+  ports:
+    - {name: http, port: 3100, targetPort: http}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pawbridge-alloy
+  namespace: monitoring
+  labels: {pawbridge-log-metrics: 'true'}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: pawbridge-alloy}
+  ports:
+    - {name: http, port: 12345, targetPort: http}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pawbridge-logs
+  namespace: monitoring
+  labels: {release: pawbridge-observability}
+spec:
+  selector:
+    matchLabels: {pawbridge-log-metrics: 'true'}
+  endpoints:
+    - port: http
+      interval: 30s
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: 'loki_write_(dropped_entries|batch_retries|sent_entries)_total|loki_process_dropped_lines_total|loki_discarded_samples_total|loki_ingester_wal_(disk_full_failures_total|disk_usage_percent|corruptions_total)|process_resident_memory_bytes'
+          action: keep

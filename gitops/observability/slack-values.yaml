@@ -1,0 +1,29 @@
+# Opt-in ONLY: private Secret monitoring/monitoring-slack-webhook, key url.
+# Never put the real webhook in this file or a PR body.
+alertmanager:
+  alertmanagerSpec:
+    secrets: [monitoring-slack-webhook]
+  config:
+    route:
+      receiver: disabled
+      routes:
+        - receiver: slack-ko
+          matchers:
+            - 'alertname=~"PawBridge.*"'
+    receivers:
+      - name: disabled
+      - name: slack-ko
+        slack_configs:
+          - api_url_file: /etc/alertmanager/secrets/monitoring-slack-webhook/url
+            send_resolved: true
+            title: '{{ if eq .Status "firing" }}🚨 포우브릿지 장애 알림{{ else }}✅ 포우브릿지 복구 알림{{ end }}'
+            title_link: ''
+            text: |-
+              {{ range .Alerts }}
+              *상태:* {{ if eq .Status "firing" }}발생 중{{ else }}복구됨{{ end }}
+              *대상:* {{ if .Labels.node }}{{ .Labels.node }}{{ else if .Labels.pod }}{{ .Labels.namespace }}/{{ .Labels.pod }}{{ else if .Labels.instance }}{{ .Labels.instance }}{{ else }}관측 시스템{{ end }}
+              *내용:* {{ .Annotations.summary }}
+              *확인:* {{ .Annotations.description }}
+              *발생 시각:* {{ .StartsAt | tz "Asia/Seoul" | date "2006-01-02 15:04:05 MST" }}
+              {{ if eq .Status "resolved" }}*복구 시각:* {{ .EndsAt | tz "Asia/Seoul" | date "2006-01-02 15:04:05 MST" }}{{ end }}
+              {{ end }}

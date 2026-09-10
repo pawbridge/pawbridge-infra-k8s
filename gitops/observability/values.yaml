@@ -1,0 +1,308 @@
+# Manual-sync pilot. Limits are proposed ceilings, not live headroom evidence.
+fullnameOverride: pawbridge-observability
+defaultRules:
+  create: false
+grafana:
+  enabled: true
+  # Extended-support 12.4 patch line, not the chart's 13.2 default.
+  image:
+    registry: docker.io
+    repository: grafana/grafana
+    tag: 12.4.10
+    sha: c132a683b2430fff9115a29b2a79c8ab97540cdcc90846e3c81878c778ca3596
+  replicas: 1
+  deploymentStrategy:
+    type: Recreate
+  nodeSelector:
+    kubernetes.io/hostname: pawbridge-k136-cp1
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 300m, memory: 256Mi}
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: local-path
+    accessModes: [ReadWriteOnce]
+    size: 2Gi
+  initChownData:
+    enabled: false
+  admin:
+    existingSecret: monitoring-grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  rbac:
+    create: false
+  automountServiceAccountToken: false
+  serviceAccount:
+    automountServiceAccountToken: false
+  defaultDashboardsEnabled: false
+  sidecar:
+    dashboards:
+      enabled: false
+    datasources:
+      enabled: false
+  testFramework:
+    enabled: false
+  plugins: []
+  grafana.ini:
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+      check_for_plugin_updates: false
+    users:
+      allow_sign_up: false
+    auth.anonymous:
+      enabled: false
+    unified_alerting:
+      enabled: false
+    security:
+      disable_gravatar: true
+    log:
+      mode: console
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: PawBridge Prometheus
+          uid: pawbridge-prometheus
+          type: prometheus
+          access: proxy
+          url: http://pawbridge-observability-prometheus.monitoring.svc.cluster.local:9090
+          isDefault: true
+          editable: false
+        - name: PawBridge Loki
+          uid: pawbridge-loki
+          type: loki
+          access: proxy
+          url: http://pawbridge-loki.monitoring.svc.cluster.local:3100
+          isDefault: false
+          editable: false
+          jsonData:
+            maxLines: 1000
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: pawbridge
+          orgId: 1
+          folder: PawBridge
+          type: file
+          disableDeletion: false
+          allowUiUpdates: false
+          updateIntervalSeconds: 30
+          options:
+            path: /var/lib/grafana/dashboards/pawbridge
+  dashboardsConfigMaps:
+    pawbridge: pawbridge-observability-dashboards
+windowsMonitoring:
+  enabled: false
+kubeApiServer:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+coreDns:
+  enabled: false
+kubeDns:
+  enabled: false
+thanosRuler:
+  enabled: false
+
+prometheus:
+  service:
+    type: ClusterIP
+  prometheusSpec:
+    # LTS security/bugfix patch, not the chart's non-LTS 3.14 default.
+    image:
+      registry: quay.io
+      repository: prometheus/prometheus
+      tag: v3.13.3
+      sha: 6976aa8a60fec930796ce5772b8d12da7a318a5daa8d40d69c5c7819a05eeed7
+    replicas: 1
+    shards: 1
+    nodeSelector: &collectorNode
+      kubernetes.io/hostname: pawbridge-k136-cp1
+    tolerations: &controlPlaneToleration
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+    resources:
+      requests: {cpu: 100m, memory: 384Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+    scrapeInterval: 30s
+    scrapeTimeout: 10s
+    evaluationInterval: 30s
+    enforcedSampleLimit: 15000
+    enforcedTargetLimit: 10
+    enforcedLabelLimit: 40
+    enforcedLabelNameLengthLimit: 200
+    enforcedLabelValueLengthLimit: 200
+    retention: 7d
+    retentionSize: 4GB
+    walCompression: true
+    enableAdminAPI: false
+    enableRemoteWriteReceiver: false
+    externalLabels:
+      cluster: pawbridge-k136
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 6Gi
+    persistentVolumeClaimRetentionPolicy:
+      whenDeleted: Retain
+      whenScaled: Retain
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector:
+      matchLabels:
+        release: pawbridge-observability
+    serviceMonitorNamespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [monitoring, kube-system]
+    podMonitorSelector:
+      matchLabels:
+        pawbridge-monitoring: disabled
+    probeSelector:
+      matchLabels:
+        pawbridge-monitoring: disabled
+    scrapeConfigSelector:
+      matchLabels:
+        pawbridge-monitoring: disabled
+    ruleSelectorNilUsesHelmValues: false
+    ruleSelector:
+      matchLabels:
+        pawbridge-monitoring: baseline
+    ruleNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: monitoring
+
+alertmanager:
+  service:
+    type: ClusterIP
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: disabled
+      group_by: [cluster, alertname, namespace, node, instance]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      routes: []
+    receivers:
+      - name: disabled
+    inhibit_rules: []
+    templates: []
+  alertmanagerSpec:
+    replicas: 1
+    image:
+      registry: quay.io
+      repository: prometheus/alertmanager
+      tag: v0.34.0
+      sha: 690c7b525f4367aa91f73e2f91c632206d32e97c6384bdbf2fb7a861b420340d
+    alertmanagerConfigSelector:
+      matchLabels:
+        pawbridge-monitoring: disabled
+    alertmanagerConfigNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: monitoring
+    nodeSelector: *collectorNode
+    tolerations: *controlPlaneToleration
+    automountServiceAccountToken: false
+    resources:
+      requests: {cpu: 10m, memory: 48Mi}
+      limits: {cpu: 200m, memory: 96Mi}
+    retention: 120h
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi
+
+prometheusOperator:
+  nodeSelector: *collectorNode
+  tolerations: *controlPlaneToleration
+  strategy:
+    type: Recreate
+  resources:
+    requests: {cpu: 10m, memory: 64Mi}
+    limits: {cpu: 300m, memory: 128Mi}
+  namespaces:
+    releaseNamespace: true
+    additional: [kube-system]
+  prometheusInstanceNamespaces: [monitoring]
+  alertmanagerInstanceNamespaces: [monitoring]
+  prometheusConfigReloader:
+    resources:
+      requests: {cpu: 5m, memory: 16Mi}
+      limits: {cpu: 100m, memory: 32Mi}
+  admissionWebhooks:
+    failurePolicy: Fail
+    patch:
+      nodeSelector: *collectorNode
+      tolerations: *controlPlaneToleration
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
+
+kubelet:
+  serviceMonitor:
+    https: true
+    insecureSkipVerify: false
+    interval: 30s
+    cAdvisorInterval: 30s
+    probes: false
+    resource: false
+    metricRelabelings:
+      - sourceLabels: [__name__]
+        action: keep
+        regex: 'kubelet_running_pods|kubelet_running_containers|kubelet_pleg_relist_duration_seconds_.*'
+    cAdvisorMetricRelabelings:
+      - sourceLabels: [__name__]
+        action: keep
+        regex: 'container_cpu_usage_seconds_total|container_cpu_cfs_(periods|throttled_periods|throttled_seconds)_total|container_memory_(working_set_bytes|rss|cache)|container_fs_(reads_bytes|writes_bytes)_total|container_network_(receive|transmit)_bytes_total'
+      - sourceLabels: [pod]
+        action: drop
+        regex: '^$'
+
+kube-state-metrics:
+  nodeSelector: *collectorNode
+  tolerations: *controlPlaneToleration
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {cpu: 200m, memory: 64Mi}
+  collectors: [nodes, pods, deployments, statefulsets, daemonsets, persistentvolumeclaims]
+  metricLabelsAllowlist: []
+  metricAnnotationsAllowList: []
+
+prometheus-node-exporter:
+  resources:
+    requests: {cpu: 10m, memory: 16Mi}
+    limits: {cpu: 200m, memory: 48Mi}
+  hostPID: false
+  # Required for node network counters. No public route is added.
+  hostNetwork: true
+  prometheus:
+    monitor:
+      interval: 30s

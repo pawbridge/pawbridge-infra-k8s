@@ -1,0 +1,102 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pawbridge-baseline
+  namespace: monitoring
+  labels:
+    pawbridge-monitoring: baseline
+spec:
+  groups:
+    - name: pawbridge.baseline
+      rules:
+        - alert: PawBridgeLogPipelineMissing
+          expr: max(absent(up{service="pawbridge-loki"}) or absent(up{service="pawbridge-alloy"}))
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: 로그 저장기 또는 수집기 지표 대상이 누락되었습니다.
+            description: Loki·Alloy 서비스 탐색과 ServiceMonitor를 확인하세요. 설치되지 않은 대상도 감지합니다.
+        - alert: PawBridgeLogDataLoss
+          expr: sum(increase(loki_write_dropped_entries_total[10m])) > 0 or sum(increase(loki_discarded_samples_total[10m])) > 0 or sum(increase(loki_ingester_wal_disk_full_failures_total[10m])) > 0 or sum(increase(loki_ingester_wal_corruptions_total[10m])) > 0
+          for: 1m
+          labels: {severity: critical}
+          annotations:
+            summary: 로그 전송 포기·수신 거절 또는 WAL 저장 오류가 발생했습니다.
+            description: 로그 누락 가능성이 있습니다. 유입 제한·디스크·연결 상태를 확인하세요. 이 경보가 모든 누락을 감지하지는 않습니다.
+        - alert: PawBridgeTargetDown
+          expr: up == 0
+          for: 5m
+          labels: {severity: warning}
+          annotations:
+            summary: 지표 수집 대상이 5분 동안 응답하지 않습니다.
+            description: 대상 연결·인증·TLS와 수집기 상태를 확인하세요. 서비스 전체 장애로 단정하지 않습니다.
+        - alert: PawBridgeMonitoringMissing
+          expr: max(absent(up{job="node-exporter"}) or absent(kube_node_info) or (count(up{job="node-exporter"}) < count(kube_node_info)))
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: 노드 관측 대상 또는 Kubernetes 상태 지표가 누락되었습니다.
+            description: exporter 탐색과 수집 대상 수를 확인하세요. up이 없는 대상은 단순 연결 실패 경보로 감지되지 않습니다.
+        - alert: PawBridgeNodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: 노드가 5분 동안 정상 준비 상태가 아닙니다.
+            description: 노드 상태와 kubelet·VM의 메모리·디스크 기록을 확인하세요.
+        - alert: PawBridgeNodePressure
+          expr: kube_node_status_condition{condition=~"MemoryPressure|DiskPressure|PIDPressure",status="true"} == 1
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: 노드의 자원 압력 상태가 5분 이상 지속됩니다.
+            description: 해당 노드의 메모리·디스크·프로세스 수를 확인하세요. 자동 재시작하지 않습니다.
+        - alert: PawBridgeNodeMemoryLow
+          expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+          for: 10m
+          labels: {severity: warning}
+          annotations:
+            summary: 노드의 가용 메모리가 10분 동안 10% 미만입니다.
+            description: 캐시를 포함한 사용률이 아니라 실제 가용 메모리 기준입니다. 파드별 사용량과 메모리 압력을 함께 확인하세요.
+        - alert: PawBridgeNodeDiskLow
+          expr: node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} < 0.15 and on(instance,device,mountpoint) node_filesystem_readonly{mountpoint="/"} == 0
+          for: 10m
+          labels: {severity: warning}
+          annotations:
+            summary: 노드 루트 디스크의 남은 공간이 10분 동안 15% 미만입니다.
+            description: 이미지·로그·시계열 저장량을 확인하세요. 데이터나 PVC를 임의로 삭제하지 마세요.
+        - alert: PawBridgePodNotReady
+          expr: (kube_pod_status_ready{condition="true"} == 0) and on(namespace,pod,uid) (kube_pod_status_phase{phase=~"Pending|Running|Unknown"} == 1)
+          for: 10m
+          labels: {severity: warning}
+          annotations:
+            summary: 파드가 10분 동안 준비되지 않았습니다.
+            description: 종료된 배치 파드는 제외합니다. 스케줄링 이벤트·readiness·이미지 다운로드 상태를 확인하세요.
+        - alert: PawBridgeContainerRestarting
+          expr: increase(kube_pod_container_status_restarts_total[15m]) >= 3
+          for: 5m
+          labels: {severity: warning}
+          annotations:
+            summary: 컨테이너가 최근 15분 안에 3회 이상 재시작했습니다.
+            description: 직전 종료 이유와 메모리 한도·상태 검사 실패를 확인하세요.
+        - alert: PawBridgeContainerOOM
+          expr: (increase(kube_pod_container_status_restarts_total[10m]) > 0) and on(namespace,pod,container,uid) (kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1)
+          for: 1m
+          labels: {severity: critical}
+          annotations:
+            summary: 최근 재시작한 컨테이너의 마지막 종료 이유가 메모리 초과입니다.
+            description: 파드 메모리 한도와 실제 사용 이력을 확인하세요. 과거 종료 이유만으로 반복 경보하지 않습니다.
+        - alert: PawBridgeRuleEvaluationFailed
+          expr: increase(prometheus_rule_evaluation_failures_total[5m]) > 0
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: 경보 규칙 평가가 실패하고 있습니다.
+            description: Prometheus 규칙 오류를 확인하세요. 일부 장애 알림이 누락될 수 있습니다.
+        - alert: PawBridgeAlertDeliveryFailed
+          expr: increase(alertmanager_notifications_failed_total{integration="slack"}[10m]) > 0
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: Slack 알림 전송이 실패했습니다.
+            description: 웹훅 권한·네트워크·만료 여부를 확인하세요. Slack 자체가 끊기면 이 경보도 Slack으로 도착하지 못할 수 있습니다.
