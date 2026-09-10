@@ -64,7 +64,8 @@ Grafana는 2Gi PVC로 사용자·설정 DB를 보존하며 local-path 특성상 
 - Grafana는 ClusterIP/비공개 접근만 사용한다. 익명 접근·공개 회원가입·자동 플러그인
   설치를 구성하지 않는다. 승인된 port-forward로 접속하고 공개 도메인은 추가하지 않는다.
 - 초기 관리자 자격 증명은 미리 준비할 `monitoring/monitoring-grafana-admin` Secret의
-  `admin-user`/`admin-password` 키를 참조한다. 값 생성·Vault/VSO 연결은 아직 하지 않았다.
+  `admin-user`/`admin-password` 키를 참조한다. 등록·Vault/VSO 연결 소스와 승인 후 실행 순서는
+  [관측성 비밀값 실행 계약](../../infra/vault/observability-runtime.md)을 따른다. 운영 적용은 아직 하지 않았다.
   이 값은 최초 DB 초기화용이다. 기존 Grafana DB의 관리자 암호가 Secret 수정만으로
   자동 변경된다고 가정하지 않으며 이후 계정/암호 변경은 Grafana 지원 절차로 검증한다.
 - Dashboard/Datasource sidecar와 Grafana Kubernetes RBAC를 끄고 토큰을 마운트하지 않는다.
