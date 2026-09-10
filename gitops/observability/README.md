@@ -1,0 +1,217 @@
+# 관측 baseline 실행·검증 계약
+
+이 문서는 같은 경로의 manifest와 `tests/` 실행에만 해당한다. 전체 계획과
+운영 실행 결과의 정본은 Obsidian `Projects/pawbridge/14 관측성 성능과 테스트`다.
+현재 구성은 **수동 동기화 후보**이며 Git 병합만으로 설치하거나 Slack에 전송하지 않는다.
+기존 `infra/install-infra.sh`나 `infra/monitoring/values.yaml`을 실행하지 않는다.
+
+## 고정 입력
+
+- Helm chart: `kube-prometheus-stack 89.2.4`
+- 공식 배포 tgz SHA-256: `f4405216a734b182967ba8cc08169dd68a6e401688bb6885bffe0c07aad02b23`
+  (HTTPS 다운로드와 해시 확인. provenance 서명 검증을 의미하지 않는다.)
+- Prometheus: `v3.13.3` LTS, 지원 종료 2027-07-31. 새 기능 계열 3.14는 선택하지 않는다.
+- Alertmanager: `v0.34.0`. 위 두 이미지의 registry manifest digest는 values에 고정한다.
+- Grafana: `12.4.10`/digest 고정. 12.4 계열은 2027-05-24까지 patch support다.
+  고정 chart의 Grafana 13.2 기본값 대신 지원 중인 이전 major의 마지막 minor를 사용한다.
+  Helm 렌더 검증은 통과했지만 이 조합의 실제 기동·로그인·저장 검증은 설치 게이트로 남는다.
+- Operator `v0.93.1`, KSM `v2.20.0`, node-exporter `v1.12.1-distroless`,
+  인증서 생성 Job `1.8.8`은 고정 chart의 종속 버전이다. 버전 변경 시 재렌더한다.
+- 대상 context: `kubernetes-admin@pawbridge-vbox-k136`, namespace `monitoring`.
+- Argo App: `observability-baseline`. automated sync·prune는 설정하지 않는다.
+
+## 범위와 자원 승인 게이트
+
+Prometheus·Alertmanager·Grafana·Operator·KSM·Loki·Alloy는 cp1 고정, node-exporter만 각 노드에 배치한다.
+워커 장애 직전 기록을 cp1에 보존하지만 cp1 또는 Windows 호스트 전체 중단에는
+수집·알림도 중단된다. 외부 가용성 감시나 프로세스별 CPU/RSS/I/O 이력의 대체가 아니다.
+앱 6개의 기존 ServiceMonitor, APMS 업무 성공, Kafka 이벤트 완료까지 수집한 것으로
+표현하지 않는다. 첫 수집은 노드·컨테이너·Kubernetes 상태·관측기 자체뿐이다.
+
+| cp1의 정상 실행분 | request | limit |
+| --- | ---: | ---: |
+| Prometheus | 384Mi | 512Mi |
+| Alertmanager | 48Mi | 96Mi |
+| Operator | 64Mi | 128Mi |
+| KSM | 32Mi | 64Mi |
+| reloader 2개 | 32Mi | 64Mi |
+| node-exporter 1개 | 16Mi | 48Mi |
+| Grafana | 128Mi | 256Mi |
+| Loki | 256Mi | 768Mi |
+| Alloy | 96Mi | 256Mi |
+| 합계 | 1056Mi | 2192Mi |
+
+각 워커 추가분은 node-exporter request 16Mi / limit 48Mi다. cp1의 인증서 Job은
+request 32Mi / limit 64Mi가 추가되며 KSM rolling 교체도 추가 replica 여유가 필요하다.
+이는 실제 사용량 측정치가 아니다. 기존 requests 합+새 requests가 Allocatable 안에
+들어가는지, 실제 피크에 교체 여유까지 있는지 확인하고 **별도 설치 승인**을 받는다.
+2026-09-10 사용자 승인 후 cp1만4→6GiB로 증설하고 정상 종료·기동했다.
+게스트 총 메모리5921MiB, 가용3978MiB를 확인했다. 워커·데이터 디스크는 변경하지 않았다.
+이는 재기동 직후 측정이며 관측 도구 설치나 운영 피크 검증은 아니다. 설치 직전 다시 측정한다.
+현재 여유가 작으면 설치하지 않고 RAM 증설 또는 수집 예산 조정을 먼저 승인받는다.
+자원 한도를 자동으로 늘리거나 기존 앱을 중단·축소하지 않는다.
+
+Prometheus는 local-path 6Gi PVC, 7일 또는 4GB 중 먼저 도달하는 보관 기준을 사용한다.
+WAL/head chunk는 별도 공간을 쓰므로 7일 보관이 보장되는 것은 아니다. local-path는
+PVC의 표기 용량만큼 하드 쿼터를 보장하지 않는다. cp1 실제 디스크 여유도 확인한다.
+Alertmanager는 1Gi PVC로 silence/알림 중복 억제 상태를 보존한다. Retain은 백업이 아니다.
+Grafana는 2Gi PVC로 사용자·설정 DB를 보존하며 local-path 특성상 실제 디스크 쿼터를
+보장하지 않는다. 단일 PVC를 쓰는 UI이므로 Recreate로 교체하고 잠깐의 화면 중단을
+허용한다. 백엔드 앱의 배포 전략을 바꾸는 것은 아니다.
+
+## Grafana 화면·인증과 로그 단계
+
+- Grafana는 ClusterIP/비공개 접근만 사용한다. 익명 접근·공개 회원가입·자동 플러그인
+  설치를 구성하지 않는다. 승인된 port-forward로 접속하고 공개 도메인은 추가하지 않는다.
+- 초기 관리자 자격 증명은 미리 준비할 `monitoring/monitoring-grafana-admin` Secret의
+  `admin-user`/`admin-password` 키를 참조한다. 값 생성·Vault/VSO 연결은 아직 하지 않았다.
+  이 값은 최초 DB 초기화용이다. 기존 Grafana DB의 관리자 암호가 Secret 수정만으로
+  자동 변경된다고 가정하지 않으며 이후 계정/암호 변경은 Grafana 지원 절차로 검증한다.
+- Dashboard/Datasource sidecar와 Grafana Kubernetes RBAC를 끄고 토큰을 마운트하지 않는다.
+  Git의 ConfigMap/파일 provisioning으로 한국어 패널6개와 Prometheus 연결을 공급한다.
+  기본 대시보드/불필요한 외부 플러그인은 추가하지 않는다. 경보 발송은 Alertmanager가
+  담당하며 Grafana 자체 unified alerting은 꺼서 이중 운영하지 않는다.
+- Loki3.6.16/Alloy1.18.1을 digest로 고정하고 Loki datasource를 추가했다. 새 minor 기능이
+  필요하지 않아 보안 backport가 있는 정식 patch를 사용하며 preview 기능은 켜지 않는다.
+  Loki Helm chart의 gateway/canary/cache 부속 파드를 넣지 않고 두 Deployment만 사용한다.
+- Alloy가 `pawbridge`의 서비스7개와 라벨 없는 `animal-service-batch-*` 배치 로그를 읽는다.
+  별도 네임스페이스의 DB/Vault, cloudflared, Windows/노드 journal은 대상이 아니다.
+  Kubernetes API 방식은 hostPath/root/DaemonSet 없이 동작하지만 kubelet CPU·네트워크 비용이
+  있으며 `pods get/list/watch`, `pods/log get` Role만 부여한다. Secret API 권한은 없다.
+- Loki는 **단일 노드·저용량 filesystem pilot**이다. 공식적으로 filesystem은 production 권장
+  저장소가 아니며 고가용성/노드 디스크 손실 복구를 보장하지 않는다. 별도 비공개 object storage
+  전환은 후속 설계이며 공개 상품 이미지 R2 버킷에 운영 로그를 저장하지 않는다.
+  4Gi local-path PVC에 chunks/index/cache/WAL/compactor를 모두 보존한다. 72h 보관,
+  24h index와 compactor 삭제를 켰지만 삭제 지연2h와 compaction 주기로 즉시 삭제되지는 않는다.
+  local-path의 4Gi는 하드 쿼터가 아니므로 실제 VM 디스크 여유 경보를 함께 사용한다.
+- 평균 수신 상한0.01MiB/s·burst1MiB, 최대500 stream, 로그1줄16KB, 조회1000줄/72h로
+  제한한다. 상한 초과 시 누락될 수 있으며 실제 유입량에 맞는지 설치 후 검증해야 한다.
+  Alloy는 알려진 인증/비밀값 패턴의 줄과 과도하게 긴 줄을 버린다. 임의의 개인정보까지 모두
+  제거하는 기능이 아니며 애플리케이션에서 비밀을 로그에 쓰지 않는 것이 우선이다.
+- index label은 cluster/namespace/app/pod/container와 Loki가 app에서 만드는 service_name이다.
+  pod는 재시작 구분에 필요해 유지하되 72h·500 stream 제한으로 무제한 증가를 막는다.
+  API reader에 필요한 UID는 Loki label로 전송하지 않는다. 조회의 detected_level 같은
+  structured metadata와 실제 index label은 구분해 테스트한다.
+- **무손실/정확히 한 번 수집은 보장하지 않는다.** GA-only 방침으로 Alloy의 실험 WAL/queue
+  옵션은 넣지 않는다. 강제 종료 시 메모리 대기 로그, 재시도 소진·로그 회전 때는 누락될 수 있고
+  재연결/재시작 때 중복도 가능하다. 전송 drop·Loki 수신 거부·WAL 오류 지표와 경보를 수집한다.
+  Loki WAL은 받아들인 로그의 프로세스 재시작 복구용이지 디스크 장애 백업이 아니다.
+- Loki/Alloy ConfigMap은 내용 해시 이름을 사용해 설정 수정 시 Recreate한다. 고정 이름인
+  Grafana dashboard generator만 해시를 끈다. 설정 교체 중 잠깐 수집/조회 중단을 허용한다.
+  자동 prune가 없으므로 이전 해시 ConfigMap은 남을 수 있으며 현재/롤백 참조 확인 후 별도 정리한다.
+- Loki는 자체 사용자 인증이 없어 monitoring 내부 Alloy/Grafana/Prometheus Pod에서만 들어오도록
+  NetworkPolicy를 둔다. **현재 정책은 ingress만 제한하며 egress 격리는 미구현이다.** 운영 설치 전
+  CNI의 실제 정책 집행과 허용/차단 통신을 검증한다. 이를 확인하기 전 공개 노출하지 않는다.
+
+## 보안·연결 게이트
+
+시간 게이트가 먼저다. 절전·재부팅 후 Windows/WSL과 VM UTC를 비교하고 NTP의
+실제 잔여 보정량을 확인한다. 2026-09-10 재개 시 세 VM에서 약 5시간 8분 지연을
+측정했다. Node Ready나 NTP source 선택만으로 시각 정상화를 판정하지 않는다.
+시각 불일치 중 인증서 발급·설치 검증을 진행하지 않으며, 운영 중 강제 시간 변경은
+별도 유지보수 승인 없이 실행하지 않는다.
+
+**TLS 선행 작업 완료:** 별도 승인 후 2026-09-10 중앙/3노드 serverTLSBootstrap과
+노드별 kubelet 1회 재시작, 신원 검증 CSR3개 승인, CA/IP 검증 실제 HTTPS 지표9경로
+HTTP200을 확인했다. 상세 근거와 설정 백업은 Obsidian 최신 기록을 따른다. 인증서 자동
+승인과 기존 Metrics Server의 insecure 옵션 제거는 미실행이다. Prometheus ServiceAccount/
+NetworkPolicy로 실제 수집하는 검증·자원/방화벽·관리자 Secret·영속성 게이트는 여전히 남는다.
+
+1. kubelet 수집은 HTTPS와 CA 검증을 사용한다. 대상 serving 인증서가 일치하지 않으면
+   수집 실패를 고친다. `insecureSkipVerify: true`로 우회하지 않는다.
+2. Prometheus/Alertmanager 서비스는 ClusterIP만 사용한다. 공개 도메인·NodePort를 만들지 않는다.
+   내부 HTTP 지표와 관리 UI는 NetworkPolicy로 제한한다. 클러스터 내부 전체 mTLS를
+   구현했다고 주장하지 않는다. UI 점검은 승인된 port-forward로만 한다.
+3. node-exporter는 호스트 네트워크 통계를 위해 hostNetwork와 읽기 전용 호스트 mount를
+   사용한다. hostPID는 끈다. 일반 Pod NetworkPolicy만으로 9100 포트를 보호할 수 없으므로
+   VM NIC·Windows/VM 방화벽에서 외부 접근이 차단되는지 설치 전에 확인한다.
+4. 고정 upstream Operator의 ClusterRole에는 Secret/ConfigMap/StatefulSet 관리 권한이 있다.
+   `namespaces` watch 제한이 RBAC의 클러스터 권한을 제거하지 않는다. 신규 CRD·webhook·
+   ClusterRole 설치 권한과 영향을 승인할 때 함께 검토한다. 최소 읽기 전용 역할이라고 부르지 않는다.
+5. 기본 receiver는 `disabled`다. 실제 전송 승인 전에는 `slack-values.yaml`을 App에 추가하지 않는다.
+   Slack 활성화 시에도 `PawBridge.*` 경보만 허용하고 다른 경보는 버린다.
+6. 실제 웹훅은 비공개 경로로 `monitoring/monitoring-slack-webhook` Secret의 `url` 키에 공급한다.
+   값은 채팅·values·렌더 출력·Git에 쓰지 않는다. 기존 Vault 관리 흐름으로 연결할 경우
+   전용 read 정책/role과 VSO 동기화는 별도 보안 승인 후 설정하고, 아직 존재한다고 가정하지 않는다.
+   존재 여부와 키 이름만 확인한 뒤 `api_url_file` 경로 마운트를 검증한다.
+   이 저장소에는 runtime Secret 또는 실제 웹훅을 포함한 예제 파일을 만들지 않는다.
+
+## 오프라인 검증
+
+설치된 Helm, Python/PyYAML, promtool, amtool을 사용한다. 스크립트는 도구를 설치하지 않는다.
+고정 chart를 사용하여 다음 두 조합 모두 렌더한다. `--include-crds --kube-version 1.36.0`
+옵션을 포함하고 Kubernetes API에는 제출하지 않는다.
+
+- 기본: `values.yaml`
+- 발송 opt-in: `values.yaml` + `slack-values.yaml` (실제 웹훅 불필요)
+
+```bash
+kubectl kustomize gitops/observability > /tmp/render-resources.yaml
+kubectl kustomize gitops/argocd/observability > /tmp/render-argocd.yaml
+python3 gitops/observability/tests/check_render.py /tmp/render-base.yaml --resources /tmp/render-resources.yaml
+python3 gitops/observability/tests/check_render.py /tmp/render-slack.yaml --resources /tmp/render-resources.yaml --slack
+python3 gitops/observability/tests/test_rules.py /path/to/promtool
+python3 gitops/observability/tests/test_notifications.py /tmp/render-base.yaml /tmp/render-slack.yaml
+python3 gitops/observability/tests/test_grafana_contract.py /tmp/render-base.yaml /tmp/render-resources.yaml
+PYTHONDONTWRITEBYTECODE=1 python3 gitops/observability/tests/test_logs_contract.py /tmp/render-resources.yaml
+PYTHONDONTWRITEBYTECODE=1 python3 gitops/observability/tests/test_logs_runtime.py /tmp/render-base.yaml
+```
+
+`check_render.py`에는 **오프라인 Helm 결과만** 전달한다. live Secret 출력은 금지한다.
+13개 규칙·20시나리오로 발생/정상/복구와 완료 배치·과거 OOM 오탐을 확인한다.
+`test_logs_runtime.py`는 사전 다운로드된 정확한 Loki/Alloy/Grafana 이미지와 기존 Python 이미지를
+사용한다. 호스트 포트/외부 네트워크 없이 가짜 로그만 넣고 필터·Loki WAL 재시작·Grafana 조회를
+검증한다. 생성한 고유 Docker 컨테이너/가짜 데이터 볼륨만 제거한다. 실제 Kubernetes API tail,
+RBAC/NetworkPolicy 집행, 운영 부하, 72h 경과 후 삭제는 별도의 운영 검증으로 남는다.
+이 검사는 upstream CRD의 전체 OpenAPI/CEL 검증이나 실제 지표 수집 검증을 대체하지 않는다.
+promtool 구버전으로 실행한 결과는 사용한 버전을 기록하고 배포 후보 버전 검증과 구분한다.
+amtool로 opt-in 설정·한국어 템플릿을 검증할 때는 임시 가짜 웹훅 파일을 사용하고
+네트워크를 차단한다. 실제 전송 성공이라고 기록하지 않는다.
+`test_notifications.py`는 사전 승인하여 내려받은 고정 Alertmanager 0.34.0 이미지만
+`--pull=never --network=none`으로 실행한다. 기본/opt-in 설정과 발생/복구 메시지의
+한국어·대상·안내·KST 표시를 검증하며 실제 연결 값은 필요하지 않다.
+
+## 승인 후 설치·완료 조건
+
+1. 컨텍스트·기존 소유 리소스 충돌·자원 여유·버전·CRD/RBAC·방화벽을 확인한다.
+2. AppProject/Application을 등록하고 수동 sync한다. CRD는 ServerSideApply로 처리한다.
+   기존 모니터링 release가 있으면 덮어쓰지 않는다. admission TLS를 끄거나 실패를 무시하지 않는다.
+3. Operator/Prometheus/Alertmanager/KSM Ready, node-exporter 3개 Ready 및 PVC Bound의
+   노드/경로를 확인한다. kubelet 인증 실패나 빈 target 목록을 정상으로 처리하지 않는다.
+   Grafana Ready/로그인 성공·비로그인 차단·Prometheus datasource 조회·한국어 패널6개에
+   실제 series 표시를 확인한다. Grafana 재시작 후 DB/대시보드 보존도 검증한다.
+4. `up`, `kube_node_info`, `node_memory_MemAvailable_bytes`,
+   `container_memory_working_set_bytes`, `container_cpu_usage_seconds_total`의 실제 series와
+   시간 범위 조회를 확인한다. 일시적인 `up == 1`만으로 완료하지 않는다.
+5. 실제 수집량·TSDB head series·샘플 수·메모리 피크와 rule/reload 오류를 확인한다.
+   자원 압력이 생기면 설치 확대를 멈추고 롤백한다.
+6. 승인된 수집기 재시작 후 이전 시각의 기록을 조회해 영속성을 확인한다.
+   운영 워커 강제 종료·메모리 고갈 시험은 하지 않는다.
+7. 비공개 Slack 연결과 전송 승인을 받은 뒤 opt-in을 적용한다. 무해한 테스트 경보의
+   한국어 발생·복구를 사용자가 실제 수신해야 알림까지 완료다. Slack 자체 장애/같은 호스트
+   전원 꺼짐 때 이 경로만으로 알리지 못하는 한계를 남긴다.
+8. 서비스/배치의 비밀 없는 sentinel을 Loki·Grafana에서 조회한다. Alloy 재시작 gap/중복,
+   Loki 재시작 전후 로그/PVC 보존, 실제 유입량·drop/WAL 오류 지표를 검증한다.
+   72h 보관 만료/삭제는 해당 시간이 지난 실제 증거가 있어야 완료로 표시한다.
+
+## 롤백 경계
+
+- 발송만 중단하려면 opt-in values 참조를 제거한 Git 변경을 승인 후 수동 sync한다.
+- 자원 압력 시 수동 sync App을 정지 상태로 유지하고, 승인 후 이 release의 Prometheus/
+  Alertmanager replicas와 Grafana/Operator/KSM/Loki/Alloy를 0으로 내려 영향부터 격리한다. node-exporter는
+  정확한 이 release DaemonSet만 별도 제거 승인 대상으로 잡는다.
+- PVC/PV·local-path 경로·전역 CRD·공유 리소스는 삭제하지 않는다. Helm uninstall이나
+  App cascade 삭제를 무조건 실행하지 않는다. 보관 데이터 복구는 원래 cp1 볼륨을 확인한 뒤 진행한다.
+- MySQL/ES/Kafka/Vault 데이터, 기존 앱 replica, DNS와 터널은 이 롤백 대상이 아니다.
+
+공식 근거: [LTS](https://prometheus.io/docs/introduction/release-cycle/),
+[3.13.3 변경 내역](https://github.com/prometheus/prometheus/releases/tag/v3.13.3),
+[영속 저장](https://prometheus.io/docs/prometheus/latest/storage/),
+[경보 테스트](https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/),
+[Slack 설정](https://prometheus.io/docs/alerting/latest/configuration/).
+
+로그 구성 근거: [Loki patch](https://github.com/grafana/loki/releases/tag/v3.6.16),
+[Alloy patch](https://github.com/grafana/alloy/releases/tag/v1.18.1),
+[API 수집 한계](https://grafana.com/docs/alloy/v1.18/reference/components/loki/loki.source.kubernetes/),
+[filesystem 한계](https://grafana.com/docs/loki/latest/operations/storage/filesystem/),
+[로그 보관](https://grafana.com/docs/loki/latest/operations/storage/retention/).

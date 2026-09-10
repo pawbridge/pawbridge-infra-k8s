@@ -1,0 +1,179 @@
+"""Validate offline Helm output, never live resources or runtime Secret values.
+
+python3 check_render.py /path/to/render.yaml --resources /path/to/kustomize.yaml [--slack]
+"""
+import argparse
+import base64
+import collections
+import configparser
+import json
+import pathlib
+import re
+
+import yaml
+
+
+class ChartLoader(yaml.SafeLoader):
+    pass
+
+
+# PyYAML 5.x recognizes the CRD enum scalar '=' but lacks its constructor.
+ChartLoader.add_constructor('tag:yaml.org,2002:value', ChartLoader.construct_scalar)
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def validate_grafana(objects):
+    matches = [o for o in objects if o['kind'] == 'Deployment'
+               and o['metadata'].get('labels', {}).get('app.kubernetes.io/name') == 'grafana']
+    assert len(matches) == 1, 'Exactly one Grafana deployment is required'
+    deployment = matches[0]
+    assert deployment['spec']['replicas'] == 1
+    assert deployment['spec']['strategy'] == {'type': 'Recreate'}
+    pod = deployment['spec']['template']['spec']
+    assert pod['automountServiceAccountToken'] is False
+    assert pod['securityContext']['runAsNonRoot'] is True
+    assert not pod.get('initContainers') and len(pod['containers']) == 1
+    container = pod['containers'][0]
+    assert container['image'] == ('docker.io/grafana/grafana:12.4.10@sha256:'
+                                 'c132a683b2430fff9115a29b2a79c8ab97540cdcc90846e3c81878c778ca3596')
+    assert container['securityContext']['allowPrivilegeEscalation'] is False
+    assert container['securityContext']['capabilities']['drop'] == ['ALL']
+    env = {item['name']: item for item in container['env']}
+    for name, key in [('GF_SECURITY_ADMIN_USER', 'admin-user'), ('GF_SECURITY_ADMIN_PASSWORD', 'admin-password')]:
+        assert 'value' not in env[name]
+        assert env[name]['valueFrom']['secretKeyRef'] == {'name': 'monitoring-grafana-admin', 'key': key}
+    assert not any(o['kind'] == 'Secret' and o['metadata']['name'] == 'monitoring-grafana-admin' for o in objects)
+    for o in objects:
+        if o['kind'] in ['RoleBinding', 'ClusterRoleBinding']:
+            assert not any(s.get('kind') == 'ServiceAccount' and s['name'] == pod['serviceAccountName']
+                           for s in o.get('subjects', [])), 'Grafana must not receive Kubernetes API permissions'
+    claims = [o for o in objects if o['kind'] == 'PersistentVolumeClaim'
+              and o['metadata']['name'] == deployment['metadata']['name']]
+    assert len(claims) == 1 and claims[0]['spec']['storageClassName'] == 'local-path'
+    assert claims[0]['spec']['resources']['requests']['storage'] == '2Gi'
+    config = next(o['data'] for o in objects if o['kind'] == 'ConfigMap'
+                  and o['metadata']['name'] == deployment['metadata']['name'])
+    ini = configparser.ConfigParser(interpolation=None)
+    ini.read_string(config['grafana.ini'])
+    for section, option in [('auth.anonymous', 'enabled'), ('users', 'allow_sign_up'),
+                            ('analytics', 'reporting_enabled'), ('unified_alerting', 'enabled')]:
+        assert not ini.getboolean(section, option)
+    sources = yaml.safe_load(config['datasources.yaml'])['datasources']
+    assert len(sources) == 2 and sources[0]['uid'] == 'pawbridge-prometheus'
+    assert sources[0]['url'] == 'http://pawbridge-observability-prometheus.monitoring.svc.cluster.local:9090'
+    assert sources[0]['access'] == 'proxy' and sources[0]['editable'] is False
+    assert sources[1] == {'name': 'PawBridge Loki', 'uid': 'pawbridge-loki', 'type': 'loki',
+                          'access': 'proxy', 'url': 'http://pawbridge-loki.monitoring.svc.cluster.local:3100',
+                          'isDefault': False, 'editable': False, 'jsonData': {'maxLines': 1000}}
+    providers = yaml.safe_load(config['dashboardproviders.yaml'])['providers']
+    assert len(providers) == 1 and providers[0]['options']['path'] == '/var/lib/grafana/dashboards/pawbridge'
+    dashboards = next(o for o in objects if o['kind'] == 'ConfigMap'
+                      and o['metadata']['name'] == 'pawbridge-observability-dashboards')
+    assert dashboards['metadata']['namespace'] == 'monitoring'
+    dashboard = json.loads(dashboards['data']['pawbridge-overview.json'])
+    assert dashboard == json.loads((ROOT / 'dashboards/pawbridge-overview.json').read_text())
+    assert dashboard['timezone'] == 'Asia/Seoul' and len(dashboard['panels']) == 6
+    assert all(panel['datasource']['uid'] == 'pawbridge-prometheus' for panel in dashboard['panels'])
+
+
+def validate(objects, slack):
+    validate_grafana(objects)
+    def one(kind):
+        found = [o for o in objects if o['kind'] == kind]
+        assert len(found) == 1, (kind, len(found))
+        return found[0]
+
+    app = yaml.safe_load((ROOT.parent / 'argocd/observability/application.yaml').read_text())
+    project = yaml.safe_load((ROOT.parent / 'argocd/observability/project.yaml').read_text())['spec']
+    assert 'automated' not in app['spec']['syncPolicy']
+    assert app['spec']['sources'][0]['targetRevision'] == '89.2.4'
+    assert all('slack-values' not in p for p in app['spec']['sources'][0]['helm']['valueFiles'])
+    allowed_ns = {d['namespace'] for d in project['destinations']}
+    for obj in objects:
+        group = obj['apiVersion'].split('/')[0] if '/' in obj['apiVersion'] else ''
+        namespace = obj['metadata'].get('namespace')
+        whitelist = project['namespaceResourceWhitelist' if namespace else 'clusterResourceWhitelist']
+        assert {'group': group, 'kind': obj['kind']} in whitelist, (group, obj['kind'])
+        if namespace:
+            assert namespace in allowed_ns
+        if obj['kind'] == 'Service':
+            assert obj['spec'].get('type', 'ClusterIP') == 'ClusterIP'
+            assert not obj['spec'].get('externalIPs')
+        assert obj['kind'] not in ['Ingress', 'HTTPRoute']
+    for kind in ['Prometheus', 'Alertmanager']:
+        spec = one(kind)['spec']
+        assert spec['replicas'] == 1
+        assert spec['nodeSelector']['kubernetes.io/hostname'] == 'pawbridge-k136-cp1'
+        assert '@sha256:' in spec['image']
+        assert spec['storage']['volumeClaimTemplate']['spec']['storageClassName'] == 'local-path'
+        assert spec['securityContext']['runAsNonRoot']
+        assert spec['resources']['requests'] and spec['resources']['limits']
+    prom = one('Prometheus')['spec']
+    rules = one('PrometheusRule')
+    assert rules['metadata']['labels'] == prom['ruleSelector']['matchLabels']
+    assert rules['metadata']['namespace'] == 'monitoring'
+    assert one('Namespace')['metadata']['name'] == 'monitoring'
+    policies = [o for o in objects if o['kind'] == 'NetworkPolicy']
+    assert len(policies) == 2 and all(o['spec']['policyTypes'] == ['Ingress'] for o in policies)
+    for rule in rules['spec']['groups'][0]['rules']:
+        assert rule['alert'].startswith('PawBridge') and rule['for']
+        assert rule['labels']['severity'] in ['warning', 'critical']
+        assert all(re.search('[가-힣]', rule['annotations'][key]) for key in ['summary', 'description'])
+    assert prom['version'] == 'v3.13.3'
+    assert prom['retention'] == '7d' and prom['retentionSize'] == '4GB'
+    assert prom['persistentVolumeClaimRetentionPolicy'] == {'whenDeleted': 'Retain', 'whenScaled': 'Retain'}
+    assert not prom.get('enableAdminAPI') and not prom.get('enableRemoteWriteReceiver')
+    assert prom['enforcedSampleLimit'] == 15000 and prom['enforcedTargetLimit'] == 10
+    assert prom['serviceMonitorSelector'] == {'matchLabels': {'release': 'pawbridge-observability'}}
+    assert prom['scrapeConfigSelector']['matchLabels']['pawbridge-monitoring'] == 'disabled'
+    alertmanager = one('Alertmanager')['spec']
+    assert alertmanager['alertmanagerConfigSelector']['matchLabels']['pawbridge-monitoring'] == 'disabled'
+    assert alertmanager.get('secrets', []) == (['monitoring-slack-webhook'] if slack else [])
+    for obj in objects:
+        if obj['kind'] in ['Deployment', 'Job', 'DaemonSet']:
+            pod = obj['spec']['template']['spec']
+            if obj['kind'] != 'DaemonSet':
+                assert pod['nodeSelector']['kubernetes.io/hostname'] == 'pawbridge-k136-cp1'
+            for container in pod['containers']:
+                assert container['resources'].get('limits', {}).get('memory')
+                assert container['resources'].get('requests', {}).get('memory')
+                assert not re.search(r':latest(?:$|@)', container['image'])
+        if obj['kind'] == 'ServiceMonitor' and obj['metadata']['name'].endswith('-kubelet'):
+            for endpoint in obj['spec']['endpoints']:
+                assert endpoint['scheme'] == 'https'
+                assert endpoint['tlsConfig']['insecureSkipVerify'] is False
+                assert endpoint['tlsConfig'].get('caFile')
+                assert endpoint['interval'] == '30s'
+    configs = [o for o in objects if o['kind'] == 'Secret' and 'alertmanager.yaml' in o.get('data', {})]
+    assert len(configs) == 1
+    # Offline chart-generated config only. Never pass kubectl Secret output here.
+    content = base64.b64decode(configs[0]['data']['alertmanager.yaml']).decode()
+    config = yaml.safe_load(content)
+    assert 'hooks.slack.com' not in content
+    assert config['route']['receiver'] == 'disabled'
+    assert config['route']['repeat_interval'] == '12h'
+    receivers = {r['name']: r for r in config['receivers']}
+    if slack:
+        receiver = receivers['slack-ko']['slack_configs'][0]
+        assert receiver['api_url_file'] == '/etc/alertmanager/secrets/monitoring-slack-webhook/url'
+        assert 'api_url' not in receiver and receiver['send_resolved'] is True
+        assert '장애' in receiver['title'] and '복구' in receiver['title']
+        assert 'Asia/Seoul' in receiver['text']
+        assert config['route']['routes'] == [{'receiver': 'slack-ko', 'matchers': ['alertname=~"PawBridge.*"']}]
+    else:
+        assert set(receivers) == {'disabled'} and config['route']['routes'] == []
+    print('Offline render contract passed:', dict(collections.Counter(o['kind'] for o in objects)))
+    print('Slack mode:', 'opt-in file reference (no credentials)' if slack else 'disabled')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('render')
+    parser.add_argument('--resources', required=True, help='Actual Kustomize resource build output')
+    parser.add_argument('--slack', action='store_true')
+    args = parser.parse_args()
+    with pathlib.Path(args.render).open() as source:
+        objects = [o for o in yaml.load_all(source, Loader=ChartLoader) if o]
+    with pathlib.Path(args.resources).open() as source:
+        objects += [o for o in yaml.safe_load_all(source) if o]
+    validate(objects, args.slack)

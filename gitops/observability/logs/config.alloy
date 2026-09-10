@@ -1,0 +1,85 @@
+logging {
+  level = "warn"
+}
+
+discovery.kubernetes "apps" {
+  role = "pod"
+  namespaces {
+    names = ["pawbridge"]
+    own_namespace = false
+  }
+  attach_metadata {
+    node = false
+    namespace = false
+  }
+}
+
+discovery.relabel "apps" {
+  targets = discovery.kubernetes.apps.targets
+  // APMS CronJob currently has no app label. Include only its known pod prefix.
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app", "__meta_kubernetes_pod_name"]
+    regex = "(animal-service|api-gateway|community-service|payment-service|python-ai-service|store-service|user-service);.*|;animal-service-batch-.*"
+    action = "keep"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label = "namespace"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    target_label = "app"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    regex = "animal-service-batch-.*"
+    target_label = "app"
+    replacement = "animal-service-batch"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label = "pod"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label = "container"
+  }
+  rule {
+    target_label = "cluster"
+    replacement = "pawbridge-k136"
+  }
+}
+
+loki.source.kubernetes "apps" {
+  targets = discovery.relabel.apps.output
+  forward_to = [loki.process.apps.receiver]
+}
+
+// Defense in depth, not proof that arbitrary application logs contain no PII.
+loki.process "apps" {
+  stage.drop {
+    expression = `(?i)(authorization|password|passwd|secret|access[_-]?token|refresh[_-]?token|api[_-]?key|serviceKey)\s*["']?\s*[:=]|bearer\s+|AIza[0-9A-Za-z_-]{20,}|eyJ[0-9A-Za-z_-]+\.eyJ`
+    drop_counter_reason = "sensitive_line"
+  }
+  stage.drop {
+    longer_than = "16KB"
+    drop_counter_reason = "line_too_long"
+  }
+  stage.label_keep {
+    values = ["cluster", "namespace", "app", "pod", "container"]
+  }
+  forward_to = [loki.write.local.receiver]
+}
+
+// Only GA components. Experimental loki.write WAL is intentionally NOT used.
+loki.write "local" {
+  endpoint {
+    url = "http://pawbridge-loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+    batch_size = "64KiB"
+    batch_wait = "1s"
+    remote_timeout = "10s"
+    min_backoff_period = "1s"
+    max_backoff_period = "30s"
+    max_backoff_retries = 10
+  }
+}

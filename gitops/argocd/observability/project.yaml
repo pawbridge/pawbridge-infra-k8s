@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-observability
+  namespace: argocd
+spec:
+  description: Manual-sync metrics, application logs, Grafana and Korean alerts
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+    - https://prometheus-community.github.io/helm-charts
+  destinations:
+    # Namespaced pod/log read Role and binding only; no application changes.
+    - server: https://kubernetes.default.svc
+      namespace: pawbridge
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
+  clusterResourceWhitelist:
+    - {group: '', kind: Namespace}
+    - {group: apiextensions.k8s.io, kind: CustomResourceDefinition}
+    - {group: rbac.authorization.k8s.io, kind: ClusterRole}
+    - {group: rbac.authorization.k8s.io, kind: ClusterRoleBinding}
+    - {group: admissionregistration.k8s.io, kind: MutatingWebhookConfiguration}
+    - {group: admissionregistration.k8s.io, kind: ValidatingWebhookConfiguration}
+  namespaceResourceWhitelist:
+    - {group: '', kind: Service}
+    - {group: '', kind: ServiceAccount}
+    - {group: '', kind: Secret}
+    - {group: '', kind: ConfigMap}
+    - {group: '', kind: PersistentVolumeClaim}
+    - {group: apps, kind: Deployment}
+    - {group: apps, kind: DaemonSet}
+    - {group: batch, kind: Job}
+    - {group: rbac.authorization.k8s.io, kind: Role}
+    - {group: rbac.authorization.k8s.io, kind: RoleBinding}
+    - {group: monitoring.coreos.com, kind: Prometheus}
+    - {group: monitoring.coreos.com, kind: Alertmanager}
+    - {group: monitoring.coreos.com, kind: ServiceMonitor}
+    - {group: monitoring.coreos.com, kind: PrometheusRule}
+    - {group: networking.k8s.io, kind: NetworkPolicy}

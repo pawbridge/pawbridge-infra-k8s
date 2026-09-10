@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-baseline
+  namespace: argocd
+spec:
+  project: pawbridge-observability
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 89.2.4
+      helm:
+        releaseName: pawbridge-observability
+        skipTests: true
+        valueFiles:
+          - $values/gitops/observability/values.yaml
+          # Add slack-values.yaml only after private Secret and send approval.
+    - repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+      targetRevision: dev
+      ref: values
+      path: gitops/observability
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - Prune=false
+      - FailOnSharedResource=true

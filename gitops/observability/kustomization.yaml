@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - rules.yaml
+  - network-policy.yaml
+  - logs/workloads.yaml
+  - logs/network-policy.yaml
+configMapGenerator:
+  - name: pawbridge-loki-config
+    namespace: monitoring
+    options:
+      disableNameSuffixHash: false
+    files: [loki.yaml=logs/loki.yaml]
+  - name: pawbridge-alloy-config
+    namespace: monitoring
+    options:
+      disableNameSuffixHash: false
+    files: [config.alloy=logs/config.alloy]
+  - name: pawbridge-observability-dashboards
+    namespace: monitoring
+    options:
+      disableNameSuffixHash: true
+    files:
+      - pawbridge-overview.json=dashboards/pawbridge-overview.json
