@@ -157,6 +157,23 @@ def validate(objects, slack):
     alertmanager = one('Alertmanager')['spec']
     assert alertmanager['alertmanagerConfigSelector']['matchLabels']['pawbridge-monitoring'] == 'disabled'
     assert alertmanager.get('secrets', []) == (['monitoring-slack-webhook'] if slack else [])
+    ksm_name = 'pawbridge-observability-kube-state-metrics'
+    ksm = next(o for o in objects if o['kind'] == 'Deployment' and o['metadata']['name'] == ksm_name)
+    args = ksm['spec']['template']['spec']['containers'][0]['args']
+    collectors = next(a.split('=', 1)[1].split(',') for a in args if a.startswith('--resources='))
+    assert set(collectors) == {'nodes', 'pods', 'deployments', 'statefulsets', 'daemonsets',
+                               'persistentvolumeclaims', 'certificatesigningrequests'}
+    role = next(o for o in objects if o['kind'] == 'ClusterRole' and o['metadata']['name'] == ksm_name)
+    csr_permissions = [r for r in role['rules'] if 'certificates.k8s.io' in r['apiGroups']]
+    assert csr_permissions == [{'apiGroups': ['certificates.k8s.io'],
+                               'resources': ['certificatesigningrequests'], 'verbs': ['list', 'watch']}]
+    assert all(set(r['verbs']) <= {'get', 'list', 'watch'} for r in role['rules']), 'Read-only collector'
+    monitor = next(o for o in objects if o['kind'] == 'ServiceMonitor' and o['metadata']['name'] == ksm_name)
+    telemetry = next(e for e in monitor['spec']['endpoints'] if e['port'] == 'metrics')
+    assert telemetry['interval'] == '30s'
+    assert telemetry['metricRelabelings'] == [{
+        'sourceLabels': ['__name__', 'resource'], 'action': 'keep',
+        'regex': r'kube_state_metrics_(list|watch)_total;\*v1.CertificateSigningRequest'}]
     for obj in objects:
         if obj['kind'] in ['Deployment', 'Job', 'DaemonSet']:
             pod = obj['spec']['template']['spec']
@@ -167,6 +184,14 @@ def validate(objects, slack):
                 assert container['resources'].get('requests', {}).get('memory')
                 assert not re.search(r':latest(?:$|@)', container['image'])
         if obj['kind'] == 'ServiceMonitor' and obj['metadata']['name'].endswith('-kubelet'):
+            endpoint = next(e for e in obj['spec']['endpoints'] if e.get('path', '/metrics') == '/metrics')
+            keeps = [r['regex'] for r in endpoint['metricRelabelings'] if r['action'] == 'keep']
+            assert keeps and all(re.fullmatch(r, 'kubelet_certificate_manager_server_ttl_seconds')
+                                 for r in keeps), 'Serving certificate TTL must survive collection filters'
+            # Operator discovery supplies the node label; it is not a chart relabeling.
+            # The existing /metrics target was verified to carry each VM's node name.
+            assert {'action': 'replace', 'sourceLabels': ['__metrics_path__'],
+                    'targetLabel': 'metrics_path'} in endpoint['relabelings']
             for endpoint in obj['spec']['endpoints']:
                 assert endpoint['scheme'] == 'https'
                 assert endpoint['tlsConfig']['insecureSkipVerify'] is False
@@ -187,6 +212,7 @@ def validate(objects, slack):
         assert 'api_url' not in receiver and receiver['send_resolved'] is True
         assert '장애' in receiver['title'] and '복구' in receiver['title']
         assert 'Asia/Seoul' in receiver['text']
+        assert '.Labels.certificatesigningrequest' in receiver['text']
         assert config['route']['routes'] == [{'receiver': 'slack-ko', 'matchers': ['alertname=~"PawBridge.*"']}]
     else:
         assert set(receivers) == {'disabled'} and config['route']['routes'] == []

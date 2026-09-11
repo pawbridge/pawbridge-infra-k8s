@@ -21,7 +21,7 @@ alertmanager:
             text: |-
               {{ range .Alerts }}
               *상태:* {{ if eq .Status "firing" }}발생 중{{ else }}복구됨{{ end }}
-              *대상:* {{ if .Labels.node }}{{ .Labels.node }}{{ else if .Labels.pod }}{{ .Labels.namespace }}/{{ .Labels.pod }}{{ else if .Labels.instance }}{{ .Labels.instance }}{{ else }}관측 시스템{{ end }}
+              *대상:* {{ if .Labels.node }}{{ .Labels.node }}{{ else if .Labels.certificatesigningrequest }}인증서 요청 {{ .Labels.certificatesigningrequest }}{{ else if .Labels.pod }}{{ .Labels.namespace }}/{{ .Labels.pod }}{{ else if .Labels.instance }}{{ .Labels.instance }}{{ else }}관측 시스템{{ end }}
               *내용:* {{ .Annotations.summary }}
               *확인:* {{ .Annotations.description }}
               *발생 시각:* {{ .StartsAt | tz "Asia/Seoul" | date "2006-01-02 15:04:05 MST" }}

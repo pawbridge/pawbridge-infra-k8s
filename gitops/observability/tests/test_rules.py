@@ -108,6 +108,83 @@ CASES += [
 ]
 
 
+TTL = 'kubelet_certificate_manager_server_ttl_seconds{node="node-a",job="kubelet",metrics_path="/metrics"}'
+NODE_A = {'node': 'node-a'}
+NODE_INFO = ('kube_node_info{node="node-a"}', '1+0x25')
+# Each threshold is tested on both sides. Critical replaces, not duplicates, warning.
+for seconds, warning, critical in [
+    (30 * 86400, False, False), (30 * 86400 - 1, True, False),
+    (7 * 86400, True, False), (7 * 86400 - 1, False, True),
+    (-1, False, True), ('+Inf', False, False), ('NaN', False, False),
+]:
+    for name, fires in [('PawBridgeKubeletCertificateExpiring', warning),
+                        ('PawBridgeKubeletCertificateCritical', critical)]:
+        CASES.append(scenario(name, [(TTL, f'{seconds}+0x7')],
+                              [('4m', []), ('5m', [NODE_A] if fires else [])]))
+for name, seconds in [('PawBridgeKubeletCertificateExpiring', 10 * 86400),
+                      ('PawBridgeKubeletCertificateCritical', 86400)]:
+    CASES.append(scenario(name, [(TTL, f'{seconds}+0x5 5184000+0x2')],
+                          [('5m', [NODE_A]), ('6m', [])]))
+
+for invalid in ['+Inf', 'NaN']:
+    CASES.append(scenario('PawBridgeKubeletCertificateMetricsMissing',
+                          [NODE_INFO, (TTL, f'{invalid}+0x5 1000000+0x2')],
+                          [('4m', []), ('5m', [NODE_A]), ('6m', [])]))
+CASES += [
+    scenario('PawBridgeKubeletCertificateMetricsMissing', [NODE_INFO],
+             [('4m', []), ('5m', [NODE_A])]),
+    scenario('PawBridgeKubeletCertificateMetricsMissing', [NODE_INFO, (TTL, '1000000+0x20'),
+             ('kube_node_info{node="node-b"}', '1+0x20')], [('5m', [{'node': 'node-b'}])]),
+    scenario('PawBridgeKubeletCertificateMetricsMissing', [NODE_INFO, (TTL, '-1+0x20')],
+             [('5m', [])]),  # Expired but readable belongs to Critical, not Missing.
+    scenario('PawBridgeKubeletCertificateMetricsMissing', [NODE_INFO,
+             (TTL.replace('job="kubelet"', 'job="unrelated"'), '1000000+0x20')],
+             [('5m', [NODE_A])]),
+    scenario('PawBridgeKubeletCertificateMetricsMissing', [NODE_INFO, (TTL, '1000000+0x5 stale')],
+             [('10m', []), ('11m', [NODE_A])]),
+]
+
+CSR_LABELS = {'certificatesigningrequest': 'fixture-csr', 'signer_name': 'kubernetes.io/kubelet-serving'}
+CSR = 'certificatesigningrequest="fixture-csr",signer_name="kubernetes.io/kubelet-serving"'
+CREATED = ('kube_certificatesigningrequest_created{' + CSR + '}', '0+0x25')
+LENGTH = ('kube_certificatesigningrequest_cert_length{' + CSR + '}', '0+0x25')
+
+
+def condition(name, values='0+0x25'):
+    return ('kube_certificatesigningrequest_condition{' + CSR + ',condition="' + name + '"}', values)
+
+
+CASES.append(scenario('PawBridgeKubeletCSRPending', [CREATED, LENGTH,
+                      condition('approved', '0+0x16 1+0x8'), condition('denied'), condition('failed')],
+                      [('10m', []), ('15m', []), ('16m', [CSR_LABELS]), ('17m', [])]))
+for excluded in ['approved', 'denied', 'failed']:
+    CASES.append(scenario('PawBridgeKubeletCSRPending', [CREATED, LENGTH] + [
+        condition(name, '1+0x25' if name == excluded else '0+0x25')
+        for name in ['approved', 'denied', 'failed']], [('20m', [])]))
+CASES += [
+    scenario('PawBridgeKubeletCSRPending', [], [('20m', [])]),
+    scenario('PawBridgeKubeletCSRPending', [CREATED, condition('approved'),
+             (LENGTH[0], '100+0x25')], [('20m', [])]),
+    scenario('PawBridgeKubeletCSRPending', [CREATED, LENGTH], [('20m', [])]),
+    scenario('PawBridgeKubeletCSRPending', [
+        (key.replace('kubernetes.io/kubelet-serving', 'kubernetes.io/kube-apiserver-client-kubelet'), value)
+        for key, value in [CREATED, LENGTH, condition('approved')]], [('20m', [])]),
+]
+
+LIST_SUCCESS = 'kube_state_metrics_list_total{resource="*v1.CertificateSigningRequest",result="success"}'
+CASES += [
+    scenario('PawBridgeCSRCollectionUnhealthy', [], [('4m', []), ('5m', [{}])]),
+    scenario('PawBridgeCSRCollectionUnhealthy', [(LIST_SUCCESS, '0+0x5 1+0x15')],
+             [('4m', []), ('5m', [{}]), ('6m', [])]),
+    # A successful empty list is healthy; absence of CSR object metrics is expected.
+    scenario('PawBridgeCSRCollectionUnhealthy', [(LIST_SUCCESS, '1+0x25')], [('20m', [])]),
+]
+for operation in ['list', 'watch']:
+    CASES.append(scenario('PawBridgeCSRCollectionUnhealthy', [(LIST_SUCCESS, '1+0x25'),
+        ('kube_state_metrics_' + operation + '_total{resource="*v1.CertificateSigningRequest",result="error"}',
+         '0+1x5 5+0x20')], [('4m', []), ('7m', [{}]), ('20m', [])]))
+
+
 def main():
     if len(sys.argv) != 2:
         raise SystemExit('Usage: test_rules.py /path/to/promtool')
