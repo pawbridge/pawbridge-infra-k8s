@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: dorosiya/pawbridge-payment-service
-  tag: sha-e44a50b847c4edc95cbd5b9b0bb6d7c93fee6ed1
-  digest: sha256:9f9b891c085c5d9dd00aea945d89db7fa455c8d699e0ba9696429eebc32bb6cf
+  tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  digest: sha256:3bfea8fa7c149184da595078ab3046c6f4d2682ac0b8e10188ec9ebcb785ac35
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
@@ -47,3 +47,9 @@ env:
 
   # Payment has no Redis consumer. Keep internal health details private.
   MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+
+schemaMigration:
+  image: dorosiya/pawbridge-payment-service@sha256:2e9f878d88b63d819b53d9c4a679075df85b9a2bf4d75553111105cd60228ef9
+  apiImageDigest: sha256:3bfea8fa7c149184da595078ab3046c6f4d2682ac0b8e10188ec9ebcb785ac35
+  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  enabled: false
