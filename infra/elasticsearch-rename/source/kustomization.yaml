@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../original
+  - snapshot-pvc.yaml
+secretGenerator:
+  - name: pawbridge-es-migration-roles
+    namespace: databases
+    files:
+      - roles.yml
+generatorOptions:
+  disableNameSuffixHash: true
+patches:
+  - target:
+      group: elasticsearch.k8s.elastic.co
+      version: v1
+      kind: Elasticsearch
+      name: store-search
+    path: snapshot-patch.yaml

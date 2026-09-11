@@ -42,7 +42,7 @@ env:
   SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
 
   # 3. Elasticsearch
-  SPRING_ELASTICSEARCH_URIS: https://store-search-es-http.databases.svc:9200
+  SPRING_ELASTICSEARCH_URIS: https://pawbridge-elasticsearch-es-http.databases.svc:9200
 
   # 4. Zipkin
   MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans

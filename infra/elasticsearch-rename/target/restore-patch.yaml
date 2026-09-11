@@ -1,0 +1,50 @@
+- op: replace
+  path: /metadata/name
+  value: pawbridge-elasticsearch
+- op: replace
+  path: /metadata/labels/app.kubernetes.io~1name
+  value: pawbridge-elasticsearch
+- op: replace
+  path: /spec/auth
+  value:
+    fileRealm:
+      - secretName: pawbridge-es-restore-auth
+    roles:
+      - secretName: pawbridge-es-restore-roles
+- op: add
+  path: /spec/nodeSets/0/config/path.repo
+  value: [/mnt/pawbridge-snapshots]
+- op: replace
+  path: /spec/nodeSets/0/podTemplate/metadata/labels/app.kubernetes.io~1name
+  value: pawbridge-elasticsearch
+- op: replace
+  path: /spec/nodeSets/0/volumeClaimTemplates/0/metadata/labels/app.kubernetes.io~1name
+  value: pawbridge-elasticsearch
+- op: replace
+  path: /spec/nodeSets/0/podTemplate/spec/nodeSelector/kubernetes.io~1hostname
+  value: pawbridge-k136-w2
+- op: replace
+  path: /spec/nodeSets/0/podTemplate/spec/containers/0/resources
+  value:
+    requests:
+      cpu: 500m
+      memory: 1536Mi
+    limits:
+      cpu: 1500m
+      memory: 1536Mi
+- op: add
+  path: /spec/nodeSets/0/podTemplate/spec/containers/0/env
+  value:
+    - name: ES_JAVA_OPTS
+      value: -Xms512m -Xmx512m
+- op: add
+  path: /spec/nodeSets/0/podTemplate/spec/volumes
+  value:
+    - name: migration-snapshots
+      persistentVolumeClaim:
+        claimName: pawbridge-es-target-snapshots
+- op: add
+  path: /spec/nodeSets/0/podTemplate/spec/containers/0/volumeMounts
+  value:
+    - name: migration-snapshots
+      mountPath: /mnt/pawbridge-snapshots
