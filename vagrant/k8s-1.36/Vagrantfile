@@ -38,8 +38,8 @@ JOIN_SERVER_PORT = 18_080
 
 NODES = [
   { name: "pawbridge-k136-cp1", ip: CONTROL_PLANE_IP, cpus: 4, memory: 6144, disk_gb: 60, role: :control_plane },
-  { name: "pawbridge-k136-w1", ip: "192.168.57.12", cpus: 4, memory: 6144, disk_gb: 80, role: :worker, elasticsearch_host: true },
-  { name: "pawbridge-k136-w2", ip: "192.168.57.13", cpus: 4, memory: 6144, disk_gb: 80, role: :worker }
+  { name: "pawbridge-k136-w1", ip: "192.168.57.12", cpus: 4, memory: 7168, disk_gb: 80, role: :worker, elasticsearch_host: true },
+  { name: "pawbridge-k136-w2", ip: "192.168.57.13", cpus: 4, memory: 7168, disk_gb: 80, role: :worker }
 ].freeze
 
 def load_versions(path)
