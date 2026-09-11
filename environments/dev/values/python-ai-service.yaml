@@ -17,7 +17,7 @@ elasticsearchSecretRef: python-search-writer-auth
 elasticsearchCaSecretRef: python-search-http-ca
 
 env:
-  ES_URL: https://store-search-es-http.databases.svc:9200
+  ES_URL: https://pawbridge-elasticsearch-es-http.databases.svc:9200
   LLM_PROVIDER: gemini
   GEMINI_MODEL: gemini-3.5-flash-lite
 

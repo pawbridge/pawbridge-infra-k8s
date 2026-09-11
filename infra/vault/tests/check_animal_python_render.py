@@ -47,7 +47,7 @@ if mode=="dev":
   assert env["SPRING_JPA_HIBERNATE_DDL_AUTO"]["value"]=="validate"
   assert env["SPRING_BATCH_JDBC_INITIALIZE_SCHEMA"]["value"]=="never"
   assert env["SPRING_BATCH_JOB_ENABLED"]["value"]=="false"
-  assert env["SPRING_ELASTICSEARCH_URIS"]["value"]=="https://store-search-es-http.databases.svc:9200"
+  assert env["SPRING_ELASTICSEARCH_URIS"]["value"]=="https://pawbridge-elasticsearch-es-http.databases.svc:9200"
   assert env["SPRING_ELASTICSEARCH_USERNAME"]["valueFrom"]["secretKeyRef"]["name"]=="animal-search-writer-auth"
   assert env["SPRING_ELASTICSEARCH_PASSWORD"]["valueFrom"]["secretKeyRef"]["key"]=="password"
   assert env["SPRING_ELASTICSEARCH_RESTCLIENT_SSL_BUNDLE"]["value"]=="animalsearch"
@@ -55,7 +55,7 @@ if mode=="dev":
   assert env["PYTHON_AI_SERVICE_INTERNAL_API_KEY"]["valueFrom"]["secretKeyRef"]["name"]=="animal-python-internal-auth"
   assert [x["secretRef"]["name"] for x in container["envFrom"]]==["animal-runtime-auth","animal-r2-auth"]
  else:
-  assert env["ES_URL"]["value"]=="https://store-search-es-http.databases.svc:9200"
+  assert env["ES_URL"]["value"]=="https://pawbridge-elasticsearch-es-http.databases.svc:9200"
   assert env["ES_USERNAME"]["valueFrom"]["secretKeyRef"]["name"]=="python-search-writer-auth"
   assert env["ES_PASSWORD"]["valueFrom"]["secretKeyRef"]["key"]=="password"
   assert env["ES_CA_CERT_PATH"]["value"]=="/etc/pawbridge/python-search-ca/ca.crt"

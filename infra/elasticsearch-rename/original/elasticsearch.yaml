@@ -1,10 +1,10 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: pawbridge-elasticsearch
+  name: store-search
   namespace: databases
   labels:
-    app.kubernetes.io/name: pawbridge-elasticsearch
+    app.kubernetes.io/name: store-search
     app.kubernetes.io/instance: pawbridge
     app.kubernetes.io/component: search
     app.kubernetes.io/part-of: pawbridge
@@ -36,7 +36,7 @@ spec:
       podTemplate:
         metadata:
           labels:
-            app.kubernetes.io/name: pawbridge-elasticsearch
+            app.kubernetes.io/name: store-search
             app.kubernetes.io/instance: pawbridge
             app.kubernetes.io/component: search
             app.kubernetes.io/part-of: pawbridge
@@ -51,7 +51,7 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           nodeSelector:
-            kubernetes.io/hostname: pawbridge-k136-w2
+            kubernetes.io/hostname: pawbridge-k136-w1
           initContainers:
             - name: max-map-count-check
               command:
@@ -118,7 +118,7 @@ spec:
         - metadata:
             name: elasticsearch-data
             labels:
-              app.kubernetes.io/name: pawbridge-elasticsearch
+              app.kubernetes.io/name: store-search
               app.kubernetes.io/instance: pawbridge
               app.kubernetes.io/component: search
               app.kubernetes.io/part-of: pawbridge

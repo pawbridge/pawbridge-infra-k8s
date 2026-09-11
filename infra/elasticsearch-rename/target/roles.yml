@@ -1,0 +1,8 @@
+pawbridge_snapshot_restore:
+  cluster:
+    - monitor
+    - cluster:admin/repository/*
+    - cluster:admin/snapshot/*
+  indices:
+    - names: ["animals-recovered-v001", "store-products-v001", "posts", "animals", "store-products-read", "store-products-write"]
+      privileges: [read, view_index_metadata, monitor, "indices:admin/close"]
