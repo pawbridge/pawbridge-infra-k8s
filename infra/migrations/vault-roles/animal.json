@@ -1,0 +1,14 @@
+{
+  "bound_service_account_names": [
+    "animal-schema-migration-vault"
+  ],
+  "bound_service_account_namespaces": [
+    "pawbridge"
+  ],
+  "audience": "vault",
+  "token_policies": [
+    "animal-schema-migration-read"
+  ],
+  "token_ttl": 600,
+  "token_max_ttl": 600
+}

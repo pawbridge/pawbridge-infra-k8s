@@ -1,5 +1,13 @@
 # Default values for store-service
 replicaCount: 1
+
+# Disabled until baseline, restore drill, credentials and image provenance are approved.
+schemaMigration:
+  enabled: false
+  image: ""
+  apiImageDigest: ""
+  recoveryReference: ""
+  existingSchemaVerified: false
 nodeSelector: {}
 affinity: {}
 
