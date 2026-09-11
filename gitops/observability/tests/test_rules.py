@@ -172,6 +172,31 @@ CASES += [
 ]
 
 LIST_SUCCESS = 'kube_state_metrics_list_total{resource="*v1.CertificateSigningRequest",result="success"}'
+NODE_TARGET = {'node': 'fixture-w2', 'namespace': 'monitoring',
+               'pod': 'fixture-exporter', 'instance': '192.0.2.1:9100'}
+NODE_SERIES = '{' + ','.join(f'{key}="{value}"' for key, value in NODE_TARGET.items()) + '}'
+CASES.append(scenario('PawBridgeNodeMemoryLow', [
+    ('node_memory_MemAvailable_bytes' + NODE_SERIES, '5+0x10 20+0x2'),
+    ('node_memory_MemTotal_bytes' + NODE_SERIES, '100+0x13'),
+], [('9m', []), ('10m', [NODE_TARGET]), ('11m', [])]))
+WATCH_SUCCESS = 'kube_state_metrics_watch_total{resource="*v1.CertificateSigningRequest",result="success"}'
+CASES += [
+    # Streaming lists can use WATCH without emitting a LIST counter.
+    scenario('PawBridgeCSRCollectionUnhealthy', [(WATCH_SUCCESS, '1+0x25')], [('20m', [])]),
+    scenario('PawBridgeCSRCollectionUnhealthy', [(WATCH_SUCCESS, '0+0x5 1+0x15')],
+             [('4m', []), ('5m', [{}]), ('6m', [])]),
+    scenario('PawBridgeCSRCollectionUnhealthy', [(LIST_SUCCESS, '0+0x25'),
+             (WATCH_SUCCESS, '1+0x25')], [('20m', [])]),
+    scenario('PawBridgeCSRCollectionUnhealthy', [(WATCH_SUCCESS, '1+0x5 stale')],
+             [('5m', []), ('10m', []), ('11m', [{}])]),
+    scenario('PawBridgeCSRCollectionUnhealthy', [
+             (WATCH_SUCCESS.replace('CertificateSigningRequest', 'Node'), '1+0x25')],
+             [('5m', [{}])]),
+]
+for operation in ['list', 'watch']:
+    CASES.append(scenario('PawBridgeCSRCollectionUnhealthy', [(WATCH_SUCCESS, '1+0x25'),
+        ('kube_state_metrics_' + operation + '_total{resource="*v1.CertificateSigningRequest",result="error"}',
+         '0+1x5 5+0x20')], [('4m', []), ('7m', [{}]), ('20m', [])]))
 CASES += [
     scenario('PawBridgeCSRCollectionUnhealthy', [], [('4m', []), ('5m', [{}])]),
     scenario('PawBridgeCSRCollectionUnhealthy', [(LIST_SUCCESS, '0+0x5 1+0x15')],

@@ -43,7 +43,8 @@ def main():
                              + '{{ define "body" }}' + receiver['text'] + '{{ end }}',
     }
     cases = [(status, target, labels) for status in ['firing', 'resolved']
-             for target, labels in [('node', {'node': 'fixture-node'}),
+             for target, labels in [('node', {'node': 'fixture-node', 'namespace': 'monitoring',
+                                             'pod': 'fixture-exporter', 'instance': '192.0.2.1:9100'}),
                                     ('csr', {'certificatesigningrequest': 'fixture-csr'})]]
     for status, target, labels in cases:
         files[status + '-' + target + '.json'] = json.dumps({
@@ -87,6 +88,8 @@ def main():
                      '2026-09-10 09:00:00 KST', '2026-09-10 09:10:00 KST']:
         assert expected in output, expected
     assert '<no value>' not in output
+    assert '*대상:* fixture-node' in output
+    assert 'monitoring/fixture-exporter' not in output, 'VM name must take precedence over exporter pod'
     print('Alertmanager 0.34.0: two configs and node/CSR firing/resolved Korean templates passed; network disabled.')
 
 

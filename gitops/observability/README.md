@@ -145,6 +145,11 @@ Grafana는 2Gi PVC로 사용자·설정 DB를 보존하며 local-path 특성상 
 
 ## kubelet 인증서 알림 적용과 확인
 
+node-exporter는 Kubernetes가 제공한 파드 배치 노드 이름을 `node` 라벨로 수집한다.
+메모리·디스크 경보의 Slack 대상에는 수집기 파드보다 VM 이름이 우선 표시된다.
+이 라벨 추가는 파드 재시작 없이 수집 설정을 갱신하지만 기존 시계열과 경보의 식별자가
+바뀐다. 기존 기록은 보존되며 활성 경보는 해소·재발생할 수 있고 대기 시간도 다시 계산된다.
+
 이 구성은 kubelet 서버 인증서의 만료와 승인 대기를 알린다. 인증서를 자동 승인하거나
 Vault 웹 인증서를 관리하지 않는다. 기존 버전의 kubelet 지표와 kube-state-metrics를
 사용하며 이미지·차트 버전을 바꾸지 않는다.
@@ -155,8 +160,9 @@ Vault 웹 인증서를 관리하지 않는다. 기존 버전의 kubelet 지표�
   경우에는 기존 `PawBridgeMonitoringMissing` 경보를 함께 확인한다.
 - CSR은 `kubernetes.io/kubelet-serving` 요청만 대상으로 한다. 생성 후 10분을 넘긴
   미처리 상태가 5분간 유지되면 알린다. 승인·거절·실패·발급 완료 요청은 제외한다.
-- CSR이 0개면 객체별 지표도 없는 것이 정상이다. 수집기의 list/watch 자체 지표로
-  최초 조회 성공 여부와 최근 오류를 따로 감시한다. 이 경보는 모든 종류의 수집기 정지를
+- CSR이 0개면 객체별 지표도 없는 것이 정상이다. 수집기의 list 또는 watch 성공 카운터와
+  최근 오류를 따로 감시한다. 초기 데이터를 watch로 받으면 list 카운터가 없을 수 있다.
+  성공 카운터는 요청 성공 이력이며 초기 동기화 완료나 최신 데이터 보장은 아니다. 이 경보는 모든 종류의 수집기 정지를
   감지한다고 보장하지 않는다. 승인 후 발급 실패를 별도 경보로 구현한 것도 아니다.
 - 추가 RBAC는 CSR `list`, `watch`뿐이다. 상태 수집기 자체 지표는 내부 포트에서
   필요한 CSR 카운터만 수집한다. Secret 값·인증서 요청 본문은 지표로 전송하지 않는다.
@@ -167,7 +173,8 @@ Deployment·ServiceMonitor를 먼저 반영하고 새 지표가 수집되는지 
 Slack 템플릿을 반영한다. 상태 수집기는 설정 변경으로 교체되지만 앱·Vault는 재시작하지 않는다.
 
 적용 후 세 노드의 `kubelet_certificate_manager_server_ttl_seconds`가 유한한 값이며
-올바른 `node` 라벨을 갖는지 확인한다. CSR list 성공 카운터가 0보다 큰지도 확인한다.
+올바른 `node` 라벨을 갖는지 확인한다. CSR list 또는 watch 성공 카운터가 0보다 큰지도 확인한다.
+초기 조회를 watch에 포함하는 방식은 [Kubernetes streaming lists](https://kubernetes.io/docs/reference/using-api/api-concepts/#streaming-lists)를 따른다.
 실제 인증서를 삭제하거나 악성 CSR을 제출해 시험하지 않는다. 별도 승인한 합성 알림으로
 한국어 발생·복구 Slack 수신을 확인하고 시험 데이터를 제거한다. 로컬 템플릿 검사는
 실제 Slack 수신 성공을 뜻하지 않는다.
