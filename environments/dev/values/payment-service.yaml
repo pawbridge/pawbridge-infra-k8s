@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: dorosiya/pawbridge-payment-service
-  tag: sha-e44a50b847c4edc95cbd5b9b0bb6d7c93fee6ed1
-  digest: sha256:9f9b891c085c5d9dd00aea945d89db7fa455c8d699e0ba9696429eebc32bb6cf
+  tag: sha-a2dfa3de1d044b8323c8b2acd179a8c2fc6eb2fa
+  digest: sha256:cdaf22377ec780159b878fcc53f783725291f4a70f720403ca96d7cd33fec255
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
