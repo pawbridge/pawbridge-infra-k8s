@@ -2,7 +2,7 @@
   "uid": "pawbridge-overview",
   "title": "PawBridge 운영 현황",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "timezone": "Asia/Seoul",
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
@@ -35,6 +35,23 @@
   },
   "panels": [
     {
+      "id": 34, "type": "timeseries", "title": "전체 VM · 메모리 용량 추이",
+      "description": "Windows 호스트가 아닌 cp1·워커 VM의 OS 인식 메모리 합계입니다. 사용량은 총량−가용량으로 Slack 경보와 같은 기준입니다. 한 VM이라도 지표가 누락되면 합계를 표시하지 않습니다. VM 할당량보다 OS 인식 총량이 조금 작을 수 있습니다.",
+      "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"},
+      "gridPos": {"x": 0, "y": 3, "w": 24, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "noValue": "수집값 없음", "custom": {"spanNulls": false, "stacking": {"mode": "none", "group": "A"}}}, "overrides": [
+        {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "gray"}}]},
+        {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]},
+        {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]}
+      ]},
+      "targets": [
+        {"refId": "A", "expr": "sum(max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"})) and on() (count(max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"})) == count(max by(node)(kube_node_info)))", "legendFormat": "총량", "instant": false, "range": true},
+        {"refId": "B", "expr": "sum(max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"}) - max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) and on() (count(max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"}) - max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) == count(max by(node)(kube_node_info)))", "legendFormat": "사용량 (총량−가용량)", "instant": false, "range": true},
+        {"refId": "C", "expr": "sum(max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) and on() (count(max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) == count(max by(node)(kube_node_info)))", "legendFormat": "가용량", "instant": false, "range": true}
+      ],
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "min", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
+    },
+    {
       "id": 6,
       "type": "text",
       "title": "보는 방법",
@@ -47,7 +64,7 @@
       "title": "VM별 메모리 사용률",
       "description": "전체 메모리에서 사용 가능한 메모리를 뺀 비율입니다. cp1은 컨트롤 플레인, w1·w2는 워커 VM입니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 0, "y": 3, "w": 8, "h": 8 },
+      "gridPos": { "x": 0, "y": 11, "w": 8, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "percent", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -78,7 +95,7 @@
       "title": "VM별 CPU 사용률",
       "description": "VM의 전체 CPU 대비 사용률입니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 8, "y": 3, "w": 8, "h": 8 },
+      "gridPos": { "x": 8, "y": 11, "w": 8, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "percent", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -109,7 +126,7 @@
       "title": "VM별 루트 디스크 여유 공간",
       "description": "VM 루트 파일시스템의 남은 용량입니다. 파드별 저장 용량이 아닙니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 16, "y": 3, "w": 8, "h": 8 },
+      "gridPos": { "x": 16, "y": 11, "w": 8, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "bytes", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -140,7 +157,7 @@
       "title": "서비스별 메모리 · 현재",
       "description": "같은 app 이름표를 가진 모든 파드의 합계입니다. 오른쪽 위 서비스 상세에서 개별 파드를 확인합니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 0, "y": 11, "w": 12, "h": 9 },
+      "gridPos": { "x": 0, "y": 19, "w": 12, "h": 9 },
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
@@ -182,7 +199,7 @@
       "title": "서비스별 CPU · 현재",
       "description": "1은 CPU 한 코어입니다. 서비스별 합계이므로 배포 중 파드가 두 개면 둘 다 포함합니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 12, "y": 11, "w": 12, "h": 9 },
+      "gridPos": { "x": 12, "y": 19, "w": 12, "h": 9 },
       "fieldConfig": {
         "defaults": {
           "unit": "cores",
