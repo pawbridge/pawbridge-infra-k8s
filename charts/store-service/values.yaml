@@ -1,6 +1,7 @@
 # Default values for store-service
 replicaCount: 1
 nodeSelector: {}
+affinity: {}
 
 image:
   repository: dorosiya/pawbridge-store-service

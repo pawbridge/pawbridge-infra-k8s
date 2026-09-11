@@ -1,5 +1,21 @@
-nodeSelector:
-  kubernetes.io/hostname: pawbridge-k136-w2
+nodeSelector: {}
+affinity:
+  nodeAffinity:
+    # Keep business workloads off the control plane; allow either worker.
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [pawbridge-k136-w1, pawbridge-k136-w2]
+    # Prefer w1 to relieve w2. This is not live-usage automatic rebalancing.
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [pawbridge-k136-w1]
 
 image:
   repository: dorosiya/pawbridge-store-service
