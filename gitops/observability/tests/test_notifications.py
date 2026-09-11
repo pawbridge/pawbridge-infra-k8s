@@ -42,19 +42,29 @@ def main():
         'notification.tmpl': '{{ define "title" }}' + receiver['title'] + '{{ end }}\n'
                              + '{{ define "body" }}' + receiver['text'] + '{{ end }}',
     }
-    for status in ['firing', 'resolved']:
-        files[status + '.json'] = json.dumps({
+    cases = [(status, target, labels) for status in ['firing', 'resolved']
+             for target, labels in [('node', {'node': 'fixture-node'}),
+                                    ('csr', {'certificatesigningrequest': 'fixture-csr'})]]
+    for status, target, labels in cases:
+        files[status + '-' + target + '.json'] = json.dumps({
             'Status': status, 'Receiver': 'slack-ko',
-            'Alerts': [{'Status': status, 'Labels': {'node': 'fixture-node'},
+            'Alerts': [{'Status': status, 'Labels': labels,
                         'Annotations': {'summary': '테스트 경보', 'description': '테스트 확인 안내'},
                         'StartsAt': '2026-09-10T00:00:00Z', 'EndsAt': '2026-09-10T00:10:00Z'}],
         })
     commands = ['set -eu', 'mkdir -p /tmp/validation', 'tar -xf - -C /tmp/validation',
                 '/bin/amtool check-config /tmp/validation/base.yaml /tmp/validation/slack.yaml']
-    for status in ['firing', 'resolved']:
+    for name in ['PawBridgeKubeletCertificateExpiring', 'PawBridgeKubeletCertificateCritical',
+                 'PawBridgeKubeletCertificateMetricsMissing', 'PawBridgeKubeletCSRPending',
+                 'PawBridgeCSRCollectionUnhealthy']:
+        commands.append('/bin/amtool config routes test --config.file=/tmp/validation/slack.yaml '
+                        '--verify.receivers=slack-ko alertname=' + name)
+        commands.append('/bin/amtool config routes test --config.file=/tmp/validation/base.yaml '
+                        '--verify.receivers=disabled alertname=' + name)
+    for status, target, _ in cases:
         for template in ['title', 'body']:
             commands.append('/bin/amtool template render --template.glob=/tmp/validation/notification.tmpl '
-                            + '--template.data=/tmp/validation/' + status + '.json '
+                            + '--template.data=/tmp/validation/' + status + '-' + target + '.json '
                             + "--template.text='{{ template \"" + template + "\" . }}'")
     payload = io.BytesIO()
     with tarfile.open(fileobj=payload, mode='w') as archive:
@@ -73,11 +83,11 @@ def main():
     assert result.returncode == 0, result.stderr.decode()
     output = result.stdout.decode()
     for expected in ['포우브릿지 장애 알림', '포우브릿지 복구 알림', '발생 중', '복구됨',
-                     'fixture-node', '테스트 경보', '테스트 확인 안내',
+                     'fixture-node', '인증서 요청 fixture-csr', '테스트 경보', '테스트 확인 안내',
                      '2026-09-10 09:00:00 KST', '2026-09-10 09:10:00 KST']:
         assert expected in output, expected
     assert '<no value>' not in output
-    print('Alertmanager 0.34.0: two configs and firing/resolved Korean templates passed; network disabled.')
+    print('Alertmanager 0.34.0: two configs and node/CSR firing/resolved Korean templates passed; network disabled.')
 
 
 if __name__ == '__main__':

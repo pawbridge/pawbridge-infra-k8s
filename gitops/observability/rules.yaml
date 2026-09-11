@@ -11,6 +11,41 @@ spec:
   groups:
     - name: pawbridge.baseline
       rules:
+        - alert: PawBridgeKubeletCertificateExpiring
+          expr: (min by (node) (kubelet_certificate_manager_server_ttl_seconds{job="kubelet", metrics_path="/metrics", node!=""}) < 30 * 86400) and (min by (node) (kubelet_certificate_manager_server_ttl_seconds{job="kubelet", metrics_path="/metrics", node!=""}) >= 7 * 86400)
+          for: 5m
+          labels: {severity: warning}
+          annotations:
+            summary: 노드의 kubelet 서버 인증서 만료까지 30일 미만 남았습니다.
+            description: 인증서 요청 목록을 확인하고 요청자·노드 이름·IP·서명을 검증한 뒤 수동 승인하세요. 전체 요청 일괄 승인은 하지 마세요. Vault 웹 인증서와는 별개입니다.
+        - alert: PawBridgeKubeletCertificateCritical
+          expr: min by (node) (kubelet_certificate_manager_server_ttl_seconds{job="kubelet", metrics_path="/metrics", node!=""}) < 7 * 86400
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: 노드의 kubelet 서버 인증서가 7일 내 만료되거나 이미 만료됐습니다.
+            description: 승인 대기 요청과 kubelet 인증서 적용 상태를 우선 확인하세요. 인증서가 이미 만료돼 수집이 끊기면 지표 누락 경보를 함께 확인하세요. TLS 검증을 끄지 마세요.
+        - alert: PawBridgeKubeletCertificateMetricsMissing
+          expr: max by (node) (kube_node_info) unless on (node) (min by (node) (kubelet_certificate_manager_server_ttl_seconds{job="kubelet", metrics_path="/metrics", node!=""}) < +Inf)
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: 노드의 kubelet 서버 인증서 잔여기간을 확인할 수 없습니다.
+            description: 지표 누락·유효하지 않은 값·인증서 미사용 상태입니다. 노드 연결, HTTPS 수집 필터와 kubelet 인증서를 확인하세요. 값이 없거나 무한대인 상태를 정상으로 판단하지 마세요.
+        - alert: PawBridgeKubeletCSRPending
+          expr: (max by (certificatesigningrequest, signer_name) (time() - kube_certificatesigningrequest_created{signer_name="kubernetes.io/kubelet-serving"}) > 600) and on (certificatesigningrequest, signer_name) (max by (certificatesigningrequest, signer_name) (kube_certificatesigningrequest_condition{signer_name="kubernetes.io/kubelet-serving", condition=~"approved|denied|failed"}) == 0) and on (certificatesigningrequest, signer_name) (max by (certificatesigningrequest, signer_name) (kube_certificatesigningrequest_cert_length{signer_name="kubernetes.io/kubelet-serving"}) == 0)
+          for: 5m
+          labels: {severity: warning}
+          annotations:
+            summary: kubelet 서버 인증서 요청이 승인 대기 중입니다.
+            description: 생성 후 10분이 지난 미처리 요청이 5분간 유지됐습니다. 요청자와 해당 노드의 이름·IP·서명을 검증한 후 개별 승인하세요. 승인·거절·실패·발급 완료 요청은 이 경보에서 제외합니다.
+        - alert: PawBridgeCSRCollectionUnhealthy
+          expr: max(absent(kube_state_metrics_list_total{resource="*v1.CertificateSigningRequest", result="success"} > 0) or (sum(increase(kube_state_metrics_list_total{resource="*v1.CertificateSigningRequest", result="error"}[10m])) > 0) or (sum(increase(kube_state_metrics_watch_total{resource="*v1.CertificateSigningRequest", result="error"}[10m])) > 0))
+          for: 5m
+          labels: {severity: critical}
+          annotations:
+            summary: 인증서 요청 상태 수집이 누락되거나 실패하고 있습니다.
+            description: kube-state-metrics의 CSR 수집 설정·조회 권한·API 연결과 자체 지표 수집을 확인하세요. 요청이 0개인 정상 상태와 다릅니다. 이 경보 중에는 승인 대기 경보가 없다고 정상으로 판단하지 마세요.
         - alert: PawBridgeLogPipelineMissing
           expr: max(absent(up{service="pawbridge-loki"}) or absent(up{service="pawbridge-alloy"}))
           for: 5m

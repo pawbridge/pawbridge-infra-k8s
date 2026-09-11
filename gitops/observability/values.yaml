@@ -287,7 +287,7 @@ kubelet:
     metricRelabelings:
       - sourceLabels: [__name__]
         action: keep
-        regex: 'kubelet_running_pods|kubelet_running_containers|kubelet_pleg_relist_duration_seconds_.*'
+        regex: 'kubelet_running_pods|kubelet_running_containers|kubelet_pleg_relist_duration_seconds_.*|kubelet_certificate_manager_server_ttl_seconds'
     cAdvisorMetricRelabelings:
       - sourceLabels: [__name__]
         action: keep
@@ -302,7 +302,18 @@ kube-state-metrics:
   resources:
     requests: {cpu: 10m, memory: 32Mi}
     limits: {cpu: 200m, memory: 64Mi}
-  collectors: [nodes, pods, deployments, statefulsets, daemonsets, persistentvolumeclaims]
+  collectors: [nodes, pods, deployments, statefulsets, daemonsets, persistentvolumeclaims, certificatesigningrequests]
+  # Observe list/watch health even when no CSR objects exist. No approval rights.
+  selfMonitor:
+    enabled: true
+  prometheus:
+    monitor:
+      metrics:
+        interval: 30s
+        metricRelabelings:
+          - sourceLabels: [__name__, resource]
+            action: keep
+            regex: 'kube_state_metrics_(list|watch)_total;\*v1.CertificateSigningRequest'
   # Only the existing application name; never collect arbitrary pod labels.
   metricLabelsAllowlist: ['pods=[app]']
   metricAnnotationsAllowList: []
