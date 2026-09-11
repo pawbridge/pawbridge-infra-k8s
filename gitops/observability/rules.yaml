@@ -40,7 +40,7 @@ spec:
             summary: kubelet 서버 인증서 요청이 승인 대기 중입니다.
             description: 생성 후 10분이 지난 미처리 요청이 5분간 유지됐습니다. 요청자와 해당 노드의 이름·IP·서명을 검증한 후 개별 승인하세요. 승인·거절·실패·발급 완료 요청은 이 경보에서 제외합니다.
         - alert: PawBridgeCSRCollectionUnhealthy
-          expr: max(absent(kube_state_metrics_list_total{resource="*v1.CertificateSigningRequest", result="success"} > 0) or (sum(increase(kube_state_metrics_list_total{resource="*v1.CertificateSigningRequest", result="error"}[10m])) > 0) or (sum(increase(kube_state_metrics_watch_total{resource="*v1.CertificateSigningRequest", result="error"}[10m])) > 0))
+          expr: max(absent({__name__=~"kube_state_metrics_(list|watch)_total", resource="*v1.CertificateSigningRequest", result="success"} > 0) or (sum(increase(kube_state_metrics_list_total{resource="*v1.CertificateSigningRequest", result="error"}[10m])) > 0) or (sum(increase(kube_state_metrics_watch_total{resource="*v1.CertificateSigningRequest", result="error"}[10m])) > 0))
           for: 5m
           labels: {severity: critical}
           annotations:

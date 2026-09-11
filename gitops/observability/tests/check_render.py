@@ -158,6 +158,11 @@ def validate(objects, slack):
     assert alertmanager['alertmanagerConfigSelector']['matchLabels']['pawbridge-monitoring'] == 'disabled'
     assert alertmanager.get('secrets', []) == (['monitoring-slack-webhook'] if slack else [])
     ksm_name = 'pawbridge-observability-kube-state-metrics'
+    node_monitor = next(o for o in objects if o['kind'] == 'ServiceMonitor'
+                        and o['metadata']['name'] == 'pawbridge-observability-prometheus-node-exporter')
+    assert node_monitor['spec']['endpoints'][0]['relabelings'] == [{
+        'sourceLabels': ['__meta_kubernetes_pod_node_name'],
+        'targetLabel': 'node', 'action': 'replace'}], 'Node alerts must identify the actual VM'
     ksm = next(o for o in objects if o['kind'] == 'Deployment' and o['metadata']['name'] == ksm_name)
     args = ksm['spec']['template']['spec']['containers'][0]['args']
     collectors = next(a.split('=', 1)[1].split(',') for a in args if a.startswith('--resources='))
