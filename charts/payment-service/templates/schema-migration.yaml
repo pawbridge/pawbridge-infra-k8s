@@ -5,6 +5,8 @@
 {{- if not (regexMatch "^.+@sha256:[a-f0-9]{64}$" .Values.schemaMigration.image) }}{{ fail "migration image must use an immutable sha256 digest" }}{{ end }}
 {{- if not (regexMatch "^sha256:[a-f0-9]{64}$" .Values.image.digest) }}{{ fail "API image must use an immutable digest" }}{{ end }}
 {{- if ne .Values.schemaMigration.apiImageDigest .Values.image.digest }}{{ fail "migration/API image pair must be reviewed together" }}{{ end }}
+{{- if not (regexMatch "^[a-f0-9]{40}$" (.Values.schemaMigration.sourceRevision | default "")) }}{{ fail "migration source revision must be a full commit SHA" }}{{ end }}
+{{- if ne .Values.image.tag (printf "sha-%s" .Values.schemaMigration.sourceRevision) }}{{ fail "migration/API source revision must match" }}{{ end }}
 {{- if ne (get .Values.env "SPRING_JPA_HIBERNATE_DDL_AUTO") "validate" }}{{ fail "Hibernate must use validate before migration activation" }}{{ end }}
 apiVersion: batch/v1
 kind: Job
@@ -17,6 +19,7 @@ metadata:
     # Retain failed Jobs. Do NOT add BeforeHookCreation, HookFailed or a TTL.
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
     pawbridge.kr/recovery-reference: {{ .Values.schemaMigration.recoveryReference | quote }}
+    pawbridge.kr/source-revision: {{ .Values.schemaMigration.sourceRevision | quote }}
 spec:
   backoffLimit: 0
   activeDeadlineSeconds: 300

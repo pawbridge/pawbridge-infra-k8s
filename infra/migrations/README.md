@@ -87,12 +87,14 @@ docker build \
 ```yaml
 image:
   digest: "sha256:<api-digest>"
+  tag: "sha-<backend-commit>"
 env:
   SPRING_JPA_HIBERNATE_DDL_AUTO: validate
 schemaMigration:
   enabled: true
   image: "<migration-image>@sha256:<migration-digest>"
   apiImageDigest: "sha256:<api-digest>"
+  sourceRevision: "<backend-commit>"
   existingSchemaVerified: true
   recoveryReference: "<approved-baseline-and-restore-evidence-reference>"
 ```

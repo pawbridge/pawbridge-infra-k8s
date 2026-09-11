@@ -65,10 +65,11 @@ def main():
                  "--label", LABEL + "=" + nonce,
                  "-f", str(DOCKERFILE), "-t", tag, str(distributions[service])], timeout=180)
             digest = "sha256:" + "a" * 64
-            docs = render(service, {"image": {"digest": digest},
+            docs = render(service, {"image": {"digest": digest, "tag": "sha-" + "c" * 40},
                 "env": {"SPRING_JPA_HIBERNATE_DDL_AUTO": "validate"},
                 "schemaMigration": {"enabled": True, "image": "example.invalid/test@" + digest,
-                    "apiImageDigest": digest, "existingSchemaVerified": True, "recoveryReference": "synthetic-package-drill"}})
+                    "apiImageDigest": digest, "sourceRevision": "c" * 40,
+                    "existingSchemaVerified": True, "recoveryReference": "synthetic-package-drill"}})
             job = next(x for x in docs if x["kind"] == "Job" and x["metadata"]["name"].endswith("-schema-migrate"))
             container = job["spec"]["template"]["spec"]["containers"][0]
             env = {x["name"]: x["value"].replace("mysql.databases.svc.cluster.local", "127.0.0.1")

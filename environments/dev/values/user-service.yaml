@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: dorosiya/pawbridge-user-service
-  tag: sha-8c65c8ca0d9b3ea7dd0b9153fc61e561a0f7d4ee
-  digest: sha256:db381c36d87c8354fb77181b4af65f609c8d7ae12f62cedc98de8c96e0da5ccc
+  tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  digest: sha256:0898685bbc838567fb226eaff4b8d2b1433d9b047e9a33627fb95d85fc5a64ba
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
@@ -25,8 +25,8 @@ env:
   # Force Dev Profile
   SPRING_PROFILES_ACTIVE: dev
 
-  # JPA Settings (테이블 자동 생성)
-  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+  # JPA: Flyway manages DDL; Hibernate validates only.
+  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
   SPRING_JPA_SHOW_SQL: "false"
   SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
   SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "false"
@@ -60,3 +60,11 @@ env:
   # 8. Google OAuth callback and frontend landing URL
   REDIRECT_URI: https://api.pawbridge.kr/login/oauth2/code/google
   OAUTH2_REDIRECT_URI: https://www.pawbridge.kr/oauth/callback
+
+schemaMigration:
+  image: dorosiya/pawbridge-user-service@sha256:93e14be4e48c1e81b6eea5cd1bab31a175eb6ee66e2e96f3dddd448f652e3771
+  apiImageDigest: sha256:0898685bbc838567fb226eaff4b8d2b1433d9b047e9a33627fb95d85fc5a64ba
+  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  enabled: true
+  existingSchemaVerified: true
+  recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
