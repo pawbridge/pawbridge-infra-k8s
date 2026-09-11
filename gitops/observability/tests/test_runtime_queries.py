@@ -45,7 +45,9 @@ def main():
     assert endpoint['path'] == '/actuator/prometheus' and endpoint['port'] == 'http'
     assert endpoint['interval'] == '30s' and endpoint['scrapeTimeout'] == '10s'
     assert endpoint['honorLabels'] is False
-    assert endpoint['relabelings'][0] == {'targetLabel': 'job', 'replacement': 'pawbridge-spring-runtime'}
+    assert endpoint['relabelings'] == [
+        {'targetLabel': 'job', 'action': 'replace', 'replacement': 'pawbridge-spring-runtime'},
+        {'sourceLabels': ['__meta_kubernetes_pod_node_name'], 'action': 'replace', 'targetLabel': 'node'}]
     keep = endpoint['metricRelabelings'][0]['regex']
     assert not re.fullmatch(keep, 'unbounded_custom_metric')
     for doc in docs.values():

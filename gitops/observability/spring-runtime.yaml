@@ -23,8 +23,10 @@ spec:
       honorLabels: false
       relabelings:
         - targetLabel: job
+          action: replace
           replacement: pawbridge-spring-runtime
         - sourceLabels: [__meta_kubernetes_pod_node_name]
+          action: replace
           targetLabel: node
       metricRelabelings:
         - sourceLabels: [__name__]
