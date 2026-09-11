@@ -23,8 +23,8 @@ affinity:
 
 image:
   repository: dorosiya/pawbridge-animal-service
-  tag: sha-5d59afd9352bc626997bc58c6ad5745633b2996c
-  digest: sha256:eb3623020d34dd874d0f29ef531f8004cb09bfbb9f6717590f84437094e44958
+  tag: sha-a2dfa3de1d044b8323c8b2acd179a8c2fc6eb2fa
+  digest: sha256:f8175230904946d098638a62ca9f6098db11d0a9d17449eab08709c3a8d44d0f
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
