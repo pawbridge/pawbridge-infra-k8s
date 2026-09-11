@@ -2,7 +2,7 @@
   "uid": "pawbridge-pods",
   "title": "PawBridge VM·파드 상세",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "timezone": "Asia/Seoul",
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
@@ -67,6 +67,32 @@
   },
   "panels": [
     {
+      "id": 26, "type": "stat", "title": "$node · 전체 메모리 / 가용 메모리 / 가용 비율",
+      "description": "VM 운영체제가 인식하는 MemTotal과 MemAvailable입니다. 가용 비율은 Slack 메모리 경보와 같은 기준이며 캐시를 포함한 단순 free 값이 아닙니다.",
+      "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"},
+      "gridPos": {"x": 0, "y": 3, "w": 24, "h": 5},
+      "fieldConfig": {"defaults": {"unit": "bytes", "noValue": "수집값 없음", "min": 0}, "overrides": [{"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "unit", "value": "percent"}, {"id": "max", "value": 100}]}]},
+      "targets": [
+        {"refId": "A", "expr": "max(node_memory_MemTotal_bytes{job=\"node-exporter\",node=\"$node\"})", "legendFormat": "전체 메모리", "instant": true},
+        {"refId": "B", "expr": "max(node_memory_MemAvailable_bytes{job=\"node-exporter\",node=\"$node\"})", "legendFormat": "가용 메모리", "instant": true},
+        {"refId": "C", "expr": "100 * max(node_memory_MemAvailable_bytes{job=\"node-exporter\",node=\"$node\"}) / max(node_memory_MemTotal_bytes{job=\"node-exporter\",node=\"$node\"})", "legendFormat": "가용 비율", "instant": true}
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "value_and_name", "orientation": "horizontal", "graphMode": "none", "colorMode": "none"}
+    },
+    {
+      "id": 27, "type": "stat", "title": "$pod · 현재 메모리 용량",
+      "description": "일반 컨테이너 기준입니다. 사용량은 working set, 요청량은 스케줄링 예약 기준입니다. 하나라도 메모리 제한이 없는 컨테이너가 있으면 제한 합계를 표시하지 않습니다. Pod-level resources와 init container는 포함하지 않습니다. 지표가 없으면 수집값 없음입니다.",
+      "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"},
+      "gridPos": {"x": 0, "y": 18, "w": 24, "h": 5},
+      "fieldConfig": {"defaults": {"unit": "bytes", "noValue": "수집값 없음", "mappings": [{"type": "value", "options": {"-1": {"text": "제한 없음(전체 또는 일부)"}}}]}, "overrides": []},
+      "targets": [
+        {"refId": "A", "expr": "sum(container_memory_working_set_bytes{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=~\"$namespace\",pod=\"$pod\",container!=\"\",container!=\"POD\"})", "legendFormat": "현재 사용량", "instant": true},
+        {"refId": "B", "expr": "sum(kube_pod_container_resource_requests{namespace=~\"$namespace\",pod=\"$pod\",resource=\"memory\"})", "legendFormat": "컨테이너 요청 합계", "instant": true},
+        {"refId": "C", "expr": "(sum(kube_pod_container_resource_limits{namespace=~\"$namespace\",pod=\"$pod\",resource=\"memory\"}) and (count(kube_pod_container_resource_limits{namespace=~\"$namespace\",pod=\"$pod\",resource=\"memory\"} > 0) == count(kube_pod_container_info{namespace=~\"$namespace\",pod=\"$pod\"}))) or ((0 * count(kube_pod_container_info{namespace=~\"$namespace\",pod=\"$pod\"}) - 1) unless (count(kube_pod_container_resource_limits{namespace=~\"$namespace\",pod=\"$pod\",resource=\"memory\"} > 0) == count(kube_pod_container_info{namespace=~\"$namespace\",pod=\"$pod\"})))", "legendFormat": "컨테이너 제한 합계", "instant": true}
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "value_and_name", "orientation": "horizontal", "graphMode": "none", "colorMode": "none"}
+    },
+    {
       "id": 18,
       "type": "text",
       "title": "보는 방법",
@@ -79,7 +105,7 @@
       "title": "$node · 파드별 메모리 비교",
       "description": "",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 0, "y": 3, "w": 12, "h": 10 },
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 10 },
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
@@ -97,7 +123,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(sum by(namespace,pod) (container_memory_working_set_bytes{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"})) and on(namespace,pod) (max by(namespace,pod)(kube_pod_info{node=\"$node\",namespace=~\"$namespace\"}))",
+          "expr": "sort_desc((sum by(namespace,pod) (container_memory_working_set_bytes{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"})) and on(namespace,pod) (max by(namespace,pod)(kube_pod_info{node=\"$node\",namespace=~\"$namespace\"})))",
           "legendFormat": "{{namespace}} / {{pod}}",
           "instant": true,
           "range": false
@@ -121,7 +147,7 @@
       "title": "$node · 파드별 CPU 비교",
       "description": "",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 12, "y": 3, "w": 12, "h": 10 },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 10 },
       "fieldConfig": {
         "defaults": {
           "unit": "cores",
@@ -139,7 +165,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(sum by(namespace,pod) (rate(container_cpu_usage_seconds_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"}[$__rate_interval]))) and on(namespace,pod) (max by(namespace,pod)(kube_pod_info{node=\"$node\",namespace=~\"$namespace\"}))",
+          "expr": "sort_desc((sum by(namespace,pod) (rate(container_cpu_usage_seconds_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"}[$__rate_interval]))) and on(namespace,pod) (max by(namespace,pod)(kube_pod_info{node=\"$node\",namespace=~\"$namespace\"})))",
           "legendFormat": "{{namespace}} / {{pod}}",
           "instant": true,
           "range": false
@@ -163,7 +189,7 @@
       "title": "$pod · 메모리",
       "description": "일반 컨테이너의 합계입니다. 요청은 예약 기준이지 실제 사용량이 아닙니다. 제한 미설정 컨테이너는 제한 합계에 포함되지 않으므로 전체 파드의 강제 상한으로 해석하지 마세요. Pod-level resources와 init container는 이 비교선에 포함하지 않습니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 0, "y": 13, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 23, "w": 12, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "bytes", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -208,7 +234,7 @@
       "title": "$pod · CPU",
       "description": "일반 컨테이너의 합계입니다. 요청은 예약 기준이지 실제 사용량이 아닙니다. 제한 미설정 컨테이너는 제한 합계에 포함되지 않으므로 전체 파드의 강제 상한으로 해석하지 마세요. Pod-level resources와 init container는 이 비교선에 포함하지 않습니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 12, "y": 13, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 23, "w": 12, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "cores", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -253,7 +279,7 @@
       "title": "$pod · 네트워크 속도",
       "description": "",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 0, "y": 21, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 31, "w": 12, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "Bps", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -291,7 +317,7 @@
       "title": "$pod · 재시작 횟수 (선택 기간)",
       "description": "선택 기간의 카운터 증가 추정값입니다. 파드 교체 횟수가 아닙니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 12, "y": 21, "w": 6, "h": 8 },
+      "gridPos": { "x": 12, "y": 31, "w": 6, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "short", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -320,12 +346,12 @@
     {
       "id": 25,
       "type": "stat",
-      "title": "$pod · 현재 배치 VM / Ready",
-      "description": "1은 Ready, 0은 Not Ready입니다. 수집값이 없으면 상태를 판단할 수 없습니다.",
+      "title": "$pod · 배치 VM / 파드 준비 상태",
+      "description": "VM 이름은 파드가 배치된 위치입니다. 상태는 VM 자체가 아니라 파드의 Ready 조건입니다. 준비됨(1), 준비 안 됨(0)으로 표시하며 수집값 없음은 정상으로 간주하지 않습니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 18, "y": 21, "w": 6, "h": 8 },
+      "gridPos": { "x": 18, "y": 31, "w": 6, "h": 8 },
       "fieldConfig": {
-        "defaults": { "unit": "short", "min": 0, "noValue": "수집값 없음" },
+        "defaults": { "unit": "short", "min": 0, "noValue": "수집값 없음", "mappings": [{ "type": "value", "options": { "0": { "text": "파드 준비 안 됨", "color": "red" }, "1": { "text": "파드 준비됨", "color": "green" } } }] },
         "overrides": []
       },
       "targets": [
