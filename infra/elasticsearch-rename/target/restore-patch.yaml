@@ -2,6 +2,9 @@
   path: /metadata/name
   value: pawbridge-elasticsearch
 - op: replace
+  path: /spec/nodeSets/0/name
+  value: default
+- op: replace
   path: /metadata/labels/app.kubernetes.io~1name
   value: pawbridge-elasticsearch
 - op: replace
