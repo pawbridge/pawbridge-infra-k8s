@@ -19,8 +19,8 @@ affinity:
 
 image:
   repository: dorosiya/pawbridge-store-service
-  tag: sha-e7edbed2b9e664fecc4c34e762e17dd9fbe1c8ff
-  digest: sha256:96ce0e1b3fb319eebd67ec37995819abfccc69c74e79dbc5e75f966266fa987e
+  tag: sha-a2dfa3de1d044b8323c8b2acd179a8c2fc6eb2fa
+  digest: sha256:1fad84fa7115aaf7db0596a5ac5d95c4bdb41b3b6d7dc30cc12432163ecaa969
 
 r2SecretRef: store-service-r2-secrets-vso
 redisSecretRef: redis-auth
