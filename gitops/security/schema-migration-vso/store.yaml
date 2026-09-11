@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: store-schema-migration-vault
+  namespace: pawbridge
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: store-schema-migration
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: schema-migration-vault
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: store-schema-migration-read
+    serviceAccount: store-schema-migration-vault
+    audiences: [vault]
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: store-schema-migration
+  namespace: pawbridge
+spec:
+  vaultAuthRef: store-schema-migration
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/store/schema-migration
+  refreshAfter: 1m
+  hmacSecretData: true
+  destination:
+    create: true
+    overwrite: false
+    name: store-schema-migration
+    transformation:
+      excludeRaw: true
+      includes: ["^password$"]

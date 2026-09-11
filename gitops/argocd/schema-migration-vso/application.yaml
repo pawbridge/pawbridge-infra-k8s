@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: schema-migration-vso
+  namespace: argocd
+spec:
+  project: pawbridge-schema-migration-vso
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: gitops/security/schema-migration-vso
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge
+  # Manual sync only. Secrets must be ready BEFORE enabling service PreSync Jobs.
+  syncPolicy:
+    syncOptions: [Prune=false, FailOnSharedResource=true]

@@ -1,6 +1,14 @@
 # Default values for payment-service
 replicaCount: 1
 
+# Disabled until baseline, restore drill, credentials and image provenance are approved.
+schemaMigration:
+  enabled: false
+  image: ""
+  apiImageDigest: ""
+  recoveryReference: ""
+  existingSchemaVerified: false
+
 image:
   repository: dorosiya/pawbridge-payment-service
   tag: k8s-v1

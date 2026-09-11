@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: animal-schema-migration-vault
+  namespace: pawbridge
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: animal-schema-migration
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: schema-migration-vault
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: animal-schema-migration-read
+    serviceAccount: animal-schema-migration-vault
+    audiences: [vault]
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: animal-schema-migration
+  namespace: pawbridge
+spec:
+  vaultAuthRef: animal-schema-migration
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/animal/schema-migration
+  refreshAfter: 1m
+  hmacSecretData: true
+  destination:
+    create: true
+    overwrite: false
+    name: animal-schema-migration
+    transformation:
+      excludeRaw: true
+      includes: ["^password$"]
