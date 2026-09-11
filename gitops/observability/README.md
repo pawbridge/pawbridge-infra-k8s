@@ -143,6 +143,17 @@ Grafana는 2Gi PVC로 사용자·설정 DB를 보존하며 local-path 특성상 
   NetworkPolicy를 둔다. **현재 정책은 ingress만 제한하며 egress 격리는 미구현이다.** 운영 설치 전
   CNI의 실제 정책 집행과 허용/차단 통신을 검증한다. 이를 확인하기 전 공개 노출하지 않는다.
 
+## 서비스 런타임과 메모리 용량 관측
+
+- VM·파드 상세 상단에 VM 전체 메모리·가용 메모리·가용 비율을 표시한다. `MemAvailable / MemTotal`은 Slack 경보와 같은 기준이다. 파드는 working set·일반 컨테이너 요청 합계·제한 합계를 구분한다. 일부 컨테이너의 제한이 없으면 전체 제한 합계 대신 `제한 없음(전체 또는 일부)`을 표시한다. init container와 Pod-level resources는 이 합계에 포함하지 않는다.
+- 서비스 상세는 파드별 JVM 힙 사용·확보량, 스레드, 초당 GC 정지 시간과 서비스 전체 HTTP 요청량·평균 응답시간·5xx 비율을 표시한다. HTTP는 actuator 경로를 제외하며 요청이 없으면 평균·오류율을 0으로 만들지 않는다. p95와 외부 사용자 체감 지연은 제공하지 않는다. Python은 JVM 수집 대상이 아니다.
+- `spring-runtime.yaml`은 monitoring의 ServiceMonitor 한 개로 pawbridge의 Spring 서비스6개만 선택한다. `/actuator/prometheus`를 30초마다 읽으며 샘플3000개·대상10개로 제한하고 JVM/HTTP 허용 지표만 저장한다. 서비스 차트의 기존 ServiceMonitor를 별도로 활성화하지 않아 중복 수집을 피한다. 초과 시 수집 실패 가능성을 확인한다.
+- API Gateway 접근은 지정한 monitoring 네임스페이스의 Prometheus 파드만 TCP8080으로 허용한다. NetworkPolicy는 L4이므로 metrics URL만 제한하는 정책은 아니다. 공개 접근·기존 Gateway 정책·시크릿·앱 이미지는 변경하지 않는다. 기존 내부 HTTP를 사용하며 TLS를 새로 구성했다는 뜻이 아니다.
+- 배포 전 `test_runtime_queries.py /path/to/promtool`, 기존 대시보드 테스트, 고정 차트 렌더·Grafana 계약 검사를 실행한다. 운영 전 5개 서비스의 내부 지표는 확인했고 Gateway는 기존 정책으로 시간 초과했다. 따라서 정책 반영 후 Gateway를 포함한 6개 target의 up·실제 JVM/HTTP 지표를 확인해야 한다.
+- 운영 적용은 별도 승인 후 정책·ServiceMonitor·대시보드 ConfigMap을 반영한다. Grafana 파일 provisioning은 기존 재기동 절차가 필요할 수 있으므로 UI 중단 범위를 먼저 확인한다. 앱·DB·Vault를 재시작하지 않는다. 수집 전후 Prometheus 메모리와 시계열 증가, 수집 실패를 점검한다.
+- 롤백은 기존 대시보드 ConfigMap으로 복원하고 새 ServiceMonitor·Gateway 허용 정책만 제거한다. 자동 prune가 꺼져 있어 Git 원복만으로 신규 리소스가 삭제되지는 않는다. 기존 PVC·시계열·다른 정책은 삭제하지 않는다.
+- 공식 계산 근거: [Micrometer Prometheus](https://docs.micrometer.io/micrometer/reference/implementations/prometheus.html), [Prometheus 서비스 탐색](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config).
+
 ## kubelet 인증서 알림 적용과 확인
 
 node-exporter는 Kubernetes가 제공한 파드 배치 노드 이름을 `node` 라벨로 수집한다.

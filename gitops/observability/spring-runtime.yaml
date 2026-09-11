@@ -1,0 +1,54 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pawbridge-spring-runtime
+  namespace: monitoring
+  labels:
+    release: pawbridge-observability
+spec:
+  namespaceSelector:
+    matchNames: [pawbridge]
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [api-gateway, user-service, animal-service, community-service, store-service, payment-service]
+  sampleLimit: 3000
+  targetLimit: 10
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: false
+      relabelings:
+        - targetLabel: job
+          replacement: pawbridge-spring-runtime
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          action: keep
+          regex: 'jvm_memory_(used|committed|max)_bytes|jvm_threads_(live|daemon|peak)_threads|jvm_gc_pause_seconds_(count|sum)|http_server_requests_seconds_(count|sum)'
+---
+# Add only monitoring -> gateway TCP access; existing policy remains unchanged.
+# NetworkPolicy is L4: this authorizes port 8080, not just the metrics URL.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus-gateway-metrics
+  namespace: pawbridge
+spec:
+  podSelector:
+    matchLabels: {app: api-gateway}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: monitoring}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+              prometheus: pawbridge-observability-prometheus
+      ports:
+        - {protocol: TCP, port: 8080}

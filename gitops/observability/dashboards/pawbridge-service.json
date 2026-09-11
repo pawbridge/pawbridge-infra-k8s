@@ -2,7 +2,7 @@
   "uid": "pawbridge-service",
   "title": "PawBridge 서비스 상세",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "timezone": "Asia/Seoul",
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
@@ -69,6 +69,55 @@
     ]
   },
   "panels": [
+    {
+      "id": 28, "type": "timeseries", "title": "$service · JVM 힙 메모리",
+      "description": "파드별 JVM 힙 사용량과 확보량입니다. 컨테이너 전체 메모리와 다릅니다. Python 서비스는 JVM 지표 대상이 아닙니다.",
+      "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"}, "gridPos": {"x": 0, "y": 19, "w": 8, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "noValue": "JVM 지표 없음"}, "overrides": []},
+      "targets": [
+        {"refId": "A", "expr": "sum by(pod)(jvm_memory_used_bytes{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\",area=\"heap\"})", "legendFormat": "{{pod}} · 힙 사용"},
+        {"refId": "B", "expr": "sum by(pod)(jvm_memory_committed_bytes{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\",area=\"heap\"})", "legendFormat": "{{pod}} · 힙 확보"}
+      ], "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 29, "type": "timeseries", "title": "$service · JVM 스레드",
+      "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"}, "gridPos": {"x": 8, "y": 19, "w": 8, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "short", "min": 0, "noValue": "JVM 지표 없음"}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "max by(pod)(jvm_threads_live_threads{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\"})", "legendFormat": "{{pod}} · 현재 스레드"}],
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 30, "type": "timeseries", "title": "$service · GC 정지 시간",
+      "description": "초당 누적 GC pause 시간입니다. 평균 또는 최대 1회 정지 시간이 아닙니다. GC가 아직 발생하지 않았으면 지표가 없을 수 있습니다.",
+      "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"}, "gridPos": {"x": 16, "y": 19, "w": 8, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "suffix:s/s", "min": 0, "noValue": "GC 지표 없음"}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "sum by(pod)(rate(jvm_gc_pause_seconds_sum{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\"}[$__rate_interval]))", "legendFormat": "{{pod}} · GC 정지"}],
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 31, "type": "timeseries", "title": "$service · HTTP 요청량",
+      "description": "actuator 경로를 제외한 서비스 전체 초당 요청량입니다. 서비스별 측정이므로 Gateway와 하위 서비스 값을 더하지 않습니다.",
+      "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"}, "gridPos": {"x": 0, "y": 27, "w": 8, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "reqps", "min": 0, "noValue": "요청 또는 수집값 없음"}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "sum(rate(http_server_requests_seconds_count{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\",uri!~\"/actuator.*\"}[$__rate_interval]))", "legendFormat": "요청/s"}],
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 32, "type": "timeseries", "title": "$service · HTTP 평균 응답시간",
+      "description": "완료된 요청의 시간 합계를 건수로 나눈 가중 평균입니다. p95가 아닙니다. 요청이 없으면 0ms가 아닌 빈 값입니다.",
+      "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"}, "gridPos": {"x": 8, "y": 27, "w": 8, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "s", "min": 0, "noValue": "요청 또는 수집값 없음"}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "sum(rate(http_server_requests_seconds_sum{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\",uri!~\"/actuator.*\"}[$__rate_interval])) / (sum(rate(http_server_requests_seconds_count{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\",uri!~\"/actuator.*\"}[$__rate_interval])) > 0)", "legendFormat": "평균 응답시간"}],
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 33, "type": "timeseries", "title": "$service · HTTP 5xx 비율",
+      "description": "완료된 HTTP 응답 중 5xx 비율입니다. 요청 자체가 없거나 지표가 없으면 빈 값으로 표시합니다. 4xx는 서버 오류율에 포함하지 않습니다.",
+      "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"}, "gridPos": {"x": 16, "y": 27, "w": 8, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "noValue": "요청 또는 수집값 없음"}, "overrides": []},
+      "targets": [{"refId": "A", "expr": "100 * (sum(rate(http_server_requests_seconds_count{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\",uri!~\"/actuator.*\",status=~\"5..\"}[$__rate_interval])) or (0 * sum(rate(http_server_requests_seconds_count{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\",uri!~\"/actuator.*\"}[$__rate_interval])))) / (sum(rate(http_server_requests_seconds_count{job=\"pawbridge-spring-runtime\",namespace=\"$namespace\",service=\"$service\",uri!~\"/actuator.*\"}[$__rate_interval])) > 0)", "legendFormat": "5xx 비율"}],
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
     {
       "id": 7,
       "type": "text",
@@ -219,7 +268,7 @@
       "id": 17,
       "type": "row",
       "title": "파드별 상세 · $pod",
-      "gridPos": { "x": 0, "y": 19, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 35, "w": 24, "h": 1 },
       "collapsed": false,
       "repeat": "pod",
       "panels": []
@@ -230,7 +279,7 @@
       "title": "$pod · 메모리",
       "description": "일반 컨테이너의 합계입니다. 요청은 예약 기준이지 실제 사용량이 아닙니다. 제한 미설정 컨테이너는 제한 합계에 포함되지 않으므로 전체 파드의 강제 상한으로 해석하지 마세요. Pod-level resources와 init container는 이 비교선에 포함하지 않습니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 36, "w": 12, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "bytes", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -275,7 +324,7 @@
       "title": "$pod · CPU",
       "description": "일반 컨테이너의 합계입니다. 요청은 예약 기준이지 실제 사용량이 아닙니다. 제한 미설정 컨테이너는 제한 합계에 포함되지 않으므로 전체 파드의 강제 상한으로 해석하지 마세요. Pod-level resources와 init container는 이 비교선에 포함하지 않습니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 36, "w": 12, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "cores", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -320,7 +369,7 @@
       "title": "$pod · 네트워크 속도",
       "description": "",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 44, "w": 12, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "Bps", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -358,7 +407,7 @@
       "title": "$pod · 재시작 횟수 (선택 기간)",
       "description": "선택 기간의 카운터 증가 추정값입니다. 파드 교체 횟수가 아닙니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 12, "y": 28, "w": 6, "h": 8 },
+      "gridPos": { "x": 12, "y": 44, "w": 6, "h": 8 },
       "fieldConfig": {
         "defaults": { "unit": "short", "min": 0, "noValue": "수집값 없음" },
         "overrides": []
@@ -387,12 +436,12 @@
     {
       "id": 16,
       "type": "stat",
-      "title": "$pod · 현재 배치 VM / Ready",
-      "description": "1은 Ready, 0은 Not Ready입니다. 수집값이 없으면 상태를 판단할 수 없습니다.",
+      "title": "$pod · 배치 VM / 파드 준비 상태",
+      "description": "VM 이름은 파드가 배치된 위치입니다. 상태는 VM 자체가 아니라 파드의 Ready 조건입니다. 준비됨(1), 준비 안 됨(0)으로 표시하며 수집값 없음은 정상으로 간주하지 않습니다.",
       "datasource": { "type": "prometheus", "uid": "pawbridge-prometheus" },
-      "gridPos": { "x": 18, "y": 28, "w": 6, "h": 8 },
+      "gridPos": { "x": 18, "y": 44, "w": 6, "h": 8 },
       "fieldConfig": {
-        "defaults": { "unit": "short", "min": 0, "noValue": "수집값 없음" },
+        "defaults": { "unit": "short", "min": 0, "noValue": "수집값 없음", "mappings": [{ "type": "value", "options": { "0": { "text": "파드 준비 안 됨", "color": "red" }, "1": { "text": "파드 준비됨", "color": "green" } } }] },
         "overrides": []
       },
       "targets": [
