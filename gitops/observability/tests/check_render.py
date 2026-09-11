@@ -142,7 +142,7 @@ def validate(objects, slack):
     assert rules['metadata']['namespace'] == 'monitoring'
     assert one('Namespace')['metadata']['name'] == 'monitoring'
     policies = [o for o in objects if o['kind'] == 'NetworkPolicy']
-    assert len(policies) == 3 and all(o['spec']['policyTypes'] == ['Ingress'] for o in policies)
+    assert len(policies) == 4 and all(o['spec']['policyTypes'] == ['Ingress'] for o in policies)
     for rule in rules['spec']['groups'][0]['rules']:
         assert rule['alert'].startswith('PawBridge') and rule['for']
         assert rule['labels']['severity'] in ['warning', 'critical']

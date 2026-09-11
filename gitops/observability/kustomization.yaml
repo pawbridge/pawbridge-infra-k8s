@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - rules.yaml
+  - spring-runtime.yaml
   - network-policy.yaml
   - logs/workloads.yaml
   - logs/network-policy.yaml

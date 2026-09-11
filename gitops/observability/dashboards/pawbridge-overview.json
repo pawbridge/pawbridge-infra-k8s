@@ -2,7 +2,7 @@
   "uid": "pawbridge-overview",
   "title": "PawBridge 운영 현황",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "timezone": "Asia/Seoul",
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
@@ -158,7 +158,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(label_app) ((sum by(namespace,pod) (container_memory_working_set_bytes{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",container!=\"\",container!=\"POD\"})) * on(namespace,pod) group_left(label_app) (max by(namespace,pod,label_app) (kube_pod_labels{namespace=\"$namespace\",label_app!=\"\"})))",
+          "expr": "sort_desc(sum by(label_app) ((sum by(namespace,pod) (container_memory_working_set_bytes{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",container!=\"\",container!=\"POD\"})) * on(namespace,pod) group_left(label_app) (max by(namespace,pod,label_app) (kube_pod_labels{namespace=\"$namespace\",label_app!=\"\"}))))",
           "legendFormat": "{{label_app}}",
           "instant": true,
           "range": false
@@ -200,7 +200,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(label_app) ((sum by(namespace,pod) (rate(container_cpu_usage_seconds_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",container!=\"\",container!=\"POD\"}[$__rate_interval]))) * on(namespace,pod) group_left(label_app) (max by(namespace,pod,label_app) (kube_pod_labels{namespace=\"$namespace\",label_app!=\"\"})))",
+          "expr": "sort_desc(sum by(label_app) ((sum by(namespace,pod) (rate(container_cpu_usage_seconds_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=\"$namespace\",container!=\"\",container!=\"POD\"}[$__rate_interval]))) * on(namespace,pod) group_left(label_app) (max by(namespace,pod,label_app) (kube_pod_labels{namespace=\"$namespace\",label_app!=\"\"}))))",
           "legendFormat": "{{label_app}}",
           "instant": true,
           "range": false
