@@ -25,7 +25,7 @@ spec:
     roles:
       - secretName: store-search-file-realm-roles
   nodeSets:
-    - name: default
+    - name: worker1
       count: 1
       config:
         node.roles:
@@ -51,7 +51,7 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           nodeSelector:
-            kubernetes.io/hostname: pawbridge-k136-w2
+            kubernetes.io/hostname: pawbridge-k136-w1
           initContainers:
             - name: max-map-count-check
               command:

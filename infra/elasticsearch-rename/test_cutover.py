@@ -18,7 +18,10 @@ class CutoverContract(unittest.TestCase):
         after['metadata']['labels'] = before['metadata']['labels']
         node = after['spec']['nodeSets'][0]
         original = before['spec']['nodeSets'][0]
-        self.assertEqual(node['podTemplate']['spec']['nodeSelector'], {'kubernetes.io/hostname': 'pawbridge-k136-w2'})
+        self.assertEqual(node['name'], 'worker1')
+        self.assertNotEqual(node['name'], original['name'])
+        node['name'] = original['name']
+        self.assertEqual(node['podTemplate']['spec']['nodeSelector'], {'kubernetes.io/hostname': 'pawbridge-k136-w1'})
         node['podTemplate']['spec']['nodeSelector'] = original['podTemplate']['spec']['nodeSelector']
         node['podTemplate']['metadata']['labels'] = original['podTemplate']['metadata']['labels']
         node['volumeClaimTemplates'][0]['metadata']['labels'] = original['volumeClaimTemplates'][0]['metadata']['labels']
