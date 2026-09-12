@@ -1,0 +1,6 @@
+apiVersion: v2
+name: photo-service
+description: Internal CPU photo optimizer with bounded resource use
+type: application
+version: 0.1.0
+appVersion: "1"

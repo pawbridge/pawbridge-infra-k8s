@@ -1,0 +1,22 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: {{ .Release.Name }}-internal-auth
+spec:
+  vaultAuthRef: {{ required "internalAuth.vaultAuthRef is required" .Values.internalAuth.vaultAuthRef | quote }}
+  mount: {{ .Values.internalAuth.mount | quote }}
+  type: kv-v2
+  path: {{ .Values.internalAuth.path | quote }}
+  refreshAfter: 1m
+  hmacSecretData: true
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: {{ .Release.Name }}
+  destination:
+    create: true
+    overwrite: false
+    name: {{ .Release.Name }}-internal-auth
+    transformation:
+      excludeRaw: true
+      includes:
+        - ^INTERNAL_API_KEY$

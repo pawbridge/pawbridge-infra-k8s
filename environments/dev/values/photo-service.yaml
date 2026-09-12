@@ -1,0 +1,11 @@
+replicaCount: 0
+image:
+  repository: dorosiya/pawbridge-photo-service
+  # Fill from the photo-specific CI summary before any runtime activation.
+  digest: ""
+nodeSelector:
+  kubernetes.io/hostname: pawbridge-k136-w2
+internalAuth:
+  vaultAuthRef: python-runtime-vault-auth
+  mount: secret
+  path: pawbridge/dev/animal-python/internal
