@@ -16,13 +16,13 @@ def require(condition, message):
         raise AssertionError(message)
     checks += 1
 
-def render(service, values=None, namespace="pawbridge", failure=None):
+def render(service, values=None, namespace="pawbridge", failure=None, dev_values=True):
     result = subprocess.run([
         "docker", "run", "-i", "--rm", "--pull", "never", "--network", "none",
         "--mount", f"type=bind,src={ROOT},dst=/repo,readonly",
         "alpine/helm:3.15.4", "template", f"{service}-service",
         f"/repo/charts/{service}-service", "--namespace", namespace,
-        "-f", f"/repo/environments/dev/values/{service}-service.yaml",
+        *(["-f", f"/repo/environments/dev/values/{service}-service.yaml"] if dev_values else []),
         "-f", "-"
     ], input=yaml.safe_dump(values or {}), text=True, capture_output=True, timeout=60)
     if failure:
@@ -34,16 +34,25 @@ def render(service, values=None, namespace="pawbridge", failure=None):
 
 def main():
     for service in SERVICES:
-        default = render(service)
+        default = render(service, dev_values=False)
         require(not any(x["kind"] == "Job" and x["metadata"]["name"].endswith("-schema-migrate")
                         for x in default), f"{service}: enabled by default")
+        release = render(service)
+        release_jobs = [x for x in release if x["kind"] == "Job"
+                        and x["metadata"]["name"].endswith("-schema-migrate")]
+        require(len(release_jobs) == 1, f"{service}: dev migration missing")
+        release_values = yaml.safe_load((ROOT / f"environments/dev/values/{service}-service.yaml").read_text())
+        migration = release_values["schemaMigration"]
+        require(release_jobs[0]["spec"]["template"]["spec"]["containers"][0]["image"] == migration["image"],
+                f"{service}: published migration digest mismatch")
         digest = "sha256:" + "a" * 64
         good = {
-            "image": {"digest": digest},
+            "image": {"digest": digest, "tag": "sha-" + "c" * 40},
             "env": {"SPRING_JPA_HIBERNATE_DDL_AUTO": "validate"},
             "schemaMigration": {
                 "enabled": True, "image": "example.invalid/migration@" + digest,
                 "apiImageDigest": digest, "existingSchemaVerified": True,
+                "sourceRevision": "c" * 40,
                 "recoveryReference": "synthetic-test-evidence"
             }
         }
@@ -53,6 +62,7 @@ def main():
         job = jobs[0]
         annotations = job["metadata"]["annotations"]
         require(annotations["argocd.argoproj.io/hook"] == "PreSync", "not PreSync")
+        require(annotations["pawbridge.kr/source-revision"] == "c" * 40, "source evidence lost")
         require(annotations["argocd.argoproj.io/sync-wave"] == "10", "migration runs before preflight")
         require(annotations["argocd.argoproj.io/hook-delete-policy"] == "HookSucceeded",
                 "failed job must remain")
@@ -84,6 +94,8 @@ def main():
             ("recoveryReference", "", "recovery drill"),
             ("image", "example.invalid/migration:latest", "immutable sha256"),
             ("apiImageDigest", "sha256:" + "b" * 64, "image pair"),
+            ("sourceRevision", "", "full commit SHA"),
+            ("sourceRevision", "d" * 40, "source revision must match"),
         ]
         for key, value, error in cases:
             bad = copy.deepcopy(good)

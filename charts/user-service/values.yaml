@@ -6,6 +6,7 @@ schemaMigration:
   enabled: false
   image: ""
   apiImageDigest: ""
+  sourceRevision: ""
   recoveryReference: ""
   existingSchemaVerified: false
 

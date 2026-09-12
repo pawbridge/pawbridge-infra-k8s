@@ -5,8 +5,8 @@ nodeSelector:
 
 image:
   repository: dorosiya/pawbridge-community-service
-  tag: sha-3e7b32a10612d03b9bb8d233834a84bab0916166
-  digest: sha256:b4b7c5207bfb29c8f505cce2d51ceab883afc6705ce9e38e4a5788e99c0b5eb0
+  tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  digest: sha256:0fcbe26c44671fc7a7da11f93323af86f95a8810b1ab4cf88eaeda3c3edd9acb
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
@@ -28,8 +28,8 @@ env:
   # Force Dev Profile
   SPRING_PROFILES_ACTIVE: dev
 
-  # JPA Settings (테이블 자동 생성)
-  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+  # JPA: Flyway manages DDL; Hibernate validates only.
+  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
   SPRING_JPA_SHOW_SQL: "false"
   SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
   SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "false"
@@ -64,3 +64,11 @@ env:
   R2_BUCKET_NAME: pawbridge-public-images
   R2_PUBLIC_BASE_URL: https://images.pawbridge.kr
   R2_REGION: auto
+
+schemaMigration:
+  image: dorosiya/pawbridge-community-service@sha256:0149ea0c060885689db449afafca92f0d869b5f6622620e0f48e40aba406938a
+  apiImageDigest: sha256:0fcbe26c44671fc7a7da11f93323af86f95a8810b1ab4cf88eaeda3c3edd9acb
+  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  enabled: true
+  existingSchemaVerified: true
+  recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911

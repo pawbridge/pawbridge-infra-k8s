@@ -19,8 +19,8 @@ affinity:
 
 image:
   repository: dorosiya/pawbridge-store-service
-  tag: sha-e7edbed2b9e664fecc4c34e762e17dd9fbe1c8ff
-  digest: sha256:96ce0e1b3fb319eebd67ec37995819abfccc69c74e79dbc5e75f966266fa987e
+  tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  digest: sha256:3b6671968a1309321d431d0109146d0bab04bd59f2eb33ed2131ce2fe096dd87
 
 r2SecretRef: store-service-r2-secrets-vso
 redisSecretRef: redis-auth
@@ -36,8 +36,8 @@ env:
   # Force Dev Profile
   SPRING_PROFILES_ACTIVE: dev
 
-  # JPA Settings (테이블 자동 생성)
-  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+  # JPA: Flyway manages DDL; Hibernate validates only.
+  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
   SPRING_JPA_SHOW_SQL: "false"
   SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
   SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "false"
@@ -67,3 +67,11 @@ env:
   # 7. Redis (Explicit Host/Port for Redisson)
   SPRING_DATA_REDIS_HOST: redis-master.databases.svc.cluster.local
   SPRING_DATA_REDIS_PORT: "6379"
+
+schemaMigration:
+  image: dorosiya/pawbridge-store-service@sha256:11b1d92fa7ee0289f49c4ee5801041a4f30988cc2f993545312ccbf6bf0b0cf2
+  apiImageDigest: sha256:3b6671968a1309321d431d0109146d0bab04bd59f2eb33ed2131ce2fe096dd87
+  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  enabled: true
+  existingSchemaVerified: true
+  recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911

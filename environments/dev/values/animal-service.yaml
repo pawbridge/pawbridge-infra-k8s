@@ -107,4 +107,6 @@ schemaMigration:
   image: dorosiya/pawbridge-animal-service@sha256:b8af44a3ac3933bd758b00cdc550b4639de83c7475d88aad617a300373600fc6
   apiImageDigest: sha256:a699f4ab20c8163695fce4989032dea3e3b09756b2db9773c85172d1f34e25e3
   sourceRevision: 9b0d57d3a7f7e3812915a4edc371d00b676f386a
-  enabled: false
+  enabled: true
+  existingSchemaVerified: true
+  recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
