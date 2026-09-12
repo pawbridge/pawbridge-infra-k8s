@@ -90,6 +90,7 @@ spec:
         - ^APMS_API_BASE_URL$
         - ^APMS_API_SERVICE_KEY$
         - ^CHATBOT_IP_HASH_SECRET$
+        - ^TOURAPI_SERVICEKEY$
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
