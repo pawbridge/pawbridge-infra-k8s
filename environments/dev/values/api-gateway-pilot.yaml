@@ -1,7 +1,7 @@
 image:
   repository: dorosiya/pawbridge-api-gateway
-  tag: sha-7a5471efec1b23a01b770b101dbbbc20836cf7a1
-  digest: sha256:8b7bd7a85e6bd1834339d2274a9eb16d0c9418314ace3caee8c04c70a83e753f
+  tag: sha-e5edb9f2b6fc5259a827b842e035dfa8d2c7704e
+  digest: sha256:9d886e1783bc106dcf9ae12b18f614a59b4dc89e038180a5848274b3ed4641b5
   pullPolicy: IfNotPresent
 
 service:
