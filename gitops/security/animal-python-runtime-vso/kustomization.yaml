@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - animal.yaml
   - python.yaml
+  - photo-archive.yaml

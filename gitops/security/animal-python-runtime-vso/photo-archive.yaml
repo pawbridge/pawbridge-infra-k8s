@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: animal-photo-archive-vault-auth
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: animal-photo-archive-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: animal-runtime-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: animal-photo-archive-r2-read
+    serviceAccount: animal-photo-archive-vault-auth
+    audiences:
+    - vault
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: animal-photo-archive-r2-auth
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  vaultAuthRef: animal-photo-archive-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/animal/photo-archive-r2
+  refreshAfter: 1m
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: animal-service
+  hmacSecretData: true
+  destination:
+    create: true
+    overwrite: false
+    name: animal-photo-archive-r2-auth
+    transformation:
+      excludeRaw: true
+      includes:
+      - ^R2_ACCESS_KEY_ID$
+      - ^R2_SECRET_ACCESS_KEY$

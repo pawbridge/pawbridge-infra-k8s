@@ -47,6 +47,8 @@ r2SecretRef: ""
 internalApiSecretRef: ""
 # Optional photo optimizer binding; does not enable photo archiving.
 photoOptimizerSecretRef: ""
+# Dedicated archive keys are mapped individually; never override public-upload R2 envFrom.
+photoArchiveSecretRef: ""
 elasticsearchSecretRef: ""
 elasticsearchCaSecretRef: ""
 elasticsearchCaMountPath: /etc/pawbridge/animal-search-ca

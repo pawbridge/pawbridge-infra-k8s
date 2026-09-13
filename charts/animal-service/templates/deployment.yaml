@@ -63,6 +63,20 @@ spec:
                   key: INTERNAL_API_KEY
                   optional: false
             {{- end }}
+            {{- if .Values.photoArchiveSecretRef }}
+            - name: APMS_PHOTO_ARCHIVE_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.photoArchiveSecretRef }}
+                  key: R2_ACCESS_KEY_ID
+                  optional: false
+            - name: APMS_PHOTO_ARCHIVE_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.photoArchiveSecretRef }}
+                  key: R2_SECRET_ACCESS_KEY
+                  optional: false
+            {{- end }}
             {{- if .Values.elasticsearchSecretRef }}
             - name: SPRING_ELASTICSEARCH_USERNAME
               valueFrom:
