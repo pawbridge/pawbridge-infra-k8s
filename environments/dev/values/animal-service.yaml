@@ -23,8 +23,8 @@ affinity:
 
 image:
   repository: dorosiya/pawbridge-animal-service
-  tag: sha-cf989411dc0ae8063c06ecd8a4b941a47a8ec857
-  digest: sha256:db1228b77cdd5a01a14082b1fcff94cdffbf5c85f3298f2c96a1f0bc232a68ed
+  tag: sha-9b494b0c6cde58622c5c48f65307285375cf63f7
+  digest: sha256:e93507ca6e715a64c3d54df5809d77b1403ea6e0d92975e4bd9f9c21de3fb984
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
@@ -133,9 +133,9 @@ env:
   CHATBOT_RATE_LIMIT_GLOBAL_DAILY: "300"
 
 schemaMigration:
-  image: dorosiya/pawbridge-animal-service@sha256:944b0be2b43fe2502d7a1cc787be70d68bf535271dceee7c0da6d90fced1ddc3
-  apiImageDigest: sha256:db1228b77cdd5a01a14082b1fcff94cdffbf5c85f3298f2c96a1f0bc232a68ed
-  sourceRevision: cf989411dc0ae8063c06ecd8a4b941a47a8ec857
+  image: dorosiya/pawbridge-animal-service@sha256:50116b78641454f23e2740f51480f84a1c64399fc7fa4617f3f37bad1088676b
+  apiImageDigest: sha256:e93507ca6e715a64c3d54df5809d77b1403ea6e0d92975e4bd9f9c21de3fb984
+  sourceRevision: 9b494b0c6cde58622c5c48f65307285375cf63f7
   enabled: true
   existingSchemaVerified: true
   recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
