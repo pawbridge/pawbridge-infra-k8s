@@ -95,6 +95,10 @@ env:
   TOURAPI_MAXDETAILSPERRUN: "18"
   TOURAPI_DAILYREQUESTLIMIT: "900"
   TOURAPI_DETAILREFRESHDAYS: "14"
+  # Roll out only after V5/V6 migration and bulk-key propagation are verified.
+  # Bulk pet conditions use KorService2; common details retain the existing API.
+  TOURAPI_BULKPETENABLED: "true"
+  TOURAPI_MAXBULKPAGESPERRUN: "10"
 
   # 6. Service Discovery (Internal URLs)
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
