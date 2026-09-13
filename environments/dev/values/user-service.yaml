@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: dorosiya/pawbridge-user-service
-  tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
-  digest: sha256:0898685bbc838567fb226eaff4b8d2b1433d9b047e9a33627fb95d85fc5a64ba
+  tag: sha-4da954e145b61dad443f1717f977e57f43ef681b
+  digest: sha256:2262733e2359e26b16f6eaddbe68494f67da80da305e49df96d56b2729747c0e
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
@@ -62,9 +62,9 @@ env:
   OAUTH2_REDIRECT_URI: https://www.pawbridge.kr/oauth/callback
 
 schemaMigration:
-  image: dorosiya/pawbridge-user-service@sha256:93e14be4e48c1e81b6eea5cd1bab31a175eb6ee66e2e96f3dddd448f652e3771
-  apiImageDigest: sha256:0898685bbc838567fb226eaff4b8d2b1433d9b047e9a33627fb95d85fc5a64ba
-  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  image: dorosiya/pawbridge-user-service@sha256:5ee5749f4a7eaa4ecfd222e53b615b8fdc6261d71c8e1dd1e7d61579430fe318
+  apiImageDigest: sha256:2262733e2359e26b16f6eaddbe68494f67da80da305e49df96d56b2729747c0e
+  sourceRevision: 4da954e145b61dad443f1717f977e57f43ef681b
   enabled: true
   existingSchemaVerified: true
   recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
