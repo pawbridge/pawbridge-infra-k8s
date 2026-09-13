@@ -52,19 +52,23 @@ class TravelBulkRuntimeTests(unittest.TestCase):
             entry['value'] = 'true'
         self.assertEqual(AFTER, paused)
 
-    def test_only_new_key_is_added_to_existing_runtime_secret_allowlist(self):
+    def test_only_new_keys_are_added_to_existing_runtime_secret_allowlist(self):
         after = copy.deepcopy(VSO_AFTER)
         secret = after[('VaultStaticSecret', 'animal-runtime-auth')]['spec']
         self.assertEqual('pawbridge/dev/animal/runtime', secret['path'])
         self.assertEqual('animal-runtime-auth', secret['destination']['name'])
         transformation = secret['destination']['transformation']
         self.assertIs(True, transformation['excludeRaw'])
-        self.assertEqual(1, transformation['includes'].count('^TOURAPI_BULKSERVICEKEY$'))
-        transformation['includes'].remove('^TOURAPI_BULKSERVICEKEY$')
+        required_keys = ['TOURAPI_BULKSERVICEKEY', 'SHELTER_DIRECTORY_SERVICE_KEY']
+        for key in required_keys:
+            pattern = '^' + key + '$'
+            self.assertEqual(1, transformation['includes'].count(pattern))
+            transformation['includes'].remove(pattern)
         self.assertEqual(VSO_BEFORE, after)
         self.assertIn({'secretRef': {'name': 'animal-runtime-auth', 'optional': False}},
                       container(AFTER)['envFrom'])
-        self.assertNotIn('TOURAPI_BULKSERVICEKEY', [entry['name'] for entry in container(AFTER)['env']])
+        for key in required_keys:
+            self.assertNotIn(key, [entry['name'] for entry in container(AFTER)['env']])
 
     def test_migration_runs_before_api_sync_with_no_automatic_retry(self):
         job = AFTER[('Job', 'animal-service-schema-migrate')]
