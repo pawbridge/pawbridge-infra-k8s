@@ -84,6 +84,18 @@ env:
   TZ: "Asia/Seoul"
   JAVA_TOOL_OPTIONS: "-Duser.timezone=Asia/Seoul"
 
+  # Travel collection uses the in-process scheduler, not the APMS CronJob.
+  # To pause future runs, disable BOTH flags and roll out the same image.
+  # Keep stored places, cursor and request budgets when pausing collection.
+  TOURAPI_ENABLED: "true"
+  TOURAPI_SCHEDULE_ENABLED: "true"
+  TOURAPI_COLLECTION_CRON: "0 */30 * * * *"
+  # ConfigurationProperties env names omit hyphens within each property name.
+  TOURAPI_MAXPAGESPERRUN: "10"
+  TOURAPI_MAXDETAILSPERRUN: "18"
+  TOURAPI_DAILYREQUESTLIMIT: "900"
+  TOURAPI_DETAILREFRESHDAYS: "14"
+
   # 6. Service Discovery (Internal URLs)
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
