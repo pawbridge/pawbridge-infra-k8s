@@ -1,0 +1,18 @@
+# No Pod starts until a verified image digest and runtime approval are supplied.
+replicaCount: 0
+image:
+  repository: dorosiya/pawbridge-photo-service
+  digest: ""
+nodeSelector: {}
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+internalAuth:
+  vaultAuthRef: python-runtime-vault-auth
+  mount: secret
+  path: pawbridge/dev/animal-python/internal
+callerApp: animal-service

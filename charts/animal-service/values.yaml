@@ -45,6 +45,8 @@ redisSecretRef: ""
 mysqlSecretRef: ""
 r2SecretRef: ""
 internalApiSecretRef: ""
+# Optional photo optimizer binding; does not enable photo archiving.
+photoOptimizerSecretRef: ""
 elasticsearchSecretRef: ""
 elasticsearchCaSecretRef: ""
 elasticsearchCaMountPath: /etc/pawbridge/animal-search-ca

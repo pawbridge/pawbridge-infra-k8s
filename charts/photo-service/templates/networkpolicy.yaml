@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: {{ .Values.callerApp | quote }}
+      ports:
+        - protocol: TCP
+          port: 8000
+  # The optimizer consumes request bytes and has no outbound API client.
+  egress: []

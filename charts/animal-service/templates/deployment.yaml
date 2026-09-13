@@ -55,6 +55,14 @@ spec:
                   name: {{ .Values.internalApiSecretRef }}
                   key: INTERNAL_API_KEY
             {{- end }}
+            {{- if .Values.photoOptimizerSecretRef }}
+            - name: APMS_PHOTO_OPTIMIZER_INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.photoOptimizerSecretRef }}
+                  key: INTERNAL_API_KEY
+                  optional: false
+            {{- end }}
             {{- if .Values.elasticsearchSecretRef }}
             - name: SPRING_ELASTICSEARCH_USERNAME
               valueFrom:
