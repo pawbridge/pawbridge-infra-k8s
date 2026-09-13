@@ -34,6 +34,8 @@ secretRef: animal-runtime-auth
 mysqlSecretRef: animal-mysql-auth
 r2SecretRef: animal-r2-auth
 internalApiSecretRef: animal-python-internal-auth
+photoOptimizerSecretRef: animal-python-internal-auth
+photoArchiveSecretRef: animal-photo-archive-r2-auth
 elasticsearchSecretRef: animal-search-writer-auth
 elasticsearchCaSecretRef: animal-search-http-ca
 
@@ -91,6 +93,21 @@ env:
   R2_REGION: auto
   R2_BUCKET_NAME: pawbridge-public-images
   R2_PUBLIC_BASE_URL: https://images.pawbridge.kr
+
+  # Connect dedicated archive credentials first. Activation requires the isolated-client image.
+  APMS_PHOTO_ARCHIVE_ENABLED: "false"
+  APMS_PHOTO_ARCHIVE_BUCKET: pawbridge-animal-originals
+  APMS_PHOTO_ARCHIVE_ENDPOINT: https://3e28b8ba8375b9010f6a426c1cb9755f.r2.cloudflarestorage.com
+  APMS_PHOTO_ARCHIVE_REGION: auto
+  APMS_PHOTO_OPTIMIZER_URL: http://photo-service.pawbridge.svc.cluster.local:8000/internal/photos/optimize
+  # Per-process budgets; reassess when replicas or restart frequency changes.
+  APMS_PHOTO_ARCHIVE_SCAN_SIZE: "5"
+  APMS_PHOTO_ARCHIVE_MAX_PHOTOS: "10"
+  APMS_PHOTO_ARCHIVE_MAX_RUN_SECONDS: "120"
+  APMS_PHOTO_ARCHIVE_LEASE_SECONDS: "600"
+  APMS_PHOTO_ARCHIVE_RECHECK_SECONDS: "604800"
+  APMS_PHOTO_ARCHIVE_INTERVAL_MS: "900000"
+  APMS_PHOTO_ARCHIVE_INITIAL_DELAY_MS: "60000"
 
   # 7. Redis (Explicit Host/Port for Redisson)
   SPRING_DATA_REDIS_HOST: redis-master.databases.svc.cluster.local
