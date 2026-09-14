@@ -77,6 +77,30 @@ spec:
                   key: R2_SECRET_ACCESS_KEY
                   optional: false
             {{- end }}
+            {{- if .Values.lostGalleryFeed.enabled }}
+            - name: LOST_GALLERY_FEED_ENABLED
+              value: "true"
+            - name: LOST_GALLERY_FEED_INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "lostGalleryFeed.internalApiSecretRef is required when enabled" .Values.lostGalleryFeed.internalApiSecretRef | quote }}
+                  key: LOST_GALLERY_FEED_INTERNAL_API_KEY
+                  optional: false
+            - name: LOST_GALLERY_FEED_STORAGE_ENDPOINT
+              value: {{ required "lostGalleryFeed.storageEndpoint is required when enabled" .Values.lostGalleryFeed.storageEndpoint | quote }}
+            - name: LOST_GALLERY_FEED_STORAGE_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "lostGalleryFeed.storageSecretRef is required when enabled" .Values.lostGalleryFeed.storageSecretRef | quote }}
+                  key: R2_ACCESS_KEY_ID
+                  optional: false
+            - name: LOST_GALLERY_FEED_STORAGE_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.lostGalleryFeed.storageSecretRef | quote }}
+                  key: R2_SECRET_ACCESS_KEY
+                  optional: false
+            {{- end }}
             {{- if .Values.elasticsearchSecretRef }}
             - name: SPRING_ELASTICSEARCH_USERNAME
               valueFrom:
