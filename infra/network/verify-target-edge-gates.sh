@@ -11,7 +11,7 @@ readonly VSO_DEPLOYMENT="vault-secrets-operator-controller-manager"
 readonly COMMAND_TIMEOUT_SECONDS="30"
 readonly KUBECTL_REQUEST_TIMEOUT="15s"
 readonly CLOUDFLARED_IMAGE="cloudflare/cloudflared:2026.8.3@sha256:51c9cefcb4569df44e1ad403ab1d3d8065aa8e84339bcfc6aee75502e1140339"
-readonly GATEWAY_IMAGE="dorosiya/pawbridge-api-gateway@sha256:63151f6aeae29d5a93514e342f457afbc0a3400dc43d32c619456c9485fa50d2"
+readonly GATEWAY_IMAGE="dorosiya/pawbridge-api-gateway@sha256:64e5f266621f94adb932ad77ad3c6787847537b2054a6c757bbd046e682b825f"
 readonly -a CLOUDFLARE_EDGE_IPV4_CIDRS=(
   198.41.192.7/32
   198.41.192.27/32
