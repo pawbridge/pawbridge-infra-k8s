@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lost-search-gpu-proxy-dev
+  namespace: argocd
+spec:
+  project: pawbridge-lost-search-gpu-proxy
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: charts/lost-search-gpu-proxy
+    helm:
+      releaseName: lost-search-gpu-proxy
+      valueFiles:
+        - ../../environments/dev/values/lost-search-gpu-proxy.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge
+  syncPolicy:
+    automated:
+      enabled: true
+      selfHeal: true
+      prune: false
+      allowEmpty: false
+    syncOptions:
+      - Prune=false
+      - FailOnSharedResource=true

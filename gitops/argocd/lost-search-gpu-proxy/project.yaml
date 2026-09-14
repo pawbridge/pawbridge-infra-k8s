@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pawbridge-lost-search-gpu-proxy
+  namespace: argocd
+spec:
+  description: Private VM to host GPU search bridge
+  sourceRepos:
+    - https://github.com/pawbridge/pawbridge-infra-k8s.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: pawbridge
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ConfigMap
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+  orphanedResources:
+    warn: true

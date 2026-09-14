@@ -1,0 +1,4 @@
+apiVersion: v2
+name: lost-search-gpu-proxy
+version: 0.1.0
+type: application

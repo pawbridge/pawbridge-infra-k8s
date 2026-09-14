@@ -110,6 +110,8 @@ env:
   ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
   STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
   PYTHON_AI_SERVICE_URL: http://python-ai-service.pawbridge.svc.cluster.local:8000
+  # Deploy and verify the private GPU bridge before merging this URL cutover.
+  LOST_SEARCH_PYTHON_URL: http://lost-search-gpu-proxy.pawbridge.svc.cluster.local:8000
 
   R2_ENDPOINT: https://3e28b8ba8375b9010f6a426c1cb9755f.r2.cloudflarestorage.com
   R2_REGION: auto
