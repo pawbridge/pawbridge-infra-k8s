@@ -36,6 +36,12 @@ r2SecretRef: animal-r2-auth
 internalApiSecretRef: animal-python-internal-auth
 photoOptimizerSecretRef: animal-python-internal-auth
 photoArchiveSecretRef: animal-photo-archive-r2-auth
+# Configure references without enabling the feed before the dedicated key is ready.
+lostGalleryFeed:
+  enabled: false
+  internalApiSecretRef: animal-runtime-auth
+  storageSecretRef: animal-photo-archive-r2-auth
+  storageEndpoint: https://3e28b8ba8375b9010f6a426c1cb9755f.r2.cloudflarestorage.com
 elasticsearchSecretRef: animal-search-writer-auth
 elasticsearchCaSecretRef: animal-search-http-ca
 

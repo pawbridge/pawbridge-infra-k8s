@@ -49,6 +49,12 @@ internalApiSecretRef: ""
 photoOptimizerSecretRef: ""
 # Dedicated archive keys are mapped individually; never override public-upload R2 envFrom.
 photoArchiveSecretRef: ""
+# Feed activation follows dedicated key synchronization and authenticated transport checks.
+lostGalleryFeed:
+  enabled: false
+  internalApiSecretRef: ""
+  storageSecretRef: ""
+  storageEndpoint: ""
 elasticsearchSecretRef: ""
 elasticsearchCaSecretRef: ""
 elasticsearchCaMountPath: /etc/pawbridge/animal-search-ca

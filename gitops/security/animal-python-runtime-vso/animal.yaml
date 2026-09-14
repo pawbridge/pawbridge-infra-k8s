@@ -93,6 +93,7 @@ spec:
         - ^TOURAPI_SERVICEKEY$
         - ^TOURAPI_BULKSERVICEKEY$
         - ^SHELTER_DIRECTORY_SERVICE_KEY$
+        - ^LOST_GALLERY_FEED_INTERNAL_API_KEY$
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
