@@ -1,5 +1,6 @@
 # Default values for animal-service
 replicaCount: 1
+terminationGracePeriodSeconds: 360
 
 # Disabled until baseline, restore drill, credentials and image provenance are approved.
 schemaMigration:
