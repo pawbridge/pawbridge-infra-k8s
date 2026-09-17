@@ -68,6 +68,13 @@ env:
   # Restored Batch tables are required; startup must not create or alter them.
   SPRING_BATCH_JDBC_INITIALIZE_SCHEMA: never
   SPRING_BATCH_JOB_ENABLED: "false"
+  # Keep active APMS HTTP requests alive during rolling deployment. Kubernetes
+  # grants 360 seconds, leaving 30 seconds after Spring's graceful deadline.
+  SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: "330s"
+  APMS_BATCH_STALE_EXECUTION_THRESHOLD: "10m"
+  APMS_BATCH_ELASTICSEARCH_INDEX_TIMEOUT: "4m"
+  APMS_BATCH_ELASTICSEARCH_CANCELLATION_WAIT: "35s"
+  APMS_BATCH_ELASTICSEARCH_PARALLELISM: "4"
   SPRING_JPA_SHOW_SQL: "false"
   SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
   SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "false"
