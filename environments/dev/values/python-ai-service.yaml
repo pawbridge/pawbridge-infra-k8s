@@ -5,8 +5,8 @@ nodeSelector:
 
 image:
   repository: dorosiya/pawbridge-python-ai-service
-  tag: sha-a7af3efa98a58a5fbbc5093f3844d5ca8fb78fbf
-  digest: sha256:a8a5110ebeabf8665b6ea1d746ec6e90081c8649d6b20205df6a1a85b3987e8b
+  tag: sha-daf4351f09e26425046f485cc77c38f328015bd3
+  digest: sha256:6020dfbdb8e52a29ea2ec4ee5164bc8ab6443e7c147caee7e16b2a9b8fe3fd31
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
