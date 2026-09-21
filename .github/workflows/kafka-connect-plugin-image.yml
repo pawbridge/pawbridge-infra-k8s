@@ -7,12 +7,16 @@ on:
     paths:
       - .github/workflows/kafka-connect-plugin-image.yml
       - gitops/stateful/kafka-connect/image/**
+      - "!gitops/stateful/kafka-connect/image/Dockerfile.postgresql"
+      - "!gitops/stateful/kafka-connect/image/README.postgresql.md"
   push:
     branches:
       - dev
     paths:
       - .github/workflows/kafka-connect-plugin-image.yml
       - gitops/stateful/kafka-connect/image/**
+      - "!gitops/stateful/kafka-connect/image/Dockerfile.postgresql"
+      - "!gitops/stateful/kafka-connect/image/README.postgresql.md"
 permissions:
   contents: read
 
