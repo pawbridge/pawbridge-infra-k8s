@@ -38,5 +38,20 @@ class CandidateTests(unittest.TestCase):
         for path in (ROOT / "gitops/argocd").rglob("*.yaml"):
             self.assertNotIn("gitops/stateful/postgresql", path.read_text())
 
+    def test_local_access_preserves_source_ip_and_limits_ingress(self):
+        resources = render("gitops/stateful/postgresql")
+        service = next(x for x in resources if x["kind"] == "Service" and x["metadata"]["name"] == "pawbridge-postgresql-local")
+        policy = next(x for x in resources if x["kind"] == "NetworkPolicy")
+        self.assertEqual("NodePort", service["spec"]["type"])
+        self.assertEqual("Local", service["spec"]["externalTrafficPolicy"])
+        self.assertEqual([{"name": "postgresql", "port": 5432, "targetPort": "postgresql", "nodePort": 30432}], service["spec"]["ports"])
+        self.assertEqual(service["spec"]["selector"], policy["spec"]["podSelector"]["matchLabels"])
+        self.assertEqual(["Ingress"], policy["spec"]["policyTypes"])
+        self.assertEqual([
+            {"from": [{"namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": ns}}} for ns in ("pawbridge", "kafka", "databases")], "ports": [{"protocol": "TCP", "port": 5432}]},
+            {"from": [{"ipBlock": {"cidr": "192.168.57.1/32"}}], "ports": [{"protocol": "TCP", "port": 5432}]},
+            {"from": [{"ipBlock": {"cidr": "192.168.57.11/32"}}], "ports": [{"protocol": "TCP", "port": 5432}]},
+        ], policy["spec"]["ingress"])
+
 if __name__ == "__main__":
     unittest.main()

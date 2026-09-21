@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pawbridge-postgresql-local
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: pawbridge-postgresql
+    app.kubernetes.io/instance: pawbridge
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  type: NodePort
+  # Preserve the Windows source IP. Connect to the PostgreSQL node (192.168.57.12).
+  externalTrafficPolicy: Local
+  selector:
+    app.kubernetes.io/name: pawbridge-postgresql
+    app.kubernetes.io/instance: pawbridge
+  ports:
+  - name: postgresql
+    port: 5432
+    targetPort: postgresql
+    nodePort: 30432
