@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: payment-postgresql-vault-auth
+  namespace: pawbridge
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: payment-postgresql-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: postgresql-runtime-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: payment-postgresql-read
+    serviceAccount: payment-postgresql-vault-auth
+    audiences:
+    - vault
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: payment-postgresql-auth
+  namespace: pawbridge
+spec:
+  vaultAuthRef: payment-postgresql-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/payment/postgresql
+  refreshAfter: 1m
+  hmacSecretData: true
+  destination:
+    name: payment-postgresql-auth
+    create: true
+    overwrite: false
+    transformation:
+      excludeRaw: true
+      includes:
+      - ^postgres-password$

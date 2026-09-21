@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: community-postgresql-cdc-vault-auth
+  namespace: kafka
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: community-postgresql-cdc-vault-auth
+  namespace: kafka
+spec:
+  vaultConnectionRef: postgresql-cdc-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: community-postgresql-cdc-read
+    serviceAccount: community-postgresql-cdc-vault-auth
+    audiences:
+    - vault
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: community-postgresql-cdc-auth
+  namespace: kafka
+spec:
+  vaultAuthRef: community-postgresql-cdc-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/community/postgresql-cdc
+  refreshAfter: 1m
+  hmacSecretData: true
+  destination:
+    name: community-postgresql-cdc-auth
+    create: true
+    overwrite: false
+    transformation:
+      excludeRaw: true
+      includes:
+      - ^username$
+      - ^password$

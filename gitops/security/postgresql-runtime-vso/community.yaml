@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: community-postgresql-vault-auth
+  namespace: pawbridge
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: community-postgresql-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: postgresql-runtime-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: community-postgresql-read
+    serviceAccount: community-postgresql-vault-auth
+    audiences:
+    - vault
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: community-postgresql-auth
+  namespace: pawbridge
+spec:
+  vaultAuthRef: community-postgresql-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/community/postgresql
+  refreshAfter: 1m
+  hmacSecretData: true
+  destination:
+    name: community-postgresql-auth
+    create: true
+    overwrite: false
+    transformation:
+      excludeRaw: true
+      includes:
+      - ^postgres-password$
