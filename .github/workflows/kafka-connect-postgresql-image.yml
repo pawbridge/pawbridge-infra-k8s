@@ -1,0 +1,85 @@
+name: Kafka Connect PostgreSQL Plugin Image
+
+on:
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/kafka-connect-postgresql-image.yml
+      - gitops/stateful/kafka-connect/image/Dockerfile.postgresql
+      - gitops/stateful/kafka-connect/image/README.postgresql.md
+  push:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/kafka-connect-postgresql-image.yml
+      - gitops/stateful/kafka-connect/image/Dockerfile.postgresql
+      - gitops/stateful/kafka-connect/image/README.postgresql.md
+permissions:
+  contents: read
+
+concurrency:
+  group: kafka-connect-postgresql-image-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build Kafka Connect PostgreSQL plugin image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Refuse an existing immutable tag
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE_TAG: docker.io/dorosiya/pawbridge-debezium-connect:postgresql-sha-${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if docker buildx imagetools inspect "$IMAGE_TAG" > "$RUNNER_TEMP/postgresql-tag-check.log" 2>&1; then
+            echo "Refusing to overwrite an existing PostgreSQL worker tag" >&2
+            exit 1
+          fi
+          if ! grep -Eq 'manifest unknown|: not found' "$RUNNER_TEMP/postgresql-tag-check.log"; then
+            echo "Could not verify registry tag absence; publication stopped" >&2
+            exit 1
+          fi
+
+      - name: Build and optionally publish image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: gitops/stateful/kafka-connect/image
+          file: gitops/stateful/kafka-connect/image/Dockerfile.postgresql
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: docker.io/dorosiya/pawbridge-debezium-connect:postgresql-sha-${{ github.sha }}
+          cache-from: type=gha,scope=kafka-connect-postgresql-image
+          cache-to: type=gha,mode=max,scope=kafka-connect-postgresql-image
+          provenance: mode=max
+          sbom: true
+
+      - name: Record immutable image output
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          docker buildx imagetools inspect "docker.io/dorosiya/pawbridge-debezium-connect@$IMAGE_DIGEST"
+          {
+            echo '### Kafka Connect plugin image'
+            echo
+            echo '`docker.io/dorosiya/pawbridge-debezium-connect@'"${IMAGE_DIGEST}"'`'
+          } >> "${GITHUB_STEP_SUMMARY}"
