@@ -13,9 +13,10 @@ spec:
       releaseName: store-service
       valueFiles:
         - ../../environments/dev/values/store-service.yaml
+        - ../../environments/postgresql/values/store-service.yaml
       parameters:
         - name: autoscaling.enabled
-          value: "true"
+          value: "false"
         - name: autoscaling.minReplicas
           value: "1"
         - name: autoscaling.maxReplicas
@@ -33,12 +34,4 @@ spec:
       allowEmpty: false
     syncOptions:
       - Prune=false
-      - RespectIgnoreDifferences=true
       - FailOnSharedResource=true
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      name: store-service
-      namespace: pawbridge
-      jsonPointers:
-        - /spec/replicas

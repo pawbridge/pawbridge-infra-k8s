@@ -1,10 +1,8 @@
-# PostgreSQL provisioning candidate
+# PostgreSQL production storage
 
-This directory is unapplied and not referenced by an Argo CD Application.
-`replicas: 0` is intentional. Do not scale until the capacity, copy, CDC and recovery
-gates in the canonical Obsidian PostgreSQL transition plan pass. This is a separate
-provisioning review slice from `gitops/security/postgresql-admin-vso`, application
-chart cutover, and GPU runtime installation.
+This directory reflects the verified PostgreSQL runtime with `replicas: 1`. The database
+remains manually managed and is not enrolled in an Argo CD Application. Application
+services use the separate `environments/postgresql` overlays.
 
 ## Render without contacting a cluster
 
@@ -18,11 +16,10 @@ Service `pawbridge-postgresql.databases.svc.cluster.local:5432`, database `pawbr
 Schemas, extensions, migrations, app roles, publications and slots are NOT created
 by this StatefulSet. The host GPU tunnel uses loopback15432 and the same Service.
 
-## Before an explicitly approved start
+## Reprovisioning and capacity checks
 
-- Recheck exact node `pawbridge-k136-w1`, available memory and disk. The candidate
-  replaces ES resource use after an approved stop; it is not approved to run beside
-  the current ES/MySQL load. Keep the old ES/MySQL PVCs and source rollback evidence.
+- Recheck exact node `pawbridge-k136-w1`, available memory and disk. PostgreSQL
+  replaces the stopped ES and MySQL processes. Keep the old ES/MySQL PVCs and source rollback evidence.
 - Use an independent local-path PVC. 20Gi is a request, not a verified filesystem
   quota. Node pinning plus local-path means no transparent failover to another node.
 - Provision the admin Vault path and Kubernetes auth role, TLS CA in `databases`,
@@ -34,8 +31,9 @@ by this StatefulSet. The host GPU tunnel uses loopback15432 and the same Service
 - Require dedicated migration/app/vector/CDC identities and prior tested grants.
   Run Flyway before app admission. The existing migration launchers are loopback
   guarded; a reviewed private port-forward is required, not an unrestricted URL.
-- `max_slot_wal_keep_size=1GB` is a finite rehearsal value, not a production retention
-  SLA. Measure WAL generation, slot progress during idle Outbox periods, alerts and
+- `max_slot_wal_keep_size=2GB` bounds operational WAL retention; it is not a recovery
+  SLA. The original 1GB rehearsal setting was too tight during a gallery rewrite.
+  Provision `infra/postgresql/cdc-heartbeat.sql` and all five heartbeat topics. Measure WAL generation, slot progress during idle Outbox periods, alerts and
   invalid-slot recovery before cutover. `max_wal_size` is not a disk quota.
 - TCP connections require SCRAM; this candidate does not configure PostgreSQL TLS.
   Approve the private-network/TLS policy before live use. SSH protects the host-to-VM

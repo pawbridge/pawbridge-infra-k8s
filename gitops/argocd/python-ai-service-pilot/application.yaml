@@ -13,6 +13,7 @@ spec:
       releaseName: python-ai-service
       valueFiles:
         - ../../environments/dev/values/python-ai-service.yaml
+        - ../../environments/postgresql/values/python-ai-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: pawbridge

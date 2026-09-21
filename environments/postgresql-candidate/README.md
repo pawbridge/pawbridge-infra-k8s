@@ -24,8 +24,9 @@ image.digest intentionally: an explicit migration-capable immutable image is req
 A local Docker image ID is not a published registry manifest digest. Never use the
 render test's all-ones fixture digest for deployment.
 
-Candidate replicas are zero, HPA/CronJob/Store ES preflight are disabled, and CDC
-connectors are stopped. This is **not** a ready-to-apply production release. An apply
+Candidate replicas are zero and HPA/CronJob/Store ES preflight are disabled.
+Candidate overlays do not start application producers. Production CDC resources now reflect the
+verified running state and include heartbeat topics. This overlay is **not** a ready-to-apply production release. An apply
 to existing Deployment names would stop them. No apply/upgrade command is provided.
 
 ## Required credentials and settings
@@ -51,7 +52,12 @@ passed through Helm values or command arguments.
 The overlays explicitly replace MySQL URL/driver/dialect/password and update-mode
 DDL, not just the Spring profile. Hikari uses service schemas, UTC, max10 for Animal
 and5 for the other four, totaling30 per steady generation. Two generations60 +
-Python4 + CDC10 + operations10 =84 of100 proposed server connections. PG guards
+Python4 + CDC20 + operations10 =94 of100 proposed server connections. Each CDC
+role needs a connection limit of4: streaming used3 and the SQL heartbeat required one more.
+Apply `infra/postgresql/cdc-heartbeat.sql` after role/publication provisioning and before
+starting the connectors. Each heartbeat updates one row. Its table is also captured so offsets advance,
+then the built-in Kafka Filter drops those table events before publication. Existing
+Outbox routing is unchanged; Debezium heartbeat records still commit progress. PG guards
 reject HPA, more than one steady replica, oversized pools/min-idle and both DB
 password sources. Terminating pods and extra processes still require live budget
 checks and DB role limits; a chart guard is not a physical admission controller.

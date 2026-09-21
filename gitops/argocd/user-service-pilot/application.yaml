@@ -13,6 +13,7 @@ spec:
       releaseName: user-service
       valueFiles:
         - ../../environments/dev/values/user-service.yaml
+        - ../../environments/postgresql/values/user-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: pawbridge

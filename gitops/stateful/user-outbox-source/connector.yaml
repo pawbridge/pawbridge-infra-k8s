@@ -10,7 +10,7 @@ metadata:
 spec:
   class: io.debezium.connector.mysql.MySqlConnector
   tasksMax: 1
-  state: running
+  state: stopped
   config:
     database.hostname: mysql.databases.svc.cluster.local
     database.port: 3306

@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/part-of: pawbridge
 spec:
   serviceName: mysql-headless
-  replicas: 1
+  replicas: 0
   podManagementPolicy: OrderedReady
   updateStrategy:
     type: OnDelete

@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/part-of: pawbridge
 spec:
   serviceName: pawbridge-postgresql-headless
-  replicas: 0
+  replicas: 1
   podManagementPolicy: OrderedReady
   updateStrategy:
     type: OnDelete

@@ -3,6 +3,8 @@ kind: Elasticsearch
 metadata:
   name: pawbridge-elasticsearch
   namespace: databases
+  annotations:
+    eck.k8s.elastic.co/pause-orchestration: "true"
   labels:
     app.kubernetes.io/name: pawbridge-elasticsearch
     app.kubernetes.io/instance: pawbridge

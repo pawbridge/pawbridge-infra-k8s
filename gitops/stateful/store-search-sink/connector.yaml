@@ -10,7 +10,7 @@ metadata:
 spec:
   class: io.confluent.connect.elasticsearch.ElasticsearchSinkConnector
   tasksMax: 1
-  state: running
+  state: stopped
   config:
     topics: store.product-sku.events
     connection.url: https://pawbridge-elasticsearch-es-http.databases.svc:9200
