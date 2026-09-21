@@ -44,6 +44,7 @@ class ServiceCutoverTests(unittest.TestCase):
                 self.assertNotIn("SPRING_ELASTICSEARCH_URIS",env)
                 self.assertEqual("SET TIME ZONE 'UTC'",env["SPRING_DATASOURCE_HIKARI_CONNECTIONINITSQL"]["value"])
                 self.assertNotIn("SPRING_DATASOURCE_HIKARI_CONNECTION_INIT_SQL",env)
+                self.assertNotIn("SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE",env)
                 self.assertFalse(any(x["kind"] in ("HorizontalPodAutoscaler","CronJob","Job") for x in docs))
                 self.assertTrue(container["image"].endswith("@"+DIGEST))
                 total+=int(env["SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE"]["value"])
@@ -89,6 +90,9 @@ class ServiceCutoverTests(unittest.TestCase):
                 else:
                     self.assertTrue(env["SPRING_DATASOURCE_URL"]["value"].startswith("jdbc:postgresql:"))
                     self.assertNotIn("SPRING_DATASOURCE_HIKARI_CONNECTION_INIT_SQL",env)
+                    self.assertNotIn("SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE",env)
+                    if service=="animal":
+                        self.assertEqual("10",env["SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE"]["value"])
                 self.assertFalse(any(x["kind"]=="HorizontalPodAutoscaler" for x in docs))
                 if service=="animal":
                     self.assertEqual("true",env["APMS_PHOTO_ARCHIVE_ENABLED"]["value"])
