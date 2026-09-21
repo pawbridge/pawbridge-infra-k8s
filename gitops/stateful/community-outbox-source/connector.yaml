@@ -12,7 +12,7 @@ spec:
   tasksMax: 1
   # Manually sync only after the corrected PostEventConsumer image is deployed.
   # The consumer must read the expanded EventRouter JSON body directly.
-  state: running
+  state: stopped
   config:
     database.hostname: mysql.databases.svc.cluster.local
     database.port: 3306

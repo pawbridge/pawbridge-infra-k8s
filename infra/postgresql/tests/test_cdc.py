@@ -1,4 +1,4 @@
-"""Offline stopped CDC connector and restricted RBAC contracts."""
+"""Offline production CDC connector and restricted RBAC contracts."""
 from pathlib import Path
 import subprocess
 import unittest
@@ -10,14 +10,16 @@ def render(path):
 kustomize = render
 
 class CdcTests(unittest.TestCase):
-    def test_cdc_starts_stopped_preserves_wire_and_scopes_secret_access(self):
+    def test_cdc_preserves_wire_and_scopes_secret_access(self):
         docs=kustomize("gitops/stateful/postgresql-outbox")
         connectors=[x for x in docs if x["kind"]=="KafkaConnector"]
         self.assertEqual(5,len(connectors))
+        topics={x["spec"]["topicName"]:x for x in docs if x["kind"]=="KafkaTopic"}
+        self.assertEqual(5,len(topics))
         slots=set()
         for service in SERVICES:
             spec=next(x for x in connectors if x["metadata"]["name"]==service+"-outbox-postgresql-connector")["spec"]
-            self.assertEqual("stopped",spec["state"])
+            self.assertEqual("running",spec["state"])
             c=spec["config"]
             self.assertEqual("${secrets:kafka/"+service+"-postgresql-cdc-auth:password}",c["database.password"])
             self.assertEqual("pawbridge",c["database.dbname"])
@@ -29,6 +31,13 @@ class CdcTests(unittest.TestCase):
             self.assertEqual("false",c["key.converter.schemas.enable"])
             self.assertNotIn("transforms.outbox.table.field.event.timestamp",c)
             self.assertNotIn("connector.class",c)
+            self.assertEqual("UPDATE pawbridge_"+service+".cdc_heartbeat SET touched_at = clock_timestamp() WHERE id = 1",c["heartbeat.action.query"])
+            self.assertIn("cdc_heartbeat",c["table.include.list"])
+            self.assertEqual("outbox,dropHeartbeat",c["transforms"])
+            self.assertEqual("org.apache.kafka.connect.transforms.Filter",c["transforms.dropHeartbeat.type"])
+            topic=topics["__debezium-heartbeat.pawbridge-pg-"+service]
+            self.assertEqual(1,topic["spec"]["partitions"])
+            self.assertEqual("compact",topic["spec"]["config"]["cleanup.policy"])
             slots.add(c["slot.name"])
         self.assertEqual(5,len(slots))
         role=next(x for x in docs if x["kind"]=="Role")

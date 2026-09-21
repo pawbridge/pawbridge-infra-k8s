@@ -13,6 +13,7 @@ spec:
       releaseName: payment-service
       valueFiles:
         - ../../environments/dev/values/payment-service.yaml
+        - ../../environments/postgresql/values/payment-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: pawbridge

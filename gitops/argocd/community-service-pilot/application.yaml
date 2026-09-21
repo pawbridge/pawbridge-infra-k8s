@@ -13,6 +13,7 @@ spec:
       releaseName: community-service
       valueFiles:
         - ../../environments/dev/values/community-service.yaml
+        - ../../environments/postgresql/values/community-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: pawbridge

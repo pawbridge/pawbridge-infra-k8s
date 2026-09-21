@@ -1,0 +1,10 @@
+elasticsearchSecretRef: ''
+elasticsearchCaSecretRef: ''
+env:
+  LOST_STORAGE_BACKEND: postgresql
+  ES_URL: null
+replicaCount: 1
+image:
+  digest: sha256:eba8c88593435641fe55c6eee3db07ffbad564dd2ba02dffbc6ff2b59a848fee
+autoscaling:
+  enabled: false

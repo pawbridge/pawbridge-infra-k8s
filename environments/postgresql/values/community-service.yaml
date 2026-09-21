@@ -1,6 +1,6 @@
-replicaCount: 0
+replicaCount: 1
 image:
-  digest: ''
+  digest: sha256:31c4c0e8ca02ab5c5d6df303a754dcc2262c09f77dc6ed654d91d745d37d9aa9
 mysqlSecretRef: ''
 postgresqlSecretRef: community-postgresql-auth
 elasticsearchSecretRef: ''
@@ -13,9 +13,6 @@ env:
   SPRING_DATASOURCE_USERNAME: pawbridge_community_app
   SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
   SPRING_DATASOURCE_HIKARI_SCHEMA: pawbridge_community
-  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '5'
-  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '0'
-  SPRING_DATASOURCE_HIKARI_CONNECTIONINITSQL: SET TIME ZONE 'UTC'
   SPRING_JPA_HIBERNATE_DDL_AUTO: validate
   SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
   SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: pawbridge_community
@@ -23,7 +20,8 @@ env:
   SPRING_SQL_INIT_MODE: never
   SPRING_ELASTICSEARCH_URIS: null
   PAWBRIDGE_SEARCH_BACKEND: postgresql
-
-# Existing dev Jobs launch the MySQL runner; PG schema preparation is separate.
+  SPRING_DATASOURCE_HIKARI_CONNECTIONINITSQL: SET TIME ZONE 'UTC'
+  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '5'
+  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '0'
 schemaMigration:
   enabled: false

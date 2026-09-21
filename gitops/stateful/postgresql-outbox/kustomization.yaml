@@ -8,3 +8,8 @@ resources:
 - payment.yaml
 - secret-provider-rbac.yaml
 - secret-provider-binding.yaml
+- animal-heartbeat-topic.yaml
+- user-heartbeat-topic.yaml
+- community-heartbeat-topic.yaml
+- store-heartbeat-topic.yaml
+- payment-heartbeat-topic.yaml

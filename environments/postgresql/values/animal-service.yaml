@@ -1,6 +1,6 @@
-replicaCount: 0
+replicaCount: 1
 image:
-  digest: ''
+  digest: sha256:e7b9ce46f663ab9d40b43f216eb84a85453351cef29e0aec7bdb526a9c59ac11
 mysqlSecretRef: ''
 postgresqlSecretRef: animal-postgresql-auth
 elasticsearchSecretRef: ''
@@ -13,9 +13,6 @@ env:
   SPRING_DATASOURCE_USERNAME: pawbridge_animal_app
   SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
   SPRING_DATASOURCE_HIKARI_SCHEMA: pawbridge_animal
-  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '10'
-  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '2'
-  SPRING_DATASOURCE_HIKARI_CONNECTIONINITSQL: SET TIME ZONE 'UTC'
   SPRING_JPA_HIBERNATE_DDL_AUTO: validate
   SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
   SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: pawbridge_animal
@@ -26,9 +23,18 @@ env:
   SPRING_BATCH_JOB_ENABLED: 'false'
   PAWBRIDGE_ANIMALQUERY_BACKEND: postgresql
   PAWBRIDGE_RECOMMENDATION_BACKEND: postgresql
+  SPRING_DATASOURCE_HIKARI_CONNECTIONINITSQL: SET TIME ZONE 'UTC'
+  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '10'
+  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '2'
+  APMS_PHOTO_ARCHIVE_ENABLED: 'true'
+  APMS_PHOTO_ARCHIVE_MAX_PHOTOS: '100'
+  APMS_PHOTO_ARCHIVE_SCAN_SIZE: '50'
+  APMS_PHOTO_ARCHIVE_INTERVAL_MS: '60000'
+  APMS_PHOTO_ARCHIVE_MAX_RUN_SECONDS: '120'
 cronjob:
-  enabled: false
-
-# Existing dev Jobs launch the MySQL runner; PG schema preparation is separate.
+  enabled: true
+  suspend: false
 schemaMigration:
   enabled: false
+lostGalleryFeed:
+  enabled: true

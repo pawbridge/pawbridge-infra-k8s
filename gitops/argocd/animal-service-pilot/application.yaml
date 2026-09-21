@@ -13,6 +13,7 @@ spec:
       releaseName: animal-service
       valueFiles:
         - ../../environments/dev/values/animal-service.yaml
+        - ../../environments/postgresql/values/animal-service.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: pawbridge

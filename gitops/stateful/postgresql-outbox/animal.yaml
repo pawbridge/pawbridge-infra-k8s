@@ -9,7 +9,7 @@ metadata:
 spec:
   class: io.debezium.connector.postgresql.PostgresConnector
   tasksMax: 1
-  state: stopped
+  state: running
   autoRestart:
     enabled: false
   config:
@@ -21,7 +21,7 @@ spec:
     plugin.name: pgoutput
     topic.prefix: pawbridge-pg-animal
     schema.include.list: pawbridge_animal
-    table.include.list: pawbridge_animal\.outbox_events
+    table.include.list: pawbridge_animal\.outbox_events,pawbridge_animal\.cdc_heartbeat
     slot.name: pawbridge_animal_outbox
     slot.drop.on.stop: 'false'
     publication.name: pawbridge_animal_outbox
@@ -33,8 +33,9 @@ spec:
     max.queue.size: '1024'
     max.queue.size.in.bytes: '16777216'
     heartbeat.interval.ms: '10000'
-    transforms: outbox
-    predicates: isOutbox
+    heartbeat.action.query: UPDATE pawbridge_animal.cdc_heartbeat SET touched_at = clock_timestamp() WHERE id = 1
+    transforms: outbox,dropHeartbeat
+    predicates: isOutbox,isHeartbeat
     predicates.isOutbox.type: org.apache.kafka.connect.transforms.predicates.TopicNameMatches
     predicates.isOutbox.pattern: pawbridge-pg-animal\.pawbridge_animal\.outbox_events
     transforms.outbox.predicate: isOutbox
@@ -52,3 +53,7 @@ spec:
     value.converter.schemas.enable: 'false'
     header.converter: org.apache.kafka.connect.storage.SimpleHeaderConverter
     key.converter.schemas.enable: 'false'
+    predicates.isHeartbeat.type: org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+    predicates.isHeartbeat.pattern: pawbridge-pg-animal\.pawbridge_animal\.cdc_heartbeat
+    transforms.dropHeartbeat.type: org.apache.kafka.connect.transforms.Filter
+    transforms.dropHeartbeat.predicate: isHeartbeat
