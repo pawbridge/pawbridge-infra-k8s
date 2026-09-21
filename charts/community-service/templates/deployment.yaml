@@ -1,3 +1,4 @@
+{{- include "community-service.postgresqlContract" . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,8 +28,17 @@ spec:
             - containerPort: {{ .Values.service.port }}
           env:
             {{- range $key, $value := .Values.env }}
+            {{- if ne $value nil }}
             - name: {{ $key }}
               value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.postgresqlSecretRef }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresqlSecretRef }}
+                  key: postgres-password
             {{- end }}
             {{- if .Values.mysqlSecretRef }}
             - name: SPRING_DATASOURCE_PASSWORD
