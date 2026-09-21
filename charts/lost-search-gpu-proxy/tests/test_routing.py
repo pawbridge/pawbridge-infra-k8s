@@ -133,16 +133,16 @@ class RoutingTests(unittest.TestCase):
     def test_recommendation_admission_is_bounded_and_independent_of_photo_search(self):
         type(self).started = 0
         self.release.clear()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            futures = [executor.submit(self.request, '/internal/animals/9999/similar?species=DOG') for _ in range(2)]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+            futures = [executor.submit(self.request, '/internal/animals/9999/similar?species=DOG') for _ in range(6)]
             try:
                 with self.condition:
-                    self.assertTrue(self.condition.wait_for(lambda: self.started == 2, timeout=3))
+                    self.assertTrue(self.condition.wait_for(lambda: self.started == 6, timeout=3))
                 self.assertEqual(503, self.request('/internal/animals/1/similar?species=DOG')[0])
                 self.assertEqual(200, self.request('/internal/animals/lost-candidates', method='POST')[0])
             finally:
                 self.release.set()
-            self.assertEqual([200, 200], [future.result()[0] for future in futures])
+            self.assertEqual([200] * 6, [future.result()[0] for future in futures])
         self.assertEqual(200, self.request('/internal/animals/1/similar')[0])
 
     def test_existing_photo_route_and_liveness_are_preserved(self):
