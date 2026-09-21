@@ -84,3 +84,6 @@ autoscaling:
       stabilizationWindowSeconds: 300
     scaleUp:
       stabilizationWindowSeconds: 0
+
+# Opt-in PostgreSQL password source; never combine with mysqlSecretRef.
+postgresqlSecretRef: ""
