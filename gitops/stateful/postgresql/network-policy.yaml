@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pawbridge-postgresql-private-access
+  namespace: databases
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: pawbridge-postgresql
+      app.kubernetes.io/instance: pawbridge
+  policyTypes: [Ingress]
+  ingress:
+  # Existing application, CDC and database maintenance clients only.
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: pawbridge
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kafka
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: databases
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Windows host-only adapter; no LAN or Internet CIDR is allowed.
+  - from:
+    - ipBlock:
+        cidr: 192.168.57.1/32
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Existing host GPU SSH local forwarding exits through the control-plane node.
+  # Verified from the PostgreSQL-side socket peer; this is not kubectl port-forward.
+  - from:
+    - ipBlock:
+        cidr: 192.168.57.11/32
+    ports:
+    - protocol: TCP
+      port: 5432

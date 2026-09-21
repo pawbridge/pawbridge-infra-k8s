@@ -54,3 +54,31 @@ logical restore did not prove fresh-cluster secrets/owners/ACL restoration or PI
 After target writes start, reverting the app URL to MySQL is NOT a safe rollback;
 reverse reconciliation and CDC drain must be proven first. No live cutover command
 is provided by this candidate.
+
+## Windows private database access
+
+The internal ClusterIP service remains unchanged. `pawbridge-postgresql-local`
+exposes TCP30432 with `externalTrafficPolicy: Local`. Connect from the Windows
+host-only adapter `192.168.57.1` to `192.168.57.12:30432`, database `pawbridge`,
+using an existing appropriately scoped database account. Never put credentials
+in this document. PostgreSQL TLS is not configured; this address is for the
+private host-only network, not an Internet or LAN endpoint.
+
+Install `network-policy.yaml` before `service-local.yaml`. TCP5432 is allowed
+from `pawbridge`, `kafka`, `databases` namespaces, the Windows address above,
+and the control-plane address `192.168.57.11/32` used by the existing GPU SSH
+local forwarding. The latter source was verified from PostgreSQL-side sockets.
+The policy is not host firewall isolation: node-origin traffic follows the
+CNI's exemptions. The GPU SSH local forwarding still uses the internal Service.
+Unlike Kubernetes port-forward, it needs the explicit control-plane ingress rule.
+
+The local NodePort requires PostgreSQL on the addressed node. If the pinned node
+changes, update the Windows address and validate access again; other nodes do
+not forward this external traffic. The database remains manually managed;
+these manifests do not schedule an automatic Argo deployment.
+
+Rollback: remove only `pawbridge-postgresql-local` Service first, then the new
+`pawbridge-postgresql-private-access` NetworkPolicy. This restores the prior
+network policy state without touching the internal Service, StatefulSet or PVC.
+Verify Windows and GPU SSH TCP/auth handshakes, internal application reads, CDC activity and
+unchanged PostgreSQL Pod UID/restart count after the change.
