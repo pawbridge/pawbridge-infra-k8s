@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pawbridge-postgresql-headless
+  namespace: databases
+  labels:
+    app.kubernetes.io/name: pawbridge-postgresql
+    app.kubernetes.io/instance: pawbridge
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  selector:
+    app.kubernetes.io/name: pawbridge-postgresql
+    app.kubernetes.io/instance: pawbridge
+  ports:
+  - name: postgresql
+    port: 5432
+    targetPort: postgresql
+  clusterIP: None
