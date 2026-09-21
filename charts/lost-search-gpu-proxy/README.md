@@ -1,12 +1,13 @@
 # 운영 GPU 연결 프록시
 
-animal-service의 실종 후보 요청만 WSL GPU로 전달하는 내부 ClusterIP 서비스다. 모델·벡터·사진을 저장하거나 추론하지 않는다. cp1에 준비된 SSH Unix 소켓을 UID 1000으로 연결한다. 별도 NodePort, 공용 DNS, GatewayPorts 변경은 없다.
+animal-service의 실종 후보 검색과 유사동물 추천 요청을 WSL AI 서버로 전달하는 내부 ClusterIP 서비스다. 모델·벡터·사진을 저장하거나 추론하지 않는다. cp1에 준비된 SSH Unix 소켓을 UID 1000으로 연결한다. 별도 NodePort, 공용 DNS, GatewayPorts 변경은 없다.
 
 ## 계약
 
 - `GET /livez`: 프록시 자체 liveness. GPU 장애 때문에 프록시를 반복 재시작하지 않는다.
 - `/health`: GPU health 전달. 연결 실패나 GPU 준비 미완료이면 readiness 실패.
 - `POST /internal/animals/lost-candidates`: 기존 내부 키를 그대로 전달하고 Authorization/Cookie/X-User-Id는 제거한다. GPU가 키를 검증한다.
+- `GET /internal/animals/{양의 정수 ID}/similar?species=DOG|CAT`: 저장된 벡터를 사용하는 추천 경로. 내부 키와 query string을 전달하고 Authorization/Cookie/X-User-Id는 제거한다. 다른 메서드는 405(Allow: GET), 잘못된 ID·추가 경로는 404. 사진 추론과 독립된 동시 처리 상한 2건, 초과 503, upstream 읽기 제한 20초, 재시도 없음.
 - 다른 경로는 404, 후보 경로의 다른 메서드는 403. 본문 최대 6MiB, 동시 처리 최대 2건(초과 503), upstream 연결 3초/읽기 50초, 프록시 재시도 없음.
 - NetworkPolicy는 같은 namespace의 app=animal-service Pod만 인입 허용한다. 실제 CNI 적용 검증은 배포 시 수행한다. 파일 소켓 연결은 TCP egress를 필요로 하지 않는다.
 - CPU request/limit 10m/200m, 메모리 16Mi/64Mi, 임시 볼륨 최대 32Mi. 단일 프록시가 cp1에 묶이므로 cp1이나 호스트 GPU 장애 시 후보 검색을 제공할 수 없다.
@@ -31,3 +32,15 @@ helm template lost-search-gpu-proxy charts/lost-search-gpu-proxy -n pawbridge -f
 URL 전환 전 실패하면 animal-service를 변경하지 않고 새 프록시를 복구한다. 전환 후 실패하면 먼저 animal-service의 LOST_SEARCH_PYTHON_URL을 이전 설정으로 복원한다. Argo selfHeal이 수동 변경을 덮지 않도록 승인된 Git revert 또는 명시적 Argo override를 사용하고 복구 후 해제한다. 이전 CPU 경로가 실종 검색 성공을 보장하지는 않는다.
 
 기존 스크립트/unit으로 터널을 복원하고 feed 및 로컬 미리보기를 확인한다. 새 Application을 등록했다면 자동 sync를 먼저 중지해야 초기 자원 정리가 되살아나지 않는다. GPU 모델, R2, ES 인덱스·별칭은 이 프록시 복구에서 삭제/변경하지 않는다.
+
+## 실제 NGINX 계약 검증
+
+`tests/test_routing.py`는 values.yaml에 고정된 NGINX 이미지가 로컬에 있을 때만
+동작하며 이미지를 내려받지 않는다. 임시 Unix 소켓 upstream과 loopback 공개 포트,
+64MiB 제한 컨테이너를 사용하고 종료 시 해당 컨테이너·임시 파일만 정리한다.
+내부 인증 헤더·query string 전달, 사용자 인증 헤더 제거, 경로·메서드 거절,
+추천 동시 요청 상한과 사진 검색의 독립된 처리 예산을 검증한다.
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s charts/lost-search-gpu-proxy/tests -p 'test_*.py' -v
+```
