@@ -7,7 +7,7 @@ animal-service의 실종 후보 검색과 유사동물 추천 요청을 WSL AI �
 - `GET /livez`: 프록시 자체 liveness. GPU 장애 때문에 프록시를 반복 재시작하지 않는다.
 - `/health`: GPU health 전달. 연결 실패나 GPU 준비 미완료이면 readiness 실패.
 - `POST /internal/animals/lost-candidates`: 기존 내부 키를 그대로 전달하고 Authorization/Cookie/X-User-Id는 제거한다. GPU가 키를 검증한다.
-- `GET /internal/animals/{양의 정수 ID}/similar?species=DOG|CAT`: 저장된 벡터를 사용하는 추천 경로. 내부 키와 query string을 전달하고 Authorization/Cookie/X-User-Id는 제거한다. 다른 메서드는 405(Allow: GET), 잘못된 ID·추가 경로는 404. 사진 추론과 독립된 동시 처리 상한 2건, 초과 503, upstream 읽기 제한 20초, 재시도 없음.
+- `GET /internal/animals/{양의 정수 ID}/similar?species=DOG|CAT`: 저장된 벡터를 사용하는 추천 경로. 내부 키와 query string을 전달하고 Authorization/Cookie/X-User-Id는 제거한다. 다른 메서드는 405(Allow: GET), 잘못된 ID·추가 경로는 404. 사진 추론과 독립된 동시 처리 상한 6건(기존 벡터 풀 연결 2개 + 대기 4개), 초과 503, upstream 읽기 제한 20초, 재시도 없음.
 - 다른 경로는 404, 후보 경로의 다른 메서드는 403. 본문 최대 6MiB, 동시 처리 최대 2건(초과 503), upstream 연결 3초/읽기 50초, 프록시 재시도 없음.
 - NetworkPolicy는 같은 namespace의 app=animal-service Pod만 인입 허용한다. 실제 CNI 적용 검증은 배포 시 수행한다. 파일 소켓 연결은 TCP egress를 필요로 하지 않는다.
 - CPU request/limit 10m/200m, 메모리 16Mi/64Mi, 임시 볼륨 최대 32Mi. 단일 프록시가 cp1에 묶이므로 cp1이나 호스트 GPU 장애 시 후보 검색을 제공할 수 없다.
