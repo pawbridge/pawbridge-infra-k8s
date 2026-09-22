@@ -77,4 +77,19 @@ python3 scripts/environments/local_dev.py stop
 
 한 번 실행할 때 합성 계정 1개와 텍스트 게시글 1개를 만든다. 개발 DB에 보존하며 자동으로 데이터를 지우지 않는다. 실행 결과는 state의 `flows-result.json`, 마지막 성공한 계정은 `last-verification-account.json`에 0600 권한으로 저장한다. 비밀번호·JWT·인증코드는 결과 보고서나 콘솔에 출력하지 않는다. 이전 단계 실패 시 그때까지 생성된 합성 데이터가 남을 수 있다.
 
-이 검증은 API 통합 검증이다. 브라우저 전체 사용자 흐름, Google OAuth, 실제 이메일 전달, Toss 결제, R2 업로드, SAM3/DINOv3 품질 검증은 포함하지 않는다. 전용 개발 자격증명이 아직 없어 실제 외부 연동은 미설정이다.
+이 검증은 API 통합 검증이다. 브라우저 전체 사용자 흐름, Google OAuth, 실제 이메일 전달, Toss 결제, R2 업로드, SAM3/DINOv3 품질 검증은 포함하지 않는다. Google 로그인은 아래 선택 설정으로 별도 연결한다. Toss·R2 등 나머지 외부 연동은 미설정이다.
+
+
+## 기존 Google OAuth 클라이언트로 로컬 로그인
+
+Google 등록 앱의 Client ID·Secret만 운영과 공유할 수 있다. 개발 서버·DB·회원·JWT·Redis·세션은 별개다. 공유 키를 교체하거나 해당 Google 클라이언트를 삭제하면 양쪽이 영향을 받는다. 사용자 승인 없이 운영 Secret을 자동 조회하거나 복사하지 않는다.
+
+기존 웹 클라이언트의 승인된 리디렉션 URI에는 `http://localhost:28080/login/oauth2/code/google`가 필요하다. Google 동의 화면의 승인된 도메인과는 다른 설정이다. 프론트는 `http://localhost:5184/login`으로 접속한다. `localhost`와 `127.0.0.1`은 쿠키/브라우저 저장소가 다르므로 OAuth를 시험할 때는 localhost로 통일한다.
+
+Git 밖의 state 디렉터리에 `google-oauth.env`를 0600 권한으로 준비한다. 허용 필드는 `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET_KEY` 두 개뿐이다. 다른 서비스의 비밀값을 넣지 않는다. 실제 값을 채팅·명령행 인자·Git에 넣지 않는다.
+
+`prepare` → `config` → `up-apps` 순서로 반영한다. 해당 파일이 없으면 Google 연동은 비활성 설정 그대로다. 파일이 있으면 user-service에만 주입하고 Google 전용 중계 컨테이너를 시작한다. 중계는 최대 64MiB이며 공개 포트를 열지 않는다. `/token`, `/userinfo`, `/jwks`만 고정된 Google HTTPS 주소로 연결하고 서버 인증서를 검증한다. 사용자 서버 자체는 internal network를 유지한다. IDE용 user-service.env는 기존 Google HTTPS 기본 경로를 사용한다.
+
+Google 로그인 화면으로 이동했다는 것만으로 완료 처리하지 않는다. 사용자가 Google에서 로그인한 후 localhost 프론트로 돌아오는 것, 개발 DB의 Google 회원·refresh token 저장, 개발 JWT로 내 정보 조회가 확인되어야 전체 로그인 성공이다. Google 비밀번호·MFA·동의는 사용자가 직접 진행한다.
+
+로컬 연결을 되돌릴 때는 user-service를 중지하고 `google-oauth.env`를 Git 밖의 별도 비공개 경로로 보관한 뒤 `prepare`와 `up-apps`를 실행한다. 기존 `google-oauth-egress` 컨테이너가 남아 있으면 해당 컨테이너만 중지한다. 운영 Google 클라이언트나 운영 주소는 삭제하지 않는다.

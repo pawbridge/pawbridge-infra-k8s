@@ -91,7 +91,27 @@ def app_env(name, host=False):
     return env
 
 
-def compose():
+def google_credentials(state):
+    path=state/'google-oauth.env'
+    if not path.exists(): return {}
+    if path.is_symlink() or path.stat().st_mode & 0o077:
+        raise ValueError('google-oauth.env must be a private regular file (0600)')
+    keys={}
+    for line in path.read_text().splitlines():
+        if not line or line.startswith('#'): continue
+        key,sep,value=line.partition('=')
+        if not sep or key in keys: raise ValueError('Invalid OAuth credential file')
+        keys[key]=value
+    if set(keys)!={'GOOGLE_CLIENT_ID','GOOGLE_SECRET_KEY'}:
+        raise ValueError('OAuth file must contain only GOOGLE_CLIENT_ID and GOOGLE_SECRET_KEY')
+    if not re.fullmatch(r'[A-Za-z0-9.-]+\.apps\.googleusercontent\.com',keys['GOOGLE_CLIENT_ID']):
+        raise ValueError('Invalid Google client ID')
+    if not re.fullmatch(r'[A-Za-z0-9_-]{8,256}',keys['GOOGLE_SECRET_KEY']):
+        raise ValueError('Invalid Google client secret')
+    return keys
+
+
+def compose(google_oauth=False):
     pg={**base(PG,'768m'), 'ports':['127.0.0.1:15433:5432'], 'shm_size':'128m',
         'environment':{'POSTGRES_DB':'pawbridge','POSTGRES_PASSWORD':'${DEV_POSTGRES_PASSWORD:?Run prepare}', 'POSTGRES_INITDB_ARGS':'--auth-host=scram-sha-256'},
         'command':['postgres','-c','wal_level=logical','-c','max_replication_slots=10','-c','max_wal_senders=10','-c','max_connections=60','-c','shared_buffers=128MB','-c','max_slot_wal_keep_size=256MB'],
@@ -128,6 +148,16 @@ def compose():
             'environment':{'INTERNAL_API_KEY':'${DEV_INTERNAL_API_KEY}','LOST_STORAGE_BACKEND':'postgresql','LOST_GALLERY_SYNC_ENABLED':'false','LOST_PG_DSN':'postgresql://pawbridge_dev_vector:${DEV_VECTOR_PASSWORD}@postgresql:5432/pawbridge'}}
     services['mail']['healthcheck']['test']=['CMD','python','-c',"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8025/health')"]
     services['user-service']['depends_on']['mail']={'condition':'service_healthy'}
+    if google_oauth:
+        services['google-oauth-egress']={**base('nginxinc/nginx-unprivileged@sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c','64m','0.25'),
+            'networks':['dev','access'], 'command':['nginx','-c','/etc/nginx/google-oauth.conf','-g','daemon off;'],
+            'volumes':['./google-oauth.conf:/etc/nginx/google-oauth.conf:ro']}
+        user=services['user-service']
+        user['env_file']=['./google-oauth.env']
+        for key in ('GOOGLE_CLIENT_ID','GOOGLE_SECRET_KEY'): user['environment'].pop(key)
+        for key,path in [('TOKEN_URI','token'),('USER_INFO_URI','userinfo'),('JWK_SET_URI','jwks')]:
+            user['environment']['SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_'+key]='http://google-oauth-egress:8080/'+path
+        user['depends_on']['google-oauth-egress']={'condition':'service_started'}
     ports=[port for service in services.values() for port in service.pop('ports',[])]
     services['local-access']={**base('nginxinc/nginx-unprivileged@sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c','64m','0.25'),
         'networks':['dev','access'], 'ports':[p.rsplit(':',1)[0]+':'+p.split(':')[1] for p in ports],
@@ -161,18 +191,20 @@ def prepare(state):
         names=['DEV_POSTGRES_PASSWORD','DEV_REDIS_PASSWORD','DEV_INTERNAL_API_KEY','DEV_VECTOR_PASSWORD']+[f'DEV_{s.upper()}_{k}_PASSWORD' for s in SERVICES for k in ('APP','OWNER','CDC')]
         keys={name:secrets.token_hex(32) for name in names};keys['DEV_JWT_SECRET']=base64.b64encode(secrets.token_bytes(64)).decode()
         write_private(state/'.env',''.join(k+'='+v+'\n' for k,v in keys.items()))
+    oauth=google_credentials(state)
     write_private(state/'owner.json',json.dumps({'project':PROJECT,'runtime':'local-compose'}))
     write_private(state/'init.sql',sql_init(keys));write_private(state/'redis.conf','appendonly yes\nmaxmemory 128mb\nmaxmemory-policy noeviction\nrequirepass '+keys['DEV_REDIS_PASSWORD']+'\n')
     write_private(state/'cdc.properties',''.join(s+'.password='+keys['DEV_'+s.upper()+'_CDC_PASSWORD']+'\n' for s in SERVICES))
     for name in ('api-gateway',*(s+'-service' for s in SERVICES)):
         values=app_env(name,host=True)
+        if name=='user-service' and oauth: values.update(oauth)
         for k,v in values.items():
             values[k]=re.sub(r'\$\{([A-Z_]+)\}',lambda m:keys[m[1]],v)
         write_private(state/(name+'.env'),''.join(k+'='+v+'\n' for k,v in values.items()))
-    for name in ('kafka.properties','connect.properties','access.conf','mail_sink.py'):
+    for name in ('kafka.properties','connect.properties','access.conf','mail_sink.py','google-oauth.conf'):
         write_private(state/name,(ROOT/'environments/dev/compose'/name).read_text())
-    write_private(state/'compose.yaml',yaml.safe_dump(compose(),sort_keys=False))
-    for name in ('init.sql','redis.conf','cdc.properties','kafka.properties','connect.properties','access.conf','mail_sink.py'):
+    write_private(state/'compose.yaml',yaml.safe_dump(compose(google_oauth=bool(oauth)),sort_keys=False))
+    for name in ('init.sql','redis.conf','cdc.properties','kafka.properties','connect.properties','access.conf','mail_sink.py','google-oauth.conf'):
         (state/name).chmod(0o444) # state directory stays 0700; only explicitly mounted files reach containers
     print('Prepared local configuration (credentials not printed):',state)
 

@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 import yaml
 from promote_image import promote
-from local_dev import compose, prepare, app_env, ROOT
+from local_dev import compose, prepare, app_env, ROOT, google_credentials
 
 class EnvironmentTest(unittest.TestCase):
     def test_compose_has_only_local_ports_and_isolated_storage(self):
@@ -59,6 +59,40 @@ class EnvironmentTest(unittest.TestCase):
         self.assertEqual('false',app_env('user-service')['SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH'])
         self.assertEqual('false',app_env('user-service')['SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED'])
         self.assertIn('127.0.0.1:18025:18025',c['services']['local-access']['ports'])
+
+    def test_google_credentials_are_opt_in_and_scoped_to_user_service(self):
+        self.assertNotIn('google-oauth-egress',compose()['services'])
+        c=compose(google_oauth=True)
+        self.assertEqual(['dev'],c['services']['user-service']['networks'])
+        self.assertEqual(['dev','access'],c['services']['google-oauth-egress']['networks'])
+        self.assertNotIn('ports',c['services']['google-oauth-egress'])
+        for name,service in c['services'].items():
+            if name=='user-service':
+                self.assertEqual(['./google-oauth.env'],service['env_file'])
+                self.assertNotIn('GOOGLE_SECRET_KEY',service['environment'])
+                self.assertEqual('http://google-oauth-egress:8080/token',service['environment']['SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI'])
+            else:self.assertNotIn('env_file',service)
+        with tempfile.TemporaryDirectory() as tmp:
+            state=Path(tmp);self.assertEqual({},google_credentials(state))
+            file=state/'google-oauth.env'
+            file.write_text('GOOGLE_CLIENT_ID=test.apps.googleusercontent.com\nGOOGLE_SECRET_KEY=test-secret-placeholder\n')
+            file.chmod(0o600)
+            self.assertEqual(2,len(google_credentials(state)))
+            file.chmod(0o644)
+            with self.assertRaises(ValueError):google_credentials(state)
+            file.chmod(0o600)
+            file.write_text(file.read_text()+'JWT_SECRET=unrelated\n')
+            with self.assertRaises(ValueError):google_credentials(state)
+        with tempfile.TemporaryDirectory() as tmp:
+            state=Path(tmp)/'dev';prepare(state)
+            file=state/'google-oauth.env'
+            file.write_text('GOOGLE_CLIENT_ID=test.apps.googleusercontent.com\nGOOGLE_SECRET_KEY=test-secret-placeholder\n');file.chmod(0o600)
+            prepare(state)
+            rendered=yaml.safe_load((state/'compose.yaml').read_text())
+            self.assertIn('google-oauth-egress',rendered['services'])
+            self.assertNotIn('test-secret-placeholder',(state/'compose.yaml').read_text())
+            self.assertIn('GOOGLE_CLIENT_ID=test.apps.googleusercontent.com',(state/'user-service.env').read_text())
+            self.assertNotIn('test-secret-placeholder',(state/'animal-service.env').read_text())
 
     def test_cdc_targets_only_local_data_and_does_not_copy_secrets(self):
         docs=json.loads((ROOT/'environments/dev/compose/connectors.json').read_text())
