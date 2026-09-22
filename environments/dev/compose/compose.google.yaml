@@ -1,0 +1,37 @@
+# Optional Google-only outbound route; use with the base Compose file.
+services:
+  google-oauth-egress:
+    image: nginxinc/nginx-unprivileged@sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 64m
+    cpus: '0.25'
+    pids_limit: 256
+    networks:
+    - dev
+    - access
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    command:
+    - nginx
+    - -c
+    - /etc/nginx/google-oauth.conf
+    - -g
+    - daemon off;
+    volumes:
+    - ./google-oauth.conf:/etc/nginx/google-oauth.conf:ro
+  user-service:
+    environment:
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI: http://google-oauth-egress:8080/token
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI: http://google-oauth-egress:8080/userinfo
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_JWK_SET_URI: http://google-oauth-egress:8080/jwks
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Supply Google credentials}
+      GOOGLE_SECRET_KEY: ${GOOGLE_SECRET_KEY:?Supply Google credentials}
+    depends_on:
+      google-oauth-egress:
+        condition: service_started

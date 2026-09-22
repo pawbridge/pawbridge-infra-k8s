@@ -4,7 +4,9 @@
 
 ## 실행
 
-Python 3 + PyYAML, Docker Compose v2, 서비스가 요구하는 Java/Gradle을 사용한다. 별도 설치를 자동 수행하지 않는다. 인프라 저장소 루트에서 실행한다.
+일반 기동은 Git에서 관리하는 `compose/compose.yaml`을 Docker Compose v2로 직접 실행한다. 서버 설정은 이 YAML의 `environment`와 Spring `dev,postgresql` 프로필로 결정한다. Google 연결은 별도 `compose.google.yaml` override다. Python으로 Compose를 생성하지 않는다.
+
+최초 DB 계정 준비·마이그레이션·CDC 등록·회귀 검증용 보조 도구만 Python 3 + PyYAML과 해당 Java/Gradle을 사용한다. 도구 설치를 자동 수행하지 않는다. 인프라 저장소 루트에서 실행한다.
 
 ```sh
 python3 scripts/environments/local_dev.py prepare
@@ -29,7 +31,48 @@ python3 scripts/environments/local_flows.py
 
 마이그레이션은 소스 SQL과 패키지 일치, 로컬 DB의 dev 표식, loopback 주소를 확인한다. DB는 새 개발 데이터만 보관한다. 운영 덤프·PV·토픽·비밀번호를 재사용하지 않는다. Connect 등록은 스키마 초기화 후 수행하며, 다섯 서비스의 실제 Outbox 라우팅/헤더 설정을 사용한다.
 
-`isolated-values/*.yaml`은 CI가 갱신하는 **이미지·마이그레이션 메타데이터**다. Kubernetes dev values가 아니다. `prepare`가 그 digest를 읽어 Compose를 생성한다. 새 dev 이미지가 병합되면 `prepare` 후 해당 로컬 서비스를 재기동한다. GitHub CI가 꺼진 PC를 자동 기동하거나 로컬에 배포하지 않는다.
+`isolated-values/*.yaml`은 CI가 갱신하는 **이미지·마이그레이션 메타데이터**다. Kubernetes dev values가 아니다. `prepare`는 그 digest를 읽어 비밀값이 없는 `images.env`에 기록한다. Compose의 서비스·프로필·환경변수·자원·포트 정의는 Git의 YAML이 정본이다. 새 dev 이미지가 병합되면 이미지 목록을 갱신한 뒤 해당 로컬 서비스를 재기동한다. GitHub CI가 꺼진 PC를 자동 기동하거나 로컬에 배포하지 않는다.
+
+## 설정을 확인하고 직접 실행
+
+- `compose/compose.yaml`: 일반 설정, Spring 프로필, 자원 상한, 네트워크, 볼륨과 이미지 변수.
+- `compose/compose.google.yaml`: Google 연결을 선택했을 때만 적용하는 추가 설정.
+- `compose/ide-overrides.yaml`: 호스트 IDE 실행 시 달라지는 주소·포트.
+- state의 `compose.env`: 비공개 state 디렉터리 위치. `images.env`: 검증한 이미지 digest 목록.
+- state의 `.env`·`google-oauth.env`: 현재 사용하는 비밀값 전달 파일. Git에는 넣지 않는다.
+
+초기화·마이그레이션이 완료된 개발 환경은 Python 없이 다음 명령으로 기동할 수 있다. `--profile apps`는 Docker Compose의 서비스 선택이며, Spring 프로필과 구분한다.
+
+```sh
+PAWBRIDGE_STATE="$HOME/.local/state/pawbridge/dev"
+docker --context default compose \
+  --env-file "$PAWBRIDGE_STATE/.env" \
+  --env-file "$PAWBRIDGE_STATE/compose.env" \
+  --env-file "$PAWBRIDGE_STATE/images.env" \
+  -f environments/dev/compose/compose.yaml \
+  --profile apps --profile events up -d
+```
+
+Google 연결을 사용하면 위 명령의 `--profile` 앞에 아래 두 인자를 추가한다. 자격증명이 없으면 Google override가 실패하도록 되어 있다.
+
+```sh
+--env-file "$PAWBRIDGE_STATE/google-oauth.env" \
+-f environments/dev/compose/compose.google.yaml
+```
+
+기동 전 문법 검사는 `up -d` 대신 `config --quiet`, 상태 조회는 `ps`, 중지는 `stop`이다. 일반 `config` 출력에는 해석된 비밀값이 포함될 수 있으므로 공유 로그에는 출력하지 않는다. 개발 데이터가 있는 기존 볼륨을 그대로 사용한다. 이전에 state에 생성됐던 `compose.yaml`은 새 실행 도구가 사용하지 않는다. 롤백 확인 전에는 임의 삭제하지 않는다.
+
+## Vault와 환경변수의 역할
+
+`.env`는 필수 비밀 저장소가 아니다. Compose는 환경변수 또는 `--env-file`에서 값을 주입받을 수 있다. Vault를 원본 저장소로 쓰더라도 전달 방식으로 환경변수나 비공개 파일을 사용할 수 있다.
+
+현재 운영 매니페스트는 Vault Secrets Operator가 Vault를 읽어 Kubernetes Secret으로 동기화하고, 서비스에 환경변수로 주입한다. 로컬 Compose에는 Kubernetes Operator가 없으므로 같은 매니페스트만으로 자동 연결되지 않는다. Spring이 Vault를 직접 읽는 의존성을 추가하는 방법도 있지만 DB·Redis·Kafka Connect까지 같은 방식으로 처리하지 못한다. 로컬 전체 환경에는 Vault Agent가 필요한 개발 비밀값을 공급하고 기존 Compose가 받는 방식을 우선 검토한다. Agent 템플릿은 비밀 전달 파일을 렌더링할 뿐, 서비스 구성 YAML을 생성하지 않는다.
+
+**현재 Vault Agent는 설치·연결하지 않았다.** 로컬 파일의 기존 키는 보존했다. 운영 Vault의 `secret/pawbridge/dev/...` 경로는 이름과 달리 현재 운영이 사용하므로 로컬 개발용으로 판단하지 않는다. 연결할 때는 `secret/pawbridge/local-dev/...` 등 독립 경로·읽기 전용 권한·개발 인증 수단·TLS/접속 경로를 준비하고, 운영 경로 접근 거부와 동일한 개발 DB 비밀번호 사용을 검증해야 한다. 기존 로컬 DB가 있으므로 비밀값을 새로 생성해 교체하지 않는다. 공유에 동의한 Google 두 값만 명시적으로 예외로 취급한다. Vault 정책/인증/비밀값 등록은 별도 실행안과 승인을 받은 뒤 적용한다.
+
+Vault가 렌더링한 파일도 비밀값을 포함한다. 파일 권한·보관 위치는 보호해야 하며, 갱신했다고 실행 중인 컨테이너 환경변수가 자동 갱신되는 것은 아니다. 비밀 회전 시 해당 개발 서비스 재생성을 검증해야 한다. 인증에 필요한 초기 자격증명까지 없어지는 구조는 아니다.
+
+참고: [Compose 환경변수](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/), [Vault Agent 템플릿](https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent/template).
 
 ## IDE로 백엔드 수정
 

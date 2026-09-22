@@ -17,9 +17,6 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 SERVICES = ('animal', 'user', 'community', 'store', 'payment')
 PROJECT = 'pawbridge-dev'
-PG = 'pgvector/pgvector@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f'
-KAFKA = 'dorosiya/pawbridge-debezium-connect@sha256:3fec7b3140917505648943bab214696fb7b30c103d2c4f6483143c1d8ff274a0'
-REDIS = 'redis@sha256:ee64a64eaab618d88051c3ade8f6352d11531fcf79d9a4818b9b183d8c1d18ba'
 PORTS = {'api-gateway': 28080, 'user-service': 28081, 'animal-service': 28082, 'community-service': 28083, 'store-service': 28084, 'payment-service': 28085, 'photo-service': 28086, 'python-ai-service': 28087}
 
 
@@ -39,62 +36,30 @@ def image(service):
     return img['repository']+'@'+img['digest']
 
 
-def base(image_ref, memory, cpus='1.0'):
-    return {'image': image_ref, 'pull_policy': 'missing', 'restart': 'no', 'mem_limit': memory,
-            'cpus': cpus, 'pids_limit': 256, 'networks': ['dev'], 'security_opt': ['no-new-privileges:true'],
-            'logging': {'driver': 'json-file', 'options': {'max-size': '5m', 'max-file': '2'}}}
-
-
-def health(command):
-    return {'test': ['CMD-SHELL', command], 'interval': '5s', 'timeout': '5s', 'retries': 30, 'start_period': '30s'}
+def compose(google_oauth=False):
+    """Read the versioned settings for validation; Docker Compose performs runtime merging."""
+    folder=ROOT/'environments/dev/compose'
+    config=yaml.safe_load((folder/'compose.yaml').read_text())
+    if google_oauth:
+        extra=yaml.safe_load((folder/'compose.google.yaml').read_text())['services']
+        config['services']['google-oauth-egress']=extra['google-oauth-egress']
+        for key in ('environment','depends_on'):
+            config['services']['user-service'][key].update(extra['user-service'][key])
+    return config
 
 
 def app_env(name, host=False):
-    db = '127.0.0.1:15433' if host else 'postgresql:5432'
-    kafka = '127.0.0.1:19092' if host else 'kafka:9092'
-    redis = '127.0.0.1' if host else 'redis'
-    env = {'SPRING_PROFILES_ACTIVE': 'dev,postgresql', 'SPRING_KAFKA_BOOTSTRAP_SERVERS': kafka,
-           'SPRING_DATA_REDIS_HOST': redis, 'SPRING_DATA_REDIS_PORT': '16379' if host else '6379',
-           'REDIS_HOST': redis, 'REDIS_PORT': '16379' if host else '6379',
-           'SPRING_DATA_REDIS_PASSWORD': '${DEV_REDIS_PASSWORD}', 'SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE': '3',
-           'SPRING_DATASOURCE_HIKARI_MINIMUMIDLE': '0', 'SPRING_JPA_HIBERNATE_DDL_AUTO': 'validate',
-           'SPRING_BATCH_JOB_ENABLED': 'false', 'SPRING_BATCH_JDBC_INITIALIZE_SCHEMA': 'never',
-           'MANAGEMENT_TRACING_ENABLED': 'false', 'MANAGEMENT_HEALTH_MAIL_ENABLED': 'false',
-           'JAVA_TOOL_OPTIONS': '-Xms64m -Xmx384m -Duser.timezone=Asia/Seoul',
-           'JWT_SECRET': '${DEV_JWT_SECRET}', 'JWT_ACCESS_TOKEN_EXPIRATION': '3600000', 'JWT_REFRESH_TOKEN_EXPIRATION': '1209600000',
-           'R2_ACCESS_KEY_ID': 'local-unconfigured', 'R2_SECRET_ACCESS_KEY': 'local-unconfigured', 'R2_REGION': 'auto',
-           'R2_ENDPOINT': 'http://unconfigured.invalid', 'R2_BUCKET_NAME': 'pawbridge-dev-images', 'R2_PUBLIC_BASE_URL': 'http://unconfigured.invalid',
-           'GOOGLE_CLIENT_ID': 'local-unconfigured', 'GOOGLE_SECRET_KEY': 'local-unconfigured',
-           'GOOGLE_EMAIL': 'local@example.invalid', 'GOOGLE_EMAIL_SECRET_KEY': 'local-unconfigured',
-           'SPRING_MAIL_HOST': '127.0.0.1' if host else 'mail',
-           'SPRING_MAIL_PORT': '11025' if host else '1025',
-           'SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH': 'false',
-           'SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE': 'false',
-           'SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED': 'false',
-           'TOSS_SECRET_KEY': 'test_unconfigured',
-           'APMS_API_BASE_URL': 'http://unconfigured.invalid', 'APMS_API_SERVICE_KEY': 'local-unconfigured',
-           'APMS_PHOTO_ARCHIVE_ENABLED': 'false', 'TOURAPI_ENABLED': 'false', 'TOURAPI_SCHEDULE_ENABLED': 'false',
-           'SHELTER_DIRECTORY_SCHEDULE_ENABLED': 'false', 'LOST_GALLERY_FEED_ENABLED': 'false',
-           'LOST_SEARCH_PYTHON_URL': 'http://127.0.0.1:18091' if host else 'http://unconfigured.invalid:18091',
-           'PYTHON_AI_SERVICE_INTERNAL_API_KEY': '${DEV_INTERNAL_API_KEY}', 'CHATBOT_IP_HASH_SECRET': '${DEV_INTERNAL_API_KEY}',
-           'REDIRECT_URI': 'http://localhost:28080/login/oauth2/code/google', 'OAUTH2_REDIRECT_URI': 'http://localhost:5184/oauth/callback'}
-    for target, port in [('user',8080),('animal',8081),('community',8082),('store',8083),('payment',8084)]:
-        env[target.upper()+'_SERVICE_URL'] = 'http://127.0.0.1:'+str(PORTS[target+'-service']) if host else f'http://{target}-service:{port}'
-    env['PYTHON_AI_SERVICE_URL'] = 'http://127.0.0.1:28087' if host else 'http://python-ai-service:8000'
-    if name != 'api-gateway':
-        short = name.removesuffix('-service'); upper=short.upper()
-        env.update({upper+'_POSTGRESQL_JDBC_URL':'jdbc:postgresql://'+db+'/pawbridge', upper+'_POSTGRESQL_USERNAME':'pawbridge_dev_'+short+'_app', upper+'_POSTGRESQL_PASSWORD':'${DEV_'+upper+'_APP_PASSWORD}'})
-    else:
-        env['SPRING_PROFILES_ACTIVE']='dev'
-        env['SPRING_APPLICATION_JSON']=json.dumps({'spring':{'cloud':{'gateway':{'globalcors':{'cors-configurations':{'[/**]':{'allowedOriginPatterns':['http://localhost:5184','http://127.0.0.1:5184'],'allowedMethods':['GET','POST','PUT','PATCH','DELETE','OPTIONS'],'allowedHeaders':['Authorization','Content-Type','Accept','x-user-id'],'allowCredentials':True}}}}}}})
-    if host: env['SERVER_PORT']=str(PORTS[name])
-    return env
+    values=compose()['services'][name]['environment'].copy()
+    if host:
+        overrides=yaml.safe_load((ROOT/'environments/dev/compose/ide-overrides.yaml').read_text())
+        values.update(overrides[name])
+    return values
 
 
 def google_credentials(state):
     path=state/'google-oauth.env'
     if not path.exists(): return {}
-    if path.is_symlink() or path.stat().st_mode & 0o077:
+    if path.is_symlink() or not path.is_file() or path.stat().st_mode & 0o077:
         raise ValueError('google-oauth.env must be a private regular file (0600)')
     keys={}
     for line in path.read_text().splitlines():
@@ -109,61 +74,6 @@ def google_credentials(state):
     if not re.fullmatch(r'[A-Za-z0-9_-]{8,256}',keys['GOOGLE_SECRET_KEY']):
         raise ValueError('Invalid Google client secret')
     return keys
-
-
-def compose(google_oauth=False):
-    pg={**base(PG,'768m'), 'ports':['127.0.0.1:15433:5432'], 'shm_size':'128m',
-        'environment':{'POSTGRES_DB':'pawbridge','POSTGRES_PASSWORD':'${DEV_POSTGRES_PASSWORD:?Run prepare}', 'POSTGRES_INITDB_ARGS':'--auth-host=scram-sha-256'},
-        'command':['postgres','-c','wal_level=logical','-c','max_replication_slots=10','-c','max_wal_senders=10','-c','max_connections=60','-c','shared_buffers=128MB','-c','max_slot_wal_keep_size=256MB'],
-        'volumes':['pg-data:/var/lib/postgresql/data','./init.sql:/docker-entrypoint-initdb.d/010-dev.sql:ro'],
-        'healthcheck':health('pg_isready -U postgres -d pawbridge')}
-    redis={**base(REDIS,'256m'), 'ports':['127.0.0.1:16379:6379'], 'volumes':['redis-data:/data','./redis.conf:/usr/local/etc/redis/redis.conf:ro'],
-        'command':['redis-server','/usr/local/etc/redis/redis.conf'], 'environment':{'REDISCLI_AUTH':'${DEV_REDIS_PASSWORD}'}, 'healthcheck':health('redis-cli ping | grep -q PONG')}
-    kafka={**base(KAFKA,'1024m'), 'ports':['127.0.0.1:19092:19092'], 'volumes':['kafka-data:/var/lib/kafka','./kafka.properties:/tmp/kafka.properties:ro'],
-        'environment':{'KAFKA_HEAP_OPTS':'-Xms256m -Xmx512m','LOG_DIR':'/tmp/kafka-logs','KAFKA_GC_LOG_OPTS':'-Xlog:gc=warning:stdout'},
-        'command':['/bin/bash','-ec','/opt/kafka/bin/kafka-storage.sh format --ignore-formatted --standalone -t MDEyMzQ1Njc4OWFiY2RlZg -c /tmp/kafka.properties && exec /opt/kafka/bin/kafka-server-start.sh /tmp/kafka.properties'],
-        'healthcheck':health('/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null')}
-    connect={**base(KAFKA,'1024m'), 'profiles':['events'], 'ports':['127.0.0.1:18383:8083'],
-        'volumes':['./connect.properties:/tmp/connect.properties:ro','./cdc.properties:/run/secrets/cdc.properties:ro'],
-        'command':['/opt/kafka/bin/connect-distributed.sh','/tmp/connect.properties'], 'environment':{'KAFKA_HEAP_OPTS':'-Xms256m -Xmx512m','LOG_DIR':'/tmp/kafka-logs','KAFKA_GC_LOG_OPTS':'-Xlog:gc=warning:stdout'},
-        'depends_on':{'postgresql':{'condition':'service_healthy'},'kafka':{'condition':'service_healthy'}}, 'healthcheck':health('curl -fsS http://localhost:8083/connector-plugins >/dev/null')}
-    volume_init={**base(KAFKA,'64m'), 'user':'0:0', 'network_mode':'none',
-        'volumes':['kafka-data:/var/lib/kafka'], 'command':['/bin/sh','-ec','mkdir -p /var/lib/kafka/data && chown 1001:0 /var/lib/kafka/data']}
-    volume_init.pop('networks')
-    kafka['depends_on']={'kafka-volume-init':{'condition':'service_completed_successfully'}}
-    services={'postgresql':pg,'redis':redis,'kafka-volume-init':volume_init,'kafka':kafka,'connect':connect}
-    services['mail']={**base('python@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534','64m','0.25'),
-        'user':'65534:65534','read_only':True,
-        'ports':['127.0.0.1:18025:8025','127.0.0.1:11025:1025'],
-        'command':['python','-B','/app/mail_sink.py'], 'volumes':['./mail_sink.py:/app/mail_sink.py:ro'],
-        'healthcheck':health('true')}
-    for name in ('api-gateway',*(s+'-service' for s in SERVICES)):
-        port=8080 if name in ('api-gateway','user-service') else {'animal-service':8081,'community-service':8082,'store-service':8083,'payment-service':8084}[name]
-        services[name]={**base(image(name),'640m'), 'profiles':['apps'], 'environment':app_env(name),
-            'ports':[f'127.0.0.1:{PORTS[name]}:{port}'],
-            'depends_on':{'postgresql':{'condition':'service_healthy'},'redis':{'condition':'service_healthy'},'kafka':{'condition':'service_healthy'}}}
-    # CPU and photo servers are opt-in; no implicit GPU load or external LLM/R2 use.
-    for name in ('photo-service','python-ai-service'):
-        services[name]={**base(image(name),'512m'), 'profiles':['optional-ai'], 'ports':[f'127.0.0.1:{PORTS[name]}:8000'],
-            'environment':{'INTERNAL_API_KEY':'${DEV_INTERNAL_API_KEY}','LOST_STORAGE_BACKEND':'postgresql','LOST_GALLERY_SYNC_ENABLED':'false','LOST_PG_DSN':'postgresql://pawbridge_dev_vector:${DEV_VECTOR_PASSWORD}@postgresql:5432/pawbridge'}}
-    services['mail']['healthcheck']['test']=['CMD','python','-c',"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8025/health')"]
-    services['user-service']['depends_on']['mail']={'condition':'service_healthy'}
-    if google_oauth:
-        services['google-oauth-egress']={**base('nginxinc/nginx-unprivileged@sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c','64m','0.25'),
-            'networks':['dev','access'], 'command':['nginx','-c','/etc/nginx/google-oauth.conf','-g','daemon off;'],
-            'volumes':['./google-oauth.conf:/etc/nginx/google-oauth.conf:ro']}
-        user=services['user-service']
-        user['env_file']=['./google-oauth.env']
-        for key in ('GOOGLE_CLIENT_ID','GOOGLE_SECRET_KEY'): user['environment'].pop(key)
-        for key,path in [('TOKEN_URI','token'),('USER_INFO_URI','userinfo'),('JWK_SET_URI','jwks')]:
-            user['environment']['SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_'+key]='http://google-oauth-egress:8080/'+path
-        user['depends_on']['google-oauth-egress']={'condition':'service_started'}
-    ports=[port for service in services.values() for port in service.pop('ports',[])]
-    services['local-access']={**base('nginxinc/nginx-unprivileged@sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c','64m','0.25'),
-        'networks':['dev','access'], 'ports':[p.rsplit(':',1)[0]+':'+p.split(':')[1] for p in ports],
-        'command':['nginx','-c','/etc/nginx/local-dev.conf','-g','daemon off;'],
-        'volumes':['./access.conf:/etc/nginx/local-dev.conf:ro']}
-    return {'name':PROJECT,'services':services,'networks':{'dev':{'internal':True},'access':{}},'volumes':{'pg-data':{},'redis-data':{},'kafka-data':{}}}
 
 
 def sql_init(keys):
@@ -199,12 +109,12 @@ def prepare(state):
         values=app_env(name,host=True)
         if name=='user-service' and oauth: values.update(oauth)
         for k,v in values.items():
-            values[k]=re.sub(r'\$\{([A-Z_]+)\}',lambda m:keys[m[1]],v)
+            values[k]=re.sub(r'\$\{([A-Z_]+)(?::-([^}]*))?\}',lambda m:keys.get(m[1],m[2]) if m[1] in keys or m[2] is not None else keys[m[1]],v)
         write_private(state/(name+'.env'),''.join(k+'='+v+'\n' for k,v in values.items()))
-    for name in ('kafka.properties','connect.properties','access.conf','mail_sink.py','google-oauth.conf'):
-        write_private(state/name,(ROOT/'environments/dev/compose'/name).read_text())
-    write_private(state/'compose.yaml',yaml.safe_dump(compose(google_oauth=bool(oauth)),sort_keys=False))
-    for name in ('init.sql','redis.conf','cdc.properties','kafka.properties','connect.properties','access.conf','mail_sink.py','google-oauth.conf'):
+    write_private(state/'compose.env','PAWBRIDGE_DEV_STATE='+str(state)+'\n')
+    images={name:image(name) for name in ('api-gateway',*(s+'-service' for s in SERVICES),'photo-service','python-ai-service')}
+    write_private(state/'images.env',''.join('DEV_IMAGE_'+name.upper().replace('-','_')+'='+value+'\n' for name,value in images.items()))
+    for name in ('init.sql','redis.conf','cdc.properties'):
         (state/name).chmod(0o444) # state directory stays 0700; only explicitly mounted files reach containers
     print('Prepared local configuration (credentials not printed):',state)
 
@@ -221,7 +131,14 @@ def docker():
 def cli(state,*args,**kwargs):
     if not (state/'owner.json').is_file() or json.loads((state/'owner.json').read_text()).get('project')!=PROJECT:
         raise ValueError('Run prepare before using this runtime')
-    return subprocess.run([*docker(),'compose','--project-name',PROJECT,'--env-file',str(state/'.env'),'-f',str(state/'compose.yaml'),*args],check=True,timeout=900,**kwargs)
+    folder=ROOT/'environments/dev/compose'
+    command=[*docker(),'compose','--project-name',PROJECT]
+    for name in ('.env','compose.env','images.env'):
+        command += ['--env-file',str(state/name)]
+    command += ['-f',str(folder/'compose.yaml')]
+    if google_credentials(state):
+        command += ['--env-file',str(state/'google-oauth.env'),'-f',str(folder/'compose.google.yaml')]
+    return subprocess.run([*command,*args],check=True,timeout=900,**kwargs)
 
 
 def db_sql(state,sql):

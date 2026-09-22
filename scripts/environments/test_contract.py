@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 import yaml
 from promote_image import promote
-from local_dev import compose, prepare, app_env, ROOT, google_credentials
+from local_dev import compose, prepare, app_env, ROOT, google_credentials, image
 
 class EnvironmentTest(unittest.TestCase):
     def test_compose_has_only_local_ports_and_isolated_storage(self):
@@ -16,7 +16,7 @@ class EnvironmentTest(unittest.TestCase):
             if name=='kafka-volume-init':
                 self.assertEqual('none',s['network_mode']);continue
             self.assertEqual(['dev','access'] if name=='local-access' else ['dev'],s['networks'])
-            self.assertIn('@sha256:',s['image'])
+            self.assertIn('@sha256:',image(name) if s['image'].startswith('${DEV_IMAGE_') else s['image'])
             self.assertIn('mem_limit',s)
             self.assertNotIn('network_mode',s)
             self.assertNotIn('privileged',s)
@@ -68,8 +68,7 @@ class EnvironmentTest(unittest.TestCase):
         self.assertNotIn('ports',c['services']['google-oauth-egress'])
         for name,service in c['services'].items():
             if name=='user-service':
-                self.assertEqual(['./google-oauth.env'],service['env_file'])
-                self.assertNotIn('GOOGLE_SECRET_KEY',service['environment'])
+                self.assertEqual('${GOOGLE_SECRET_KEY:?Supply Google credentials}',service['environment']['GOOGLE_SECRET_KEY'])
                 self.assertEqual('http://google-oauth-egress:8080/token',service['environment']['SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI'])
             else:self.assertNotIn('env_file',service)
         with tempfile.TemporaryDirectory() as tmp:
@@ -88,9 +87,10 @@ class EnvironmentTest(unittest.TestCase):
             file=state/'google-oauth.env'
             file.write_text('GOOGLE_CLIENT_ID=test.apps.googleusercontent.com\nGOOGLE_SECRET_KEY=test-secret-placeholder\n');file.chmod(0o600)
             prepare(state)
-            rendered=yaml.safe_load((state/'compose.yaml').read_text())
+            rendered=compose(google_oauth=bool(google_credentials(state)))
             self.assertIn('google-oauth-egress',rendered['services'])
-            self.assertNotIn('test-secret-placeholder',(state/'compose.yaml').read_text())
+            self.assertFalse((state/'compose.yaml').exists())
+            self.assertNotIn('test-secret-placeholder',(state/'images.env').read_text())
             self.assertIn('GOOGLE_CLIENT_ID=test.apps.googleusercontent.com',(state/'user-service.env').read_text())
             self.assertNotIn('test-secret-placeholder',(state/'animal-service.env').read_text())
 

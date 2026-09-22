@@ -17,5 +17,5 @@ def main():
         rendered=subprocess.check_output([*helm,'template',name,cfg['chart'],'--namespace','pawbridge','--values',cfg['prodValues']],text=True)
         (args.output/('prod-'+name+'.yaml')).write_text(rendered);count+=1
     (args.output/'compose.yaml').write_text(yaml.safe_dump(compose(),sort_keys=False))
-    print(json.dumps({'productionChartsRendered':count,'localComposeGenerated':True,'liveApplied':False}))
+    print(json.dumps({'productionChartsRendered':count,'versionedLocalComposeValidated':True,'liveApplied':False}))
 if __name__=='__main__':main()
