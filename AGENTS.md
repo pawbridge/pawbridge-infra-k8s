@@ -1,113 +1,112 @@
-# PawBridge Infrastructure Agent Guide
+# PawBridge 인프라 에이전트 지침
 
-## Scope
+## 적용 범위
 
-This file applies to the entire `pawbridge-infra-k8s` repository.
-Read the closest `AGENTS.md` before changing files. A more specific nested
-`AGENTS.md` may add or override rules for its directory.
+이 파일은 `pawbridge-infra-k8s` 저장소 전체에 적용한다.
+파일을 수정하기 전에 해당 경로에서 가장 가까운 `AGENTS.md`를 읽는다.
+하위 디렉터리의 더 구체적인 `AGENTS.md`는 해당 디렉터리의 규칙을 추가하거나 재정의할 수 있다.
 
-## Source of Truth
+## 판단 근거와 문서 정본
 
-- Verify current facts from Git, manifests, rendered output, and the actual
-  target cluster. Do not rely on an old runbook for live state.
-- Treat Obsidian `Projects/pawbridge` notes as the canonical home for project
-  plans, decisions, migration records, recovery evidence, and investigation
-  notes.
-- Keep repository Markdown only when it must version with manifests or scripts,
-  such as the root README, PR template, this guide, or an executable runbook.
-- Never describe a local manifest edit, render, dry-run, image build, or backup
-  plan as an applied or production-verified change.
+- 현재 사실은 Git, 매니페스트, 렌더링 결과와 실제 대상 클러스터에서 확인한다.
+  과거 실행 문서만으로 현재 운영 상태를 판단하지 않는다.
+- 프로젝트 계획, 결정, 이전 기록, 복구 근거와 조사 기록의 정본은
+  Obsidian의 `Projects/pawbridge` 문서로 관리한다.
+- 루트 README, PR 템플릿, 이 지침, 실행 절차 문서처럼 매니페스트나 스크립트와
+  함께 버전 관리해야 하는 Markdown만 저장소에 둔다.
+- 로컬 매니페스트 수정, 렌더링, 모의 실행, 이미지 빌드, 백업 계획을
+  실제 적용이나 운영 검증 완료로 표현하지 않는다.
 
-## Git and Pull Requests
+## 작업 단위 일괄 승인
 
-- Use the latest `origin/dev` as the default base unless the user explicitly
-  selects another base.
-- Before creating or switching a branch or worktree, verify whether the remote
-  base ref is current, record the exact base SHA, inspect `HEAD...base`
-  divergence and the base-relative effective diff, then show the proposed base,
-  branch name, and worktree path and wait for approval. If the remote could not
-  be refreshed, report that limitation instead of calling the ref current.
-- One branch equals one pull request with one primary review purpose.
-- Separate documentation, provisioning, stateful recovery, secrets, CI,
-  application chart, and live cutover changes unless one explicit contract
-  makes them inseparable. Explain any exception before implementation.
-- Use a clean worktree based on `origin/dev` when the current worktree already
-  contains changes. Do not stash, reset, discard, or rewrite user changes
-  without explicit approval.
-- Never stage a dirty repository with `git add -A` or `git add .`. Stage only
-  the exact paths owned by the current PR.
-- Do not commit CRLF-only changes, rendered secrets, generated archives, logs,
-  dumps, kubeconfigs, changes whose normalized content is already on the base,
-  or untracked copies of paths already tracked with the same base content.
-- Use branch prefixes that state the change type: `feat/`, `fix/`, `ci/`,
-  `docs/`, or `chore/`.
-- Use a concise `type: Korean noun phrase` commit title and show the exact title
-  before committing, then wait for approval.
-- Before pushing, show the exact push command and wait for approval.
-- Before creating a PR, show the exact command, Korean PR title, and full PR
-  body, then wait for approval.
-- Use `.github/PULL_REQUEST_TEMPLATE.md` and check only items proven by the
-  actual diff and verification evidence.
-- Do not force-push, rewrite shared history, or merge without explicit approval.
+- 이 절은 사용자가 승인한 PawBridge 한정 예외다. 이 저장소와 연결 작업 폴더에서는
+  전역 지침의 Git 작업별 재승인 대신 아래 절차를 따른다. 다른 프로젝트에는 적용하지 않는다.
+- 시작할 때 목적, 변경 범위, 대상 저장소, 기준 브랜치와 SHA, 작업 브랜치와 폴더,
+  검증 방법, 커밋·푸시·PR 생성 포함 여부를 묶어서 제시하고 한 번 승인받는다.
+- 승인에 포함된 브랜치·작업 폴더 생성 또는 전환, 구현, 검증, 일반 커밋,
+  해당 기능 브랜치 푸시, PR 생성과 해당 PR 제목·본문 수정은 매번 다시 묻지 않는다.
+  커밋 제목과 PR 설명은 실제 변경·검증 결과에 맞게 작성하고 실행 결과를 보고한다.
+- 구현 요청만으로 커밋·푸시·PR 생성 권한을 추정하지 않는다. 이미 제시한 일괄 범위에
+  대한 사용자의 승인은 같은 작업의 후속 턴에도 유지하며, 턴 전환만으로 재승인받지 않는다.
+- 범위·대상 저장소·기준 브랜치가 달라지면 변경 부분만 다시 승인받는다.
+  리뷰 요청·멘션·댓글 등 다른 사람에게 보내는 메시지는 일괄 승인에 포함하지 않는다.
+- 병합과 운영 배포는 검증 결과, 대상, 롤백 방법을 제시한 뒤 최종 승인받는다.
+  사용자가 두 단계를 명시적으로 묶어 승인했다면 단계마다 다시 묻지 않는다.
+- 파괴적 작업, 데이터 삭제·일회성 데이터 변경, 운영 비밀값 변경은 별도 승인 대상이다.
+  강제 푸시와 공유 이력 재작성은 금지한다. 일괄 승인은 main/dev 직접 푸시나
+  도구의 샌드박스·권한 제한 우회를 허용하지 않는다.
+- 기존 작업 폴더에서 이어갈 때도 이 저장소 기준본의 최신 승인 규칙을 확인한다.
+  과거 AGENTS.md 사본의 단계별 재승인 문구를 현재 합의로 취급하지 않는다.
 
-## Infrastructure Safety
+## Git과 PR
 
-- Read-only inspection is the default. Commands such as `kubectl apply`,
-  `kubectl delete`, `helm upgrade`, `helm uninstall`, `vagrant up`,
-  `vagrant reload`, provider installation, and public cutover require explicit
-  approval before execution.
-- Before a live or external mutation, resolve every identifier relevant to that
-  operation, such as kubeconfig, context, namespace, release, VM, or target
-  path. Never assume the current context is safe.
-- Keep source and target environments distinct during migration. A target
-  smoke test must not reuse source IP addresses, tunnel ownership, persistent
-  volumes, or production secrets.
-- Stateful changes require a verified backup, restore procedure, rollback
-  boundary, and post-restart persistence check before cutover.
-- Do not change MySQL binlog, Kafka/Connect offsets, Elasticsearch aliases,
-  persistent-volume reclaim behavior, or Vault state as an incidental part of
-  another PR.
-- Split bootstrap logic, chart-version pinning, data recovery, and application
-  rollout into independently reviewable changes.
-- Historical documentation cleanup stays in a dedicated PR. An executable
-  runbook that defines the inputs, recovery, or rollback contract of a changed
-  script or manifest may be included with that implementation.
+- 사용자가 다른 기준을 명시하지 않으면 최신 `origin/dev`를 기준으로 삼는다.
+- 브랜치나 작업 폴더를 생성·전환하기 전에 원격 기준 브랜치를 갱신하고 정확한 SHA,
+  `HEAD...base` 분기 상태와 기준 브랜치 대비 실질 변경 내역을 확인한다.
+  기준 브랜치, 작업 브랜치 이름과 작업 폴더 경로는 위 일괄 승인에 포함해 제시한다.
+  원격을 갱신하지 못했다면 최신이라고 부르지 말고 제한을 보고한다.
+- 브랜치 하나는 주된 검토 목적이 하나인 PR 하나에 대응한다.
+- 하나의 명시적 계약 때문에 분리할 수 없는 경우를 제외하고 문서, 환경 구축,
+  상태가 있는 자원의 복구, 비밀값, CI, 애플리케이션 차트와 운영 전환 변경을 분리한다.
+  예외가 필요하면 구현 전에 이유를 설명한다.
+- 기존 작업 폴더에 변경이 있으면 `origin/dev` 기준의 깨끗한 별도 작업 폴더를 사용한다.
+  명시적 승인 없이 사용자의 변경을 임시 보관, 초기화, 폐기하거나 다시 쓰지 않는다.
+- 변경이 있는 저장소에서 `git add -A`나 `git add .`를 사용하지 않는다.
+  해당 PR이 담당하는 정확한 경로만 스테이징한다.
+- 줄바꿈만 바뀐 파일, 렌더링된 비밀값, 생성된 압축 파일, 로그, 덤프, kubeconfig,
+  정규화한 내용이 이미 기준 브랜치와 같은 변경, 이미 추적 중인 파일과 내용이 같은
+  미추적 복사본은 커밋하지 않는다.
+- 브랜치 이름은 `feat/`, `fix/`, `ci/`, `docs/`, `chore/`처럼 변경 유형을 드러낸다.
+- 커밋 제목은 간결한 `type: 한글 명사구` 형식으로 쓰고 PR 제목과 본문도 한글로 작성한다.
+  커밋·푸시·PR 생성은 위 일괄 승인 절차를 따른다.
+- `.github/PULL_REQUEST_TEMPLATE.md`를 사용하고 실제 변경과 검증 근거로 입증한 항목만 체크한다.
+- 강제 푸시와 공유 이력 재작성은 금지한다. 병합은 위 최종 승인 후에만 수행한다.
 
-## Validation
+## 인프라 작업 안전 기준
 
-- Validate YAML and shell syntax before broader checks.
-- Render Helm charts with the exact chart and dependency versions used by the
-  PR. Treat an unavailable renderer or CRD as an environment blocker.
-- Prefer client-side validation first. Use server-side dry-run only after the
-  exact non-production target context is confirmed.
-- For scripts, verify fail-fast behavior, idempotency, required input checks,
-  timeout handling, and refusal to overwrite recovery evidence.
-- For Kafka and Connect changes, verify topic partitions, replication,
-  cleanup policy, connector plugins, offsets, restart behavior, and failure
-  propagation.
-- For stateful resources, verify PVC binding, reclaim behavior, backup hashes,
-  isolated restore, and persistence after restart.
+- 기본은 읽기 전용 점검이다. `kubectl apply`, `kubectl delete`, `helm upgrade`,
+  `helm uninstall`, `vagrant up`, `vagrant reload`, 공급자 설치와 공개 서비스 전환은
+  실행 전에 명시적인 승인이 필요하다.
+- 운영 또는 외부 상태를 바꾸기 전에 kubeconfig, context, namespace, release, VM,
+  대상 경로 등 해당 작업에 필요한 모든 식별자를 확인한다. 현재 접속 대상이 안전하다고 가정하지 않는다.
+- 이전 중에는 원본 환경과 대상 환경을 구분한다. 대상 환경의 스모크 테스트에
+  원본 IP, 터널 소유권, 영구 볼륨이나 운영 비밀값을 재사용하지 않는다.
+- 상태가 있는 자원을 변경할 때는 운영 전환 전에 검증된 백업, 복원 절차,
+  롤백 경계와 재시작 후 데이터 유지 여부를 확인한다.
+- 다른 PR의 부수 작업으로 MySQL binlog, Kafka/Connect offset, Elasticsearch alias,
+  영구 볼륨 회수 방식이나 Vault 상태를 바꾸지 않는다.
+- 초기 구성 로직, 차트 버전 고정, 데이터 복구와 애플리케이션 배포는 독립적으로 검토할 수 있게 나눈다.
+- 과거 문서 정리는 별도 PR로 진행한다. 변경하는 스크립트나 매니페스트의 입력,
+  복구 또는 롤백 계약을 정의하는 실행 문서는 해당 구현에 포함할 수 있다.
 
-## Secrets and External Effects
+## 검증
 
-- Never commit Kubernetes Secret values, runtime `.env` files, Vault tokens,
-  R2 keys, registry credentials, kubeconfigs, database dumps, or unredacted live
-  output. A reviewed `.env.example` containing no secret is allowed.
-- Do not print or decode live Secret values, Pod environment values, or database
-  credentials during routine inspection. Without explicit approval, inspect
-  only Secret names, key names, metadata, and byte lengths.
-- Secret and credential fields in templates and examples must use placeholders.
-  Safe namespaces, service names, image repositories, public endpoints, and
-  resource defaults may use real version-controlled values.
-- PR creation and immutable artifact publication require explicit approval and
-  provenance verification. Live deploys, mutable tag changes, DNS or tunnel
-  cutovers, cluster or VM mutations, and overwrite or delete operations also
-  require an explicit rollback plan.
+- 넓은 검증 전에 YAML과 셸 문법부터 확인한다.
+- PR에서 사용하는 정확한 차트와 의존성 버전으로 Helm 차트를 렌더링한다.
+  렌더러나 필요한 CRD가 없으면 환경 차단 요인으로 보고한다.
+- 클라이언트 검증을 우선한다. 서버 모의 실행은 정확한 비운영 접속 대상을 확인한 뒤에만 사용한다.
+- 스크립트는 오류 시 즉시 중단, 멱등성, 필수 입력 검증, 시간 초과 처리와
+  복구 근거 덮어쓰기 거부를 확인한다.
+- Kafka와 Connect 변경은 토픽 파티션, 복제, 정리 정책, 커넥터 플러그인,
+  offset, 재시작 동작과 실패 전파를 검증한다.
+- 상태가 있는 자원은 PVC 연결, 회수 방식, 백업 해시, 격리된 복원과 재시작 후 데이터 유지를 검증한다.
 
-## Documentation Cleanup
+## 비밀값과 외부 영향
 
-- Before deleting repository documentation, confirm that reusable information
-  is preserved in Obsidian or in a version-coupled runbook that remains beside
-  the relevant script or manifest.
-- Perform documentation cleanup in a dedicated PR and verify links, secret
-  candidates, and references to removed paths.
+- Kubernetes Secret 값, 운영 `.env`, Vault 토큰, R2 키, 레지스트리 자격 증명,
+  kubeconfig, 데이터베이스 덤프나 비밀값을 가리지 않은 운영 출력을 커밋하지 않는다.
+  비밀값이 없는지 검토한 `.env.example`은 허용한다.
+- 일반 점검에서 운영 Secret 값, Pod 환경변수 값이나 DB 자격 증명을 출력하거나 디코딩하지 않는다.
+  명시적 승인 없이는 Secret 이름, 키 이름, 메타데이터와 바이트 길이만 확인한다.
+- 템플릿과 예시의 비밀값·자격 증명 필드는 자리표시자를 사용한다.
+  안전한 namespace, 서비스 이름, 이미지 저장소, 공개 주소와 자원 기본값에는 실제 관리 값을 쓸 수 있다.
+- PR 생성과 변경 불가능한 산출물 게시는 명시적인 승인과 출처 검증이 필요하다.
+  PR 생성 승인은 위 작업 단위 일괄 승인에 포함할 수 있다.
+- 운영 배포, 변경 가능한 이미지 태그 수정, DNS·터널 전환, 클러스터·VM 변경,
+  덮어쓰기·삭제에는 명시적인 롤백 계획도 필요하다.
+
+## 문서 정리
+
+- 저장소 문서를 삭제하기 전에 재사용할 정보가 Obsidian 또는 해당 스크립트·매니페스트와
+  함께 유지할 버전 연계 실행 문서에 보존되어 있는지 확인한다.
+- 문서 정리는 별도 PR로 수행하고 링크, 비밀값 의심 항목과 삭제된 경로의 참조를 검증한다.
