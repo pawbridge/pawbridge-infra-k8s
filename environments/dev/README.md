@@ -39,9 +39,9 @@ python3 scripts/environments/local_flows.py
 - `compose/compose.google.yaml`: Google 연결을 선택했을 때만 적용하는 추가 설정.
 - `compose/ide-overrides.yaml`: 호스트 IDE 실행 시 달라지는 주소·포트.
 - state의 `compose.env`: 비공개 state 디렉터리 위치. `images.env`: 검증한 이미지 digest 목록.
-- state의 `.env`·`google-oauth.env`: 현재 사용하는 비밀값 전달 파일. Git에는 넣지 않는다.
+- state의 `vault/rendered/runtime.env`·`google.env`: Vault에서 받은 비밀값 전달 파일. 이전 `.env`·`google-oauth.env`는 복구용으로 보존하며 모두 Git에서 제외한다.
 
-초기화·마이그레이션이 완료된 개발 환경은 Python 없이 다음 명령으로 기동할 수 있다. `--profile apps`는 Docker Compose의 서비스 선택이며, Spring 프로필과 구분한다.
+초기화·마이그레이션이 완료된 개발 환경은 Python 없이 다음 명령으로 기동할 수 있다. 아래는 기존 파일 방식의 기본 예이며, **현재 연결한 Vault 방식은 [별도 절차](vault/README.md)의 Agent 조회와 `vault/rendered` 파일을 사용한다.** `--profile apps`는 Docker Compose의 서비스 선택이며, Spring 프로필과 구분한다.
 
 ```sh
 PAWBRIDGE_STATE="$HOME/.local/state/pawbridge/dev"
@@ -68,8 +68,9 @@ Google 연결을 사용하면 위 명령의 `--profile` 앞에 아래 두 인자
 
 현재 운영 매니페스트는 Vault Secrets Operator가 Vault를 읽어 Kubernetes Secret으로 동기화하고, 서비스에 환경변수로 주입한다. 로컬 Compose에는 Kubernetes Operator가 없으므로 같은 매니페스트만으로 자동 연결되지 않는다. Spring이 Vault를 직접 읽는 의존성을 추가하는 방법도 있지만 DB·Redis·Kafka Connect까지 같은 방식으로 처리하지 못한다. 로컬 전체 환경에는 Vault Agent가 필요한 개발 비밀값을 공급하고 기존 Compose가 받는 방식을 우선 검토한다. Agent 템플릿은 비밀 전달 파일을 렌더링할 뿐, 서비스 구성 YAML을 생성하지 않는다.
 
-**현재 Vault Agent는 설치·연결하지 않았다.** 로컬 파일의 기존 키는 보존했다. 운영 Vault의 `secret/pawbridge/dev/...` 경로는 이름과 달리 현재 운영이 사용하므로 로컬 개발용으로 판단하지 않는다. 연결할 때는 `secret/pawbridge/local-dev/...` 등 독립 경로·읽기 전용 권한·개발 인증 수단·TLS/접속 경로를 준비하고, 운영 경로 접근 거부와 동일한 개발 DB 비밀번호 사용을 검증해야 한다. 기존 로컬 DB가 있으므로 비밀값을 새로 생성해 교체하지 않는다. 공유에 동의한 Google 두 값만 명시적으로 예외로 취급한다. Vault 정책/인증/비밀값 등록은 별도 실행안과 승인을 받은 뒤 적용한다.
+**2026-09-23 로컬 Vault 연결을 적용했다.** 개발 전용 `secret/pawbridge/local-dev/runtime`·`google` 경로와 AppRole을 등록했고 운영 경로 접근 거부를 확인했다. Vault Agent는 별도 Compose로 일회 실행되어 비공개 `vault/rendered/runtime.env`·`google.env`를 공급한 뒤 종료한다. 기존 DB/JWT/Google 값 22개와 일치함을 확인했고, `vault/enabled` 표시로 기존 보조 도구도 Vault 공급 파일을 읽는다. 파일이 누락되면 이전 `.env`로 자동 우회하지 않는다. 기존 로컬 파일은 복구용으로 보존했다.
 
+최초 승인·관리자 로그인과 구현/검증은 완료했다. 평상시 실행은 [Vault 연결 절차](vault/README.md)의 Agent 조회 → 성공 시 Compose 기동 순서다. 상시 Agent나 실행 중인 앱의 자동 비밀 회전은 구성하지 않았다. Secret ID의 유효기간은 30일이며 만료 전에 별도 재발급이 필요하다. 운영의 과거 `secret/pawbridge/dev/...` 경로는 운영이 사용하므로 개발용으로 취급하지 않는다.
 Vault가 렌더링한 파일도 비밀값을 포함한다. 파일 권한·보관 위치는 보호해야 하며, 갱신했다고 실행 중인 컨테이너 환경변수가 자동 갱신되는 것은 아니다. 비밀 회전 시 해당 개발 서비스 재생성을 검증해야 한다. 인증에 필요한 초기 자격증명까지 없어지는 구조는 아니다.
 
 참고: [Compose 환경변수](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/), [Vault Agent 템플릿](https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent/template).

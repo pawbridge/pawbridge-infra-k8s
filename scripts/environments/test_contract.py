@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 import yaml
 from promote_image import promote
-from local_dev import compose, prepare, app_env, ROOT, google_credentials, image
+from local_dev import compose, prepare, app_env, ROOT, google_credentials, image, secret_files
 
 class EnvironmentTest(unittest.TestCase):
     def test_compose_has_only_local_ports_and_isolated_storage(self):
@@ -93,6 +93,20 @@ class EnvironmentTest(unittest.TestCase):
             self.assertNotIn('test-secret-placeholder',(state/'images.env').read_text())
             self.assertIn('GOOGLE_CLIENT_ID=test.apps.googleusercontent.com',(state/'user-service.env').read_text())
             self.assertNotIn('test-secret-placeholder',(state/'animal-service.env').read_text())
+
+    def test_vault_source_never_falls_back_to_local_secrets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state=Path(tmp)/'dev';prepare(state)
+            vault=state/'vault';rendered=vault/'rendered';rendered.mkdir(parents=True)
+            (vault/'enabled').write_text('pawbridge-local-dev\n')
+            with self.assertRaises(ValueError):secret_files(state)
+            runtime=rendered/'runtime.env';runtime.write_text((state/'.env').read_text());runtime.chmod(0o600)
+            google=rendered/'google.env';google.write_text('GOOGLE_CLIENT_ID=test.apps.googleusercontent.com\nGOOGLE_SECRET_KEY=test-secret-placeholder\n');google.chmod(0o600)
+            self.assertEqual((runtime,google),secret_files(state))
+            prepare(state)
+            self.assertIn('GOOGLE_CLIENT_ID=test.apps.googleusercontent.com',(state/'user-service.env').read_text())
+            google.chmod(0o644)
+            with self.assertRaises(ValueError):google_credentials(state)
 
     def test_cdc_targets_only_local_data_and_does_not_copy_secrets(self):
         docs=json.loads((ROOT/'environments/dev/compose/connectors.json').read_text())

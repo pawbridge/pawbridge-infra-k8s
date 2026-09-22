@@ -1,0 +1,4 @@
+{{- with secret "secret/data/pawbridge/local-dev/google" -}}
+GOOGLE_CLIENT_ID={{ .Data.data.GOOGLE_CLIENT_ID }}
+GOOGLE_SECRET_KEY={{ .Data.data.GOOGLE_SECRET_KEY }}
+{{ end -}}

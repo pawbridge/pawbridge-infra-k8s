@@ -56,8 +56,20 @@ def app_env(name, host=False):
     return values
 
 
+def secret_files(state):
+    marker=state/'vault/enabled'
+    if marker.exists():
+        if marker.is_symlink() or marker.read_text().strip()!='pawbridge-local-dev':
+            raise ValueError('Unexpected Vault source marker')
+        paths=(state/'vault/rendered/runtime.env', state/'vault/rendered/google.env')
+        if any(not p.is_file() or p.is_symlink() or p.stat().st_mode & 0o077 for p in paths):
+            raise ValueError('Vault files unavailable or unsafe; refusing local-file fallback')
+        return paths
+    return state/'.env',state/'google-oauth.env'
+
+
 def google_credentials(state):
-    path=state/'google-oauth.env'
+    _,path=secret_files(state)
     if not path.exists(): return {}
     if path.is_symlink() or not path.is_file() or path.stat().st_mode & 0o077:
         raise ValueError('google-oauth.env must be a private regular file (0600)')
@@ -95,12 +107,13 @@ def prepare(state):
     state.mkdir(parents=True,exist_ok=True);state.chmod(0o700)
     if (state/'owner.json').exists() and json.loads((state/'owner.json').read_text()) != {'project':PROJECT,'runtime':'local-compose'}:
         raise ValueError('Runtime owner mismatch')
-    if (state/'.env').exists():
-        keys=dict(line.split('=',1) for line in (state/'.env').read_text().splitlines())
+    runtime_file,_=secret_files(state)
+    if runtime_file.exists():
+        keys=dict(line.split('=',1) for line in runtime_file.read_text().splitlines() if line)
     else:
         names=['DEV_POSTGRES_PASSWORD','DEV_REDIS_PASSWORD','DEV_INTERNAL_API_KEY','DEV_VECTOR_PASSWORD']+[f'DEV_{s.upper()}_{k}_PASSWORD' for s in SERVICES for k in ('APP','OWNER','CDC')]
         keys={name:secrets.token_hex(32) for name in names};keys['DEV_JWT_SECRET']=base64.b64encode(secrets.token_bytes(64)).decode()
-        write_private(state/'.env',''.join(k+'='+v+'\n' for k,v in keys.items()))
+        write_private(runtime_file,''.join(k+'='+v+'\n' for k,v in keys.items()))
     oauth=google_credentials(state)
     write_private(state/'owner.json',json.dumps({'project':PROJECT,'runtime':'local-compose'}))
     write_private(state/'init.sql',sql_init(keys));write_private(state/'redis.conf','appendonly yes\nmaxmemory 128mb\nmaxmemory-policy noeviction\nrequirepass '+keys['DEV_REDIS_PASSWORD']+'\n')
@@ -133,11 +146,12 @@ def cli(state,*args,**kwargs):
         raise ValueError('Run prepare before using this runtime')
     folder=ROOT/'environments/dev/compose'
     command=[*docker(),'compose','--project-name',PROJECT]
-    for name in ('.env','compose.env','images.env'):
-        command += ['--env-file',str(state/name)]
+    runtime_file,google_file=secret_files(state)
+    for path in (runtime_file,state/'compose.env',state/'images.env'):
+        command += ['--env-file',str(path)]
     command += ['-f',str(folder/'compose.yaml')]
     if google_credentials(state):
-        command += ['--env-file',str(state/'google-oauth.env'),'-f',str(folder/'compose.google.yaml')]
+        command += ['--env-file',str(google_file),'-f',str(folder/'compose.google.yaml')]
     return subprocess.run([*command,*args],check=True,timeout=900,**kwargs)
 
 
@@ -149,7 +163,7 @@ def migrate(state,backend,java):
     if db_sql(state,'SELECT name FROM public.pawbridge_local_environment;')!='dev':
         raise ValueError('Local dev database marker missing')
     db_sql(state,'CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pg_trgm;')
-    keys=dict(line.split('=',1) for line in (state/'.env').read_text().splitlines())
+    keys=dict(line.split('=',1) for line in secret_files(state)[0].read_text().splitlines() if line)
     for s in SERVICES:
         libs=backend/(s+'-service/build/migration/lib')
         if not libs.is_dir():raise ValueError(f'Build {s}-service migrationDistribution first')
