@@ -1,0 +1,20 @@
+replicaCount: 0
+image:
+  repository: dorosiya/pawbridge-photo-service
+  digest: sha256:a6628d85a37a56de0b8b4eb41988d7f82bc909caec5deb6850fe4e4e91f68b1a
+nodeSelector: {}
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: '1'
+    memory: 512Mi
+internalAuth:
+  vaultAuthRef: pawbridge-dev-vault-auth
+  mount: secret
+  path: pawbridge/test/animal-python/internal
+callerApp: animal-service
+affinity: {}
+automountServiceAccountToken: false
+env: {}

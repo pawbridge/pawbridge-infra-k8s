@@ -1,0 +1,108 @@
+replicaCount: 0
+image:
+  repository: dorosiya/pawbridge-api-gateway
+  tag: sha-f9b42bcf9bc2326bcb7e5d27c90ac639706b1c46
+  digest: sha256:64e5f266621f94adb932ad77ad3c6787847537b2054a6c757bbd046e682b825f
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8080
+  nodePort: null
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts: []
+serviceMonitor:
+  enabled: false
+networkPolicy:
+  enabled: false
+  cloudflaredPodSelector:
+    app: cloudflared
+  dns:
+    namespaceSelector:
+      kubernetes.io/metadata.name: kube-system
+    podSelector:
+      k8s-app: kube-dns
+  sameNamespaceServices:
+  - podSelector:
+      app: user-service
+    port: 8080
+  - podSelector:
+      app: animal-service
+    port: 8081
+  - podSelector:
+      app: community-service
+    port: 8082
+  - podSelector:
+      app: store-service
+    port: 8083
+  - podSelector:
+      app: payment-service
+    port: 8084
+  crossNamespaceServices:
+  - namespaceSelector:
+      kubernetes.io/metadata.name: tracing
+    podSelector:
+      app.kubernetes.io/name: zipkin
+    port: 9411
+resources:
+  requests:
+    cpu: 250m
+    memory: 300Mi
+  limits:
+    cpu: 1000m
+    memory: 600Mi
+env:
+  USER_SERVICE_URL: http://user-service.pawbridge-dev.svc.cluster.local:8080
+  ANIMAL_SERVICE_URL: http://animal-service.pawbridge-dev.svc.cluster.local:8081
+  COMMUNITY_SERVICE_URL: http://community-service.pawbridge-dev.svc.cluster.local:8082
+  STORE_SERVICE_URL: http://store-service.pawbridge-dev.svc.cluster.local:8083
+  PAYMENT_SERVICE_URL: http://payment-service.pawbridge-dev.svc.cluster.local:8084
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://unconfigured.invalid:9411/api/v2/spans
+  SPRING_PROFILES_ACTIVE: dev
+  SPRING_DATASOURCE_URL: null
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-dev-kafka-bootstrap.pawbridge-dev.svc.cluster.local:9092
+  SPRING_DATA_REDIS_URL: redis://redis-master.pawbridge-dev.svc.cluster.local:6379
+  SPRING_APPLICATION_JSON: '{"spring": {"cloud": {"gateway": {"globalcors": {"cors-configurations":
+    {"[/**]": {"allowedOrigins": ["http://localhost:5184", "http://127.0.0.1:5184"],
+    "allowedMethods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], "allowedHeaders":
+    ["Authorization", "Content-Type", "Accept", "x-user-id"], "allowCredentials":
+    true}}}}}}}'
+  MANAGEMENT_TRACING_ENABLED: 'false'
+secretRef: dev-api-gateway-secrets-vso
+secretRefOptional: false
+automountServiceAccountToken: false
+startupProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 30
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  failureThreshold: 3
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  failureThreshold: 3
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 65
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 0
+nodeSelector: {}
+affinity: {}

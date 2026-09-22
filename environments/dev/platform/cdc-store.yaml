@@ -1,0 +1,60 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnector
+metadata:
+  name: store-outbox-postgresql-connector
+  namespace: pawbridge-dev
+  labels:
+    strimzi.io/cluster: pawbridge-dev-connect
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  state: stopped
+  autoRestart:
+    enabled: false
+  config:
+    database.hostname: pawbridge-postgresql.pawbridge-dev.svc.cluster.local
+    database.port: '5432'
+    database.user: ${secrets:pawbridge-dev/dev-store-postgresql-cdc-auth:username}
+    database.password: ${secrets:pawbridge-dev/dev-store-postgresql-cdc-auth:password}
+    database.dbname: pawbridge
+    plugin.name: pgoutput
+    topic.prefix: pawbridge-pg-store
+    schema.include.list: pawbridge_store
+    table.include.list: pawbridge_store\.outbox,pawbridge_store\.cdc_heartbeat
+    slot.name: pawbridge_store_outbox
+    slot.drop.on.stop: 'false'
+    publication.name: pawbridge_store_outbox
+    publication.autocreate.mode: disabled
+    snapshot.mode: no_data
+    tombstones.on.delete: 'false'
+    errors.tolerance: none
+    max.batch.size: '256'
+    max.queue.size: '1024'
+    max.queue.size.in.bytes: '16777216'
+    heartbeat.interval.ms: '10000'
+    heartbeat.action.query: UPDATE pawbridge_store.cdc_heartbeat SET touched_at =
+      clock_timestamp() WHERE id = 1
+    transforms: outbox,dropHeartbeat
+    predicates: isOutbox,isHeartbeat
+    predicates.isOutbox.type: org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+    predicates.isOutbox.pattern: pawbridge-pg-store\.pawbridge_store\.outbox
+    transforms.outbox.predicate: isOutbox
+    transforms.outbox.type: io.debezium.transforms.outbox.EventRouter
+    transforms.outbox.table.field.event.id: id
+    transforms.outbox.table.field.event.key: aggregate_id
+    transforms.outbox.table.field.event.payload: payload
+    transforms.outbox.table.fields.additional.placement: event_type:header:eventType
+    transforms.outbox.route.topic.replacement: store.${routedByValue}.events
+    transforms.outbox.route.by.field: aggregate_type
+    transforms.outbox.table.expand.json.payload: 'true'
+    transforms.outbox.table.op.invalid.behavior: fatal
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: 'false'
+    header.converter: org.apache.kafka.connect.storage.SimpleHeaderConverter
+    key.converter.schemas.enable: 'false'
+    predicates.isHeartbeat.type: org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+    predicates.isHeartbeat.pattern: pawbridge-pg-store\.pawbridge_store\.cdc_heartbeat
+    transforms.dropHeartbeat.type: org.apache.kafka.connect.transforms.Filter
+    transforms.dropHeartbeat.predicate: isHeartbeat

@@ -1,0 +1,162 @@
+replicaCount: 0
+terminationGracePeriodSeconds: 360
+schemaMigration:
+  enabled: false
+  image: dorosiya/pawbridge-animal-service@sha256:314fe29b397fa729aee2eefff22a207f9a24a8cbfb6f6b4c46a07d14a9d9c45c
+  apiImageDigest: sha256:216ebf72eb8de2a1f806d43560d0eee255d43b58b6ff4f3a10637d0340184f45
+  sourceRevision: d109a8b2490152ffcb222cca17d0673e606e32a2
+  recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
+  existingSchemaVerified: true
+nodeSelector: {}
+affinity: {}
+image:
+  repository: dorosiya/pawbridge-animal-service
+  tag: sha-e55b7725e2853fd019260cc1fca4165f57c1fb63
+  digest: sha256:f86af0cbbc250a4edc8e7e099589cabaf44ced03f9346bebe1f298ded482b5a3
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8081
+  nodePort: null
+resources:
+  requests:
+    cpu: 300m
+    memory: 350Mi
+  limits:
+    cpu: 1000m
+    memory: 768Mi
+env:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://pawbridge-postgresql.pawbridge-dev.svc.cluster.local:5432/pawbridge
+  SPRING_DATASOURCE_USERNAME: pawbridge_animal_app
+  KAFKA_BOOTSTRAP_SERVERS: pawbridge-dev-kafka-bootstrap.pawbridge-dev.svc.cluster.local:9092
+  SPRING_ELASTICSEARCH_URIS: null
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://unconfigured.invalid:9411/api/v2/spans
+  SPRING_PROFILES_ACTIVE: dev,postgresql
+  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+  SPRING_BATCH_JDBC_INITIALIZE_SCHEMA: never
+  SPRING_BATCH_JOB_ENABLED: 'false'
+  SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE: 330s
+  APMS_BATCH_STALE_EXECUTION_THRESHOLD: 10m
+  APMS_BATCH_ELASTICSEARCH_INDEX_TIMEOUT: 4m
+  APMS_BATCH_ELASTICSEARCH_CANCELLATION_WAIT: 35s
+  APMS_BATCH_ELASTICSEARCH_PARALLELISM: '4'
+  SPRING_JPA_SHOW_SQL: 'false'
+  SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+  SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'false'
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: null
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-dev-kafka-bootstrap.pawbridge-dev.svc.cluster.local:9092
+  TZ: Asia/Seoul
+  JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
+  TOURAPI_ENABLED: 'true'
+  TOURAPI_SCHEDULE_ENABLED: 'true'
+  TOURAPI_COLLECTION_CRON: 0 */30 * * * *
+  TOURAPI_MAXPAGESPERRUN: '10'
+  TOURAPI_MAXDETAILSPERRUN: '18'
+  TOURAPI_DAILYREQUESTLIMIT: '900'
+  TOURAPI_DETAILREFRESHDAYS: '14'
+  TOURAPI_BULKPETENABLED: 'true'
+  TOURAPI_MAXBULKPAGESPERRUN: '10'
+  ANIMAL_SERVICE_URL: http://animal-service.pawbridge-dev.svc.cluster.local:8081
+  STORE_SERVICE_URL: http://store-service.pawbridge-dev.svc.cluster.local:8083
+  PYTHON_AI_SERVICE_URL: http://python-ai-service.pawbridge-dev.svc.cluster.local:8000
+  LOST_SEARCH_PYTHON_URL: http://lost-search-gpu-proxy.pawbridge-dev.svc.cluster.local:8000
+  R2_ENDPOINT: https://unconfigured.invalid
+  R2_REGION: auto
+  R2_BUCKET_NAME: pawbridge-dev-images
+  R2_PUBLIC_BASE_URL: https://unconfigured.invalid
+  APMS_PHOTO_ARCHIVE_ENABLED: 'false'
+  APMS_PHOTO_ARCHIVE_BUCKET: pawbridge-dev-animal-originals
+  APMS_PHOTO_ARCHIVE_ENDPOINT: https://unconfigured.invalid
+  APMS_PHOTO_ARCHIVE_REGION: auto
+  APMS_PHOTO_OPTIMIZER_URL: http://photo-service.pawbridge-dev.svc.cluster.local:8000/internal/photos/optimize
+  APMS_PHOTO_ARCHIVE_SCAN_SIZE: '50'
+  APMS_PHOTO_ARCHIVE_MAX_PHOTOS: '100'
+  APMS_PHOTO_ARCHIVE_MAX_RUN_SECONDS: '120'
+  APMS_PHOTO_ARCHIVE_LEASE_SECONDS: '600'
+  APMS_PHOTO_ARCHIVE_RECHECK_SECONDS: '604800'
+  APMS_PHOTO_ARCHIVE_INTERVAL_MS: '60000'
+  APMS_PHOTO_ARCHIVE_INITIAL_DELAY_MS: '60000'
+  SPRING_DATA_REDIS_HOST: redis-master.pawbridge-dev.svc.cluster.local
+  SPRING_DATA_REDIS_PORT: '6379'
+  CHATBOT_RATE_LIMIT_ANON_10M: '5'
+  CHATBOT_RATE_LIMIT_ANON_DAILY: '20'
+  CHATBOT_RATE_LIMIT_IP_10M: '20'
+  CHATBOT_RATE_LIMIT_IP_DAILY: '100'
+  CHATBOT_RATE_LIMIT_GLOBAL_DAILY: '300'
+  SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+  SPRING_DATASOURCE_HIKARI_SCHEMA: pawbridge_animal
+  SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: pawbridge_animal
+  SPRING_JPA_OPEN_IN_VIEW: 'false'
+  SPRING_SQL_INIT_MODE: never
+  PAWBRIDGE_ANIMALQUERY_BACKEND: postgresql
+  PAWBRIDGE_RECOMMENDATION_BACKEND: postgresql
+  SPRING_DATASOURCE_HIKARI_CONNECTIONINITSQL: SET TIME ZONE 'UTC'
+  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '3'
+  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '0'
+  MANAGEMENT_TRACING_ENABLED: 'false'
+  LOST_GALLERY_FEED_ENABLED: 'false'
+secretRef: dev-animal-runtime-auth
+secretRefOptional: false
+redisSecretRef: dev-redis-auth
+mysqlSecretRef: ''
+r2SecretRef: dev-animal-r2-auth
+internalApiSecretRef: dev-animal-python-internal-auth
+photoOptimizerSecretRef: dev-animal-python-internal-auth
+photoArchiveSecretRef: dev-animal-photo-archive-r2-auth
+lostGalleryFeed:
+  enabled: false
+  internalApiSecretRef: animal-runtime-auth
+  storageSecretRef: animal-photo-archive-r2-auth
+  storageEndpoint: https://unconfigured.invalid
+elasticsearchSecretRef: ''
+elasticsearchCaSecretRef: ''
+elasticsearchCaMountPath: /etc/pawbridge/animal-search-ca
+automountServiceAccountToken: false
+serviceMonitor:
+  enabled: false
+startupProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8081
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 30
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8081
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  failureThreshold: 3
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8081
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  failureThreshold: 3
+cronjob:
+  enabled: false
+  suspend: true
+  schedule: '*/30 * * * *'
+  timeZone: Asia/Seoul
+  image: curlimages/curl:8.5.0
+  imagePullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 0
+postgresqlSecretRef: dev-animal-postgresql-auth

@@ -1,0 +1,44 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: pawbridge-dev-connect
+  namespace: pawbridge-dev
+  labels:
+    app.kubernetes.io/name: pawbridge-kafka-connect
+    app.kubernetes.io/part-of: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+    strimzi.io/use-connector-resources: 'true'
+spec:
+  version: 4.1.2
+  image: docker.io/dorosiya/pawbridge-debezium-connect@sha256:3fec7b3140917505648943bab214696fb7b30c103d2c4f6483143c1d8ff274a0
+  replicas: 0
+  bootstrapServers: pawbridge-dev-kafka-bootstrap:9092
+  groupId: pawbridge-dev-connect
+  configStorageTopic: dev-connect-configs
+  offsetStorageTopic: dev-connect-offsets
+  statusStorageTopic: dev-connect-status
+  config:
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: false
+    value.converter.schemas.enable: false
+    config.providers: secrets
+    config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
+  jvmOptions:
+    -Xms: 512m
+    -Xmx: 768m
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: '1'
+      memory: 1280Mi
+  logging:
+    type: inline
+    loggers:
+      rootLogger.level: INFO

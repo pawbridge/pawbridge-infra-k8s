@@ -11,7 +11,7 @@ kind: Deployment
 metadata:
   name: {{ .Release.Name }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels: {app: {{ .Release.Name }}}
   template:

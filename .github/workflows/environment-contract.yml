@@ -1,0 +1,26 @@
+name: Environment isolation and render
+on:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - charts/**
+      - environments/**
+      - gitops/argocd/environments/**
+      - scripts/environments/**
+      - .github/workflows/environment-contract.yml
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310
+        with:
+          version: v3.15.4
+      - run: python3 -m pip install PyYAML==6.0.3
+      - run: python3 -m unittest discover -s scripts/environments -p 'test_*.py'
+      - run: python3 scripts/environments/validate.py --output /tmp/environment-render

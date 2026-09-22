@@ -1,0 +1,10 @@
+replicaCount: 1
+image:
+  repository: dorosiya/pawbridge-photo-service
+  digest: sha256:a6628d85a37a56de0b8b4eb41988d7f82bc909caec5deb6850fe4e4e91f68b1a
+nodeSelector:
+  kubernetes.io/hostname: pawbridge-k136-w2
+internalAuth:
+  vaultAuthRef: python-runtime-vault-auth
+  mount: secret
+  path: pawbridge/dev/animal-python/internal

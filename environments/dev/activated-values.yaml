@@ -1,0 +1,2 @@
+# Apply only after capacity, credentials, schema and isolation verification.
+replicaCount: 1

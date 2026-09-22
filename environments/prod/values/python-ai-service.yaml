@@ -1,0 +1,21 @@
+replicaCount: 1
+nodeSelector:
+  kubernetes.io/hostname: pawbridge-k136-w2
+image:
+  repository: dorosiya/pawbridge-python-ai-service
+  tag: sha-daf4351f09e26425046f485cc77c38f328015bd3
+  digest: sha256:eba8c88593435641fe55c6eee3db07ffbad564dd2ba02dffbc6ff2b59a848fee
+  pullPolicy: IfNotPresent
+automountServiceAccountToken: false
+secretRefOptional: false
+internalApiSecretRef: python-internal-auth
+elasticsearchSecretRef: ''
+elasticsearchCaSecretRef: ''
+env:
+  ES_URL: null
+  LLM_PROVIDER: gemini
+  GEMINI_MODEL: gemini-3.5-flash-lite
+  LOST_STORAGE_BACKEND: postgresql
+secretRef: python-runtime-auth
+autoscaling:
+  enabled: false

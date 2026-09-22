@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: community-service-test
+  namespace: argocd
+spec:
+  project: pawbridge-dev
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: dev
+    path: charts/community-service
+    helm:
+      releaseName: community-service
+      valueFiles:
+      - ../../environments/dev/isolated-values/community-service.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge-dev
+  syncPolicy:
+    syncOptions:
+    - Prune=false
+    - FailOnSharedResource=true

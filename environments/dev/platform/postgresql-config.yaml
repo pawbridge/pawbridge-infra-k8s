@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pawbridge-postgresql-config
+  namespace: pawbridge-dev
+data:
+  postgresql.conf: '# PostgreSQL production storage; service schemas and credentials
+    are provisioned separately.
+
+    listen_addresses = ''*''
+
+    port = 5432
+
+    shared_buffers = ''128MB''
+
+    work_mem = ''4MB''
+
+    maintenance_work_mem = ''128MB''
+
+    max_connections = 60
+
+    superuser_reserved_connections = 3
+
+    max_parallel_workers_per_gather = 0
+
+    wal_level = logical
+
+    max_replication_slots = 10
+
+    max_wal_senders = 10
+
+    # Bounded operational WAL retention; not a guaranteed outage recovery window.
+
+    # Heartbeat SQL and topics must keep all five idle CDC slots advancing.
+
+    # A lagging slot can be invalidated; recovery requires reconciliation, not silent
+    recreation.
+
+    max_slot_wal_keep_size = ''512MB''
+
+    max_wal_size = ''1GB''
+
+    min_wal_size = ''80MB''
+
+    password_encryption = ''scram-sha-256''
+
+    timezone = ''UTC''
+
+    log_timezone = ''UTC''
+
+    idle_in_transaction_session_timeout = ''30s''
+
+    '
