@@ -1,101 +1,10 @@
-replicaCount: 0
-schemaMigration:
-  enabled: false
-  image: dorosiya/pawbridge-community-service@sha256:0149ea0c060885689db449afafca92f0d869b5f6622620e0f48e40aba406938a
-  apiImageDigest: sha256:0fcbe26c44671fc7a7da11f93323af86f95a8810b1ab4cf88eaeda3c3edd9acb
-  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
-  recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
-  existingSchemaVerified: true
-nodeSelector: {}
+# CI release metadata for local Compose; not Kubernetes dev settings.
 image:
   repository: dorosiya/pawbridge-community-service
   tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
   digest: sha256:31c4c0e8ca02ab5c5d6df303a754dcc2262c09f77dc6ed654d91d745d37d9aa9
   pullPolicy: IfNotPresent
-service:
-  type: ClusterIP
-  port: 8082
-  nodePort: null
-resources:
-  requests:
-    cpu: 300m
-    memory: 350Mi
-  limits:
-    cpu: 1000m
-    memory: 768Mi
-env:
-  SPRING_DATASOURCE_URL: jdbc:postgresql://pawbridge-postgresql.pawbridge-dev.svc.cluster.local:5432/pawbridge
-  SPRING_DATASOURCE_USERNAME: pawbridge_community_app
-  KAFKA_BOOTSTRAP_SERVERS: pawbridge-dev-kafka-bootstrap.pawbridge-dev.svc.cluster.local:9092
-  USER_SERVICE_URL: http://user-service.pawbridge-dev.svc.cluster.local:8080
-  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://unconfigured.invalid:9411/api/v2/spans
-  R2_ENDPOINT: https://unconfigured.invalid
-  R2_BUCKET_NAME: pawbridge-dev-images
-  R2_PUBLIC_BASE_URL: https://unconfigured.invalid
-  R2_REGION: auto
-  SPRING_PROFILES_ACTIVE: dev,postgresql
-  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-  SPRING_JPA_SHOW_SQL: 'false'
-  SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-  SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'false'
-  SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-dev-kafka-bootstrap.pawbridge-dev.svc.cluster.local:9092
-  SPRING_ELASTICSEARCH_URIS: null
-  TZ: Asia/Seoul
-  JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
-  ANIMAL_SERVICE_URL: http://animal-service.pawbridge-dev.svc.cluster.local:8081
-  STORE_SERVICE_URL: http://store-service.pawbridge-dev.svc.cluster.local:8083
-  SPRING_DATA_REDIS_URL: redis://redis-master.pawbridge-dev.svc.cluster.local:6379
-  SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-  SPRING_DATASOURCE_HIKARI_SCHEMA: pawbridge_community
-  SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: pawbridge_community
-  SPRING_JPA_OPEN_IN_VIEW: 'false'
-  SPRING_SQL_INIT_MODE: never
-  PAWBRIDGE_SEARCH_BACKEND: postgresql
-  SPRING_DATASOURCE_HIKARI_CONNECTIONINITSQL: SET TIME ZONE 'UTC'
-  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '3'
-  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '0'
-  MANAGEMENT_TRACING_ENABLED: 'false'
-secretRef: dev-community-service-secrets
-secretRefOptional: true
-mysqlSecretRef: ''
-r2SecretRef: dev-community-service-r2-secrets-vso
-r2SecretRefOptional: false
-elasticsearchSecretRef: ''
-elasticsearchCaSecretRef: ''
-elasticsearchCaMountPath: /etc/pawbridge/elasticsearch
-automountServiceAccountToken: false
-serviceMonitor:
-  enabled: false
-startupProbe:
-  httpGet:
-    path: /actuator/health/liveness
-    port: 8082
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  failureThreshold: 30
-livenessProbe:
-  httpGet:
-    path: /actuator/health/liveness
-    port: 8082
-  initialDelaySeconds: 0
-  periodSeconds: 10
-  failureThreshold: 3
-readinessProbe:
-  httpGet:
-    path: /actuator/health/readiness
-    port: 8082
-  initialDelaySeconds: 0
-  periodSeconds: 5
-  failureThreshold: 3
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 3
-  targetCPUUtilizationPercentage: 70
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300
-    scaleUp:
-      stabilizationWindowSeconds: 0
-postgresqlSecretRef: dev-community-postgresql-auth
-affinity: {}
+schemaMigration:
+  image: dorosiya/pawbridge-community-service@sha256:0149ea0c060885689db449afafca92f0d869b5f6622620e0f48e40aba406938a
+  apiImageDigest: sha256:0fcbe26c44671fc7a7da11f93323af86f95a8810b1ab4cf88eaeda3c3edd9acb
+  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0

@@ -1,99 +1,10 @@
-replicaCount: 0
-schemaMigration:
-  enabled: false
-  image: dorosiya/pawbridge-user-service@sha256:00e5183b6fcf00ff6b02090b79e03ac8640a03eed6d984af30ab36240ffb1d08
-  apiImageDigest: sha256:bc2d6b3938df850add928b8cb9021c2ff35d7c5cf8c6a3167e43ec24c774bc18
-  sourceRevision: cbb97c683fb14c41870ce4c7a4a328e5062a1e58
-  recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
-  existingSchemaVerified: true
+# CI release metadata for local Compose; not Kubernetes dev settings.
 image:
   repository: dorosiya/pawbridge-user-service
   tag: sha-cbb97c683fb14c41870ce4c7a4a328e5062a1e58
   digest: sha256:a171bd87b2bad266e51b3c9f0f121eeb75c9823cf9e545b967725d56d774199a
   pullPolicy: IfNotPresent
-service:
-  type: ClusterIP
-  port: 8080
-  nodePort: null
-resources:
-  requests:
-    cpu: 300m
-    memory: 350Mi
-  limits:
-    cpu: 1000m
-    memory: 768Mi
-env:
-  SPRING_DATASOURCE_URL: jdbc:postgresql://pawbridge-postgresql.pawbridge-dev.svc.cluster.local:5432/pawbridge
-  SPRING_DATASOURCE_USERNAME: pawbridge_user_app
-  REDIS_HOST: redis-master.pawbridge-dev.svc.cluster.local
-  REDIS_PORT: '6379'
-  KAFKA_BOOTSTRAP_SERVERS: pawbridge-dev-kafka-bootstrap.pawbridge-dev.svc.cluster.local:9092
-  ANIMAL_SERVICE_URL: http://animal-service.pawbridge-dev.svc.cluster.local:8081
-  STORE_SERVICE_URL: http://store-service.pawbridge-dev.svc.cluster.local:8083
-  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://unconfigured.invalid:9411/api/v2/spans
-  SPRING_PROFILES_ACTIVE: dev,postgresql
-  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-  SPRING_JPA_SHOW_SQL: 'false'
-  SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-  SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'false'
-  SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-dev-kafka-bootstrap.pawbridge-dev.svc.cluster.local:9092
-  TZ: Asia/Seoul
-  JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
-  JWT_ACCESS_TOKEN_EXPIRATION: '3600000'
-  JWT_REFRESH_TOKEN_EXPIRATION: '1209600000'
-  REDIRECT_URI: http://localhost:18080/login/oauth2/code/google
-  OAUTH2_REDIRECT_URI: http://localhost:5184/oauth/callback
-  SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-  SPRING_DATASOURCE_HIKARI_SCHEMA: pawbridge_user
-  SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: pawbridge_user
-  SPRING_JPA_OPEN_IN_VIEW: 'false'
-  SPRING_SQL_INIT_MODE: never
-  SPRING_ELASTICSEARCH_URIS: null
-  SPRING_DATASOURCE_HIKARI_CONNECTIONINITSQL: SET TIME ZONE 'UTC'
-  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '3'
-  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '0'
-  MANAGEMENT_TRACING_ENABLED: 'false'
-secretRef: dev-user-google-auth
-secretRefOptional: false
-mysqlSecretRef: ''
-jwtSecretRef: dev-user-jwt-auth
-redisSecretRef: dev-redis-auth
-automountServiceAccountToken: false
-serviceMonitor:
-  enabled: false
-startupProbe:
-  httpGet:
-    path: /actuator/health/liveness
-    port: 8080
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  failureThreshold: 30
-livenessProbe:
-  httpGet:
-    path: /actuator/health/liveness
-    port: 8080
-  initialDelaySeconds: 0
-  periodSeconds: 10
-  failureThreshold: 3
-readinessProbe:
-  httpGet:
-    path: /actuator/health/readiness
-    port: 8080
-  initialDelaySeconds: 0
-  periodSeconds: 5
-  failureThreshold: 3
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 3
-  targetCPUUtilizationPercentage: 70
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300
-    scaleUp:
-      stabilizationWindowSeconds: 0
-postgresqlSecretRef: dev-user-postgresql-auth
-elasticsearchSecretRef: ''
-elasticsearchCaSecretRef: ''
-nodeSelector: {}
-affinity: {}
+schemaMigration:
+  image: dorosiya/pawbridge-user-service@sha256:00e5183b6fcf00ff6b02090b79e03ac8640a03eed6d984af30ab36240ffb1d08
+  apiImageDigest: sha256:bc2d6b3938df850add928b8cb9021c2ff35d7c5cf8c6a3167e43ec24c774bc18
+  sourceRevision: cbb97c683fb14c41870ce4c7a4a328e5062a1e58

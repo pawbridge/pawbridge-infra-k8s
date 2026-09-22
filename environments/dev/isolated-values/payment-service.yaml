@@ -1,89 +1,10 @@
-replicaCount: 0
-schemaMigration:
-  enabled: false
-  image: dorosiya/pawbridge-payment-service@sha256:2e9f878d88b63d819b53d9c4a679075df85b9a2bf4d75553111105cd60228ef9
-  apiImageDigest: sha256:3bfea8fa7c149184da595078ab3046c6f4d2682ac0b8e10188ec9ebcb785ac35
-  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
-  recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
-  existingSchemaVerified: true
+# CI release metadata for local Compose; not Kubernetes dev settings.
 image:
   repository: dorosiya/pawbridge-payment-service
   tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
   digest: sha256:169080b45facc6bc70a97f25a83ab72e005502aeb20df19f2c7c25d9fd3c0128
   pullPolicy: IfNotPresent
-service:
-  type: ClusterIP
-  port: 8084
-  nodePort: null
-resources:
-  requests:
-    cpu: 300m
-    memory: 350Mi
-  limits:
-    cpu: 1000m
-    memory: 768Mi
-env:
-  SPRING_DATASOURCE_URL: jdbc:postgresql://pawbridge-postgresql.pawbridge-dev.svc.cluster.local:5432/pawbridge
-  SPRING_DATASOURCE_USERNAME: pawbridge_payment_app
-  STORE_SERVICE_URL: http://store-service.pawbridge-dev.svc.cluster.local:8083
-  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://unconfigured.invalid:9411/api/v2/spans
-  SPRING_PROFILES_ACTIVE: dev,postgresql
-  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-  SPRING_SQL_INIT_MODE: never
-  SPRING_JPA_SHOW_SQL: 'false'
-  SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-  SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: 'false'
-  SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-dev-kafka-bootstrap.pawbridge-dev.svc.cluster.local:9092
-  ANIMAL_SERVICE_URL: http://animal-service.pawbridge-dev.svc.cluster.local:8081
-  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
-  SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-  SPRING_DATASOURCE_HIKARI_SCHEMA: pawbridge_payment
-  SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: pawbridge_payment
-  SPRING_JPA_OPEN_IN_VIEW: 'false'
-  SPRING_ELASTICSEARCH_URIS: null
-  SPRING_DATASOURCE_HIKARI_CONNECTIONINITSQL: SET TIME ZONE 'UTC'
-  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '3'
-  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '0'
-  MANAGEMENT_TRACING_ENABLED: 'false'
-secretRef: dev-payment-runtime-auth
-secretRefOptional: false
-mysqlSecretRef: ''
-nodeSelector: {}
-automountServiceAccountToken: false
-serviceMonitor:
-  enabled: false
-startupProbe:
-  httpGet:
-    path: /actuator/health/liveness
-    port: 8084
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  failureThreshold: 30
-livenessProbe:
-  httpGet:
-    path: /actuator/health/liveness
-    port: 8084
-  initialDelaySeconds: 0
-  periodSeconds: 10
-  failureThreshold: 3
-readinessProbe:
-  httpGet:
-    path: /actuator/health/readiness
-    port: 8084
-  initialDelaySeconds: 0
-  periodSeconds: 5
-  failureThreshold: 3
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 3
-  targetCPUUtilizationPercentage: 70
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300
-    scaleUp:
-      stabilizationWindowSeconds: 0
-postgresqlSecretRef: dev-payment-postgresql-auth
-elasticsearchSecretRef: ''
-elasticsearchCaSecretRef: ''
-affinity: {}
+schemaMigration:
+  image: dorosiya/pawbridge-payment-service@sha256:2e9f878d88b63d819b53d9c4a679075df85b9a2bf4d75553111105cd60228ef9
+  apiImageDigest: sha256:3bfea8fa7c149184da595078ab3046c6f4d2682ac0b8e10188ec9ebcb785ac35
+  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0

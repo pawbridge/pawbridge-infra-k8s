@@ -1,56 +1,6 @@
-replicaCount: 0
-nodeSelector: {}
+# CI release metadata for local Compose; not Kubernetes dev settings.
 image:
   repository: dorosiya/pawbridge-python-ai-service
   tag: sha-daf4351f09e26425046f485cc77c38f328015bd3
   digest: sha256:eba8c88593435641fe55c6eee3db07ffbad564dd2ba02dffbc6ff2b59a848fee
   pullPolicy: IfNotPresent
-service:
-  type: ClusterIP
-  port: 8000
-  nodePort: null
-resources:
-  requests:
-    cpu: 500m
-    memory: 512Mi
-  limits:
-    cpu: 2000m
-    memory: 1Gi
-env:
-  ES_URL: null
-  LLM_PROVIDER: gemini
-  GEMINI_MODEL: gemini-3.5-flash-lite
-  LOST_STORAGE_BACKEND: postgresql
-  MANAGEMENT_TRACING_ENABLED: 'false'
-  LOST_GALLERY_SYNC_ENABLED: 'false'
-secretRef: dev-python-runtime-auth
-secretRefOptional: false
-internalApiSecretRef: dev-python-internal-auth
-elasticsearchSecretRef: ''
-elasticsearchCaSecretRef: ''
-elasticsearchCaMountPath: /etc/pawbridge/python-search-ca
-automountServiceAccountToken: false
-startupProbe:
-  httpGet:
-    path: /health
-    port: 8000
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  failureThreshold: 12
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 8000
-  initialDelaySeconds: 0
-  periodSeconds: 15
-  failureThreshold: 3
-readinessProbe:
-  httpGet:
-    path: /health
-    port: 8000
-  initialDelaySeconds: 0
-  periodSeconds: 10
-  failureThreshold: 3
-autoscaling:
-  enabled: false
-affinity: {}

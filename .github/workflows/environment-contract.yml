@@ -24,3 +24,5 @@ jobs:
       - run: python3 -m pip install PyYAML==6.0.3
       - run: python3 -m unittest discover -s scripts/environments -p 'test_*.py'
       - run: python3 scripts/environments/validate.py --output /tmp/environment-render
+      - run: python3 scripts/environments/local_dev.py prepare --state /tmp/pawbridge-ci-dev
+      - run: python3 scripts/environments/local_dev.py config --state /tmp/pawbridge-ci-dev

@@ -1,0 +1,12 @@
+[
+  "user.favorite.events",
+  "user.compensation.events",
+  "community.post.events",
+  "payment.events",
+  "animal.created",
+  "animal.updated",
+  "animal.status.changed",
+  "store.product-sku.events",
+  "store.order.events",
+  "store.product-sku.es.dlq"
+]

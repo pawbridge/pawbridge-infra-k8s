@@ -1,52 +1,61 @@
-import copy
-import importlib.util
 import json
 from pathlib import Path
-import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
 import yaml
-from validate import validate_dev_documents
 from promote_image import promote
-
-ROOT = Path(__file__).resolve().parents[2]
+from local_dev import compose, prepare, app_env, ROOT
 
 class EnvironmentTest(unittest.TestCase):
-    def test_no_cross_namespace_or_production_endpoint(self):
-        for env in ['jdbc:postgresql://pawbridge-postgresql.databases.svc.cluster.local/pawbridge', 'http://animal-service.pawbridge.svc:8081', 'https://api.pawbridge.kr', 'pawbridge-animal-originals']:
-            with self.subTest(env=env), self.assertRaises(ValueError):
-                validate_dev_documents([{'kind':'ConfigMap','data':{'endpoint':env}}])
-        with self.assertRaises(ValueError): validate_dev_documents([{'metadata':{'namespace':'pawbridge'}}])
-        with self.assertRaises(ValueError): validate_dev_documents([{'kind':'Service','spec':{'type':'NodePort'}}])
+    def test_compose_has_only_local_ports_and_isolated_storage(self):
+        c=compose()
+        self.assertEqual('pawbridge-dev',c['name'])
+        self.assertTrue(c['networks']['dev']['internal'])
+        for name,s in c['services'].items():
+            if name=='kafka-volume-init':
+                self.assertEqual('none',s['network_mode']);continue
+            self.assertEqual(['dev','access'] if name=='local-access' else ['dev'],s['networks'])
+            self.assertIn('@sha256:',s['image'])
+            self.assertIn('mem_limit',s)
+            self.assertNotIn('network_mode',s)
+            self.assertNotIn('privileged',s)
+            self.assertTrue(all(p.startswith('127.0.0.1:') for p in s.get('ports',[])))
+        self.assertFalse(any(v.get('external') for v in c['volumes'].values()))
+        self.assertFalse(any(s.get('restart')=='always' for s in c['services'].values()))
 
-    def test_argo_targets_and_application_identities_are_separate(self):
-        dev = list((ROOT/'gitops/argocd/environments/dev').glob('*service.yaml'))
-        self.assertGreaterEqual(len(dev), 7)
-        for p in dev:
-            a = yaml.safe_load(p.read_text())
-            self.assertEqual('dev', a['spec']['source']['targetRevision'])
-            self.assertEqual('pawbridge-dev', a['spec']['destination']['namespace'])
-            self.assertNotIn('automated', a['spec']['syncPolicy'])
-            prod = yaml.safe_load((ROOT/'gitops/argocd/environments/prod'/p.name).read_text())
-            self.assertEqual('main', prod['spec']['source']['targetRevision'])
-            self.assertNotEqual(a['metadata']['name'], prod['metadata']['name'])
+    def test_external_collection_and_production_endpoints_are_not_used(self):
+        for name in ('api-gateway','animal-service','user-service','community-service','store-service','payment-service'):
+            for host in (True,False):
+                e=app_env(name,host)
+                for key in ('APMS_PHOTO_ARCHIVE_ENABLED','TOURAPI_ENABLED','TOURAPI_SCHEDULE_ENABLED','SHELTER_DIRECTORY_SCHEDULE_ENABLED','LOST_GALLERY_FEED_ENABLED','SPRING_BATCH_JOB_ENABLED'):
+                    self.assertEqual('false',e[key])
+                self.assertNotIn('api.pawbridge.kr',json.dumps(e))
+                self.assertNotIn('.svc.',json.dumps(e))
+                if name!='api-gateway':self.assertTrue(e[name.split('-')[0].upper()+'_POSTGRESQL_USERNAME'].startswith('pawbridge_dev_'))
+        self.assertIn('127.0.0.1:19092',app_env('animal-service',True)['SPRING_KAFKA_BOOTSTRAP_SERVERS'])
+        self.assertEqual('kafka:9092',app_env('animal-service')['SPRING_KAFKA_BOOTSTRAP_SERVERS'])
 
-    def test_platform_is_namespaced_and_connect_uses_its_own_broker_and_secrets(self):
-        root = ROOT/'environments/dev/platform'
-        for p in root.glob('*.yaml'):
-            for d in yaml.safe_load_all(p.read_text()):
-                if d['kind'] in ('Kustomization', 'Namespace'): continue
-                self.assertEqual('pawbridge-dev', d['metadata']['namespace'], p.name)
-        c = yaml.safe_load((root/'connect.yaml').read_text())['spec']
-        self.assertEqual('pawbridge-dev-kafka-bootstrap:9092', c['bootstrapServers'])
-        self.assertEqual('pawbridge-dev-connect', c['groupId'])
-        self.assertEqual('dev-connect-offsets', c['offsetStorageTopic'])
-        for service in ('animal','user','community','store','payment'):
-            c = yaml.safe_load((root/('cdc-'+service+'.yaml')).read_text())['spec']
-            self.assertEqual('stopped', c['state'])
-            self.assertIn('.pawbridge-dev.svc.', c['config']['database.hostname'])
-            self.assertIn('secrets:pawbridge-dev/dev-', c['config']['database.password'])
+    def test_preparation_preserves_passwords_and_refuses_unrelated_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state=Path(tmp)/'dev';prepare(state);before=(state/'.env').read_bytes()
+            prepare(state);self.assertEqual(before,(state/'.env').read_bytes())
+            self.assertEqual(0o700,state.stat().st_mode & 0o777)
+            self.assertEqual(0o600,(state/'.env').stat().st_mode & 0o777)
+            self.assertNotIn('${',(state/'animal-service.env').read_text())
+            other=Path(tmp)/'other';other.mkdir();(other/'mine').write_text('keep')
+            with self.assertRaises(ValueError):prepare(other)
+            self.assertEqual('keep',(other/'mine').read_text())
+
+    def test_cdc_targets_only_local_data_and_does_not_copy_secrets(self):
+        docs=json.loads((ROOT/'environments/dev/compose/connectors.json').read_text())
+        self.assertEqual(5,len(docs))
+        for name,c in docs.items():
+            self.assertEqual('postgresql',c['database.hostname'])
+            self.assertEqual('pawbridge_dev_'+name+'_cdc',c['database.user'])
+            self.assertEqual('${file:/run/secrets/cdc.properties:'+name+'.password}',c['database.password'])
+            self.assertEqual('disabled',c['publication.autocreate.mode'])
+            self.assertEqual('no_data',c['snapshot.mode'])
 
     def test_promotion_changes_image_only_and_requires_exact_tested_digest(self):
         digest='sha256:'+'a'*64; revision='b'*40
