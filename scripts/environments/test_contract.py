@@ -47,6 +47,19 @@ class EnvironmentTest(unittest.TestCase):
             with self.assertRaises(ValueError):prepare(other)
             self.assertEqual('keep',(other/'mine').read_text())
 
+    def test_mail_is_local_bounded_and_cannot_relay(self):
+        c=compose();mail=c['services']['mail']
+        self.assertEqual(['dev'],mail['networks'])
+        self.assertEqual('64m',mail['mem_limit'])
+        self.assertTrue(mail['read_only'])
+        self.assertEqual('65534:65534',mail['user'])
+        self.assertEqual('mail',app_env('user-service')['SPRING_MAIL_HOST'])
+        self.assertEqual('127.0.0.1',app_env('user-service',True)['SPRING_MAIL_HOST'])
+        self.assertEqual('11025',app_env('user-service',True)['SPRING_MAIL_PORT'])
+        self.assertEqual('false',app_env('user-service')['SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH'])
+        self.assertEqual('false',app_env('user-service')['SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED'])
+        self.assertIn('127.0.0.1:18025:18025',c['services']['local-access']['ports'])
+
     def test_cdc_targets_only_local_data_and_does_not_copy_secrets(self):
         docs=json.loads((ROOT/'environments/dev/compose/connectors.json').read_text())
         self.assertEqual(5,len(docs))

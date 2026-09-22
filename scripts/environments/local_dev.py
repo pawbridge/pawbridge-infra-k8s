@@ -66,7 +66,12 @@ def app_env(name, host=False):
            'R2_ENDPOINT': 'http://unconfigured.invalid', 'R2_BUCKET_NAME': 'pawbridge-dev-images', 'R2_PUBLIC_BASE_URL': 'http://unconfigured.invalid',
            'GOOGLE_CLIENT_ID': 'local-unconfigured', 'GOOGLE_SECRET_KEY': 'local-unconfigured',
            'GOOGLE_EMAIL': 'local@example.invalid', 'GOOGLE_EMAIL_SECRET_KEY': 'local-unconfigured',
-           'SPRING_MAIL_HOST': 'unconfigured.invalid', 'TOSS_SECRET_KEY': 'test_unconfigured',
+           'SPRING_MAIL_HOST': '127.0.0.1' if host else 'mail',
+           'SPRING_MAIL_PORT': '11025' if host else '1025',
+           'SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH': 'false',
+           'SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE': 'false',
+           'SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED': 'false',
+           'TOSS_SECRET_KEY': 'test_unconfigured',
            'APMS_API_BASE_URL': 'http://unconfigured.invalid', 'APMS_API_SERVICE_KEY': 'local-unconfigured',
            'APMS_PHOTO_ARCHIVE_ENABLED': 'false', 'TOURAPI_ENABLED': 'false', 'TOURAPI_SCHEDULE_ENABLED': 'false',
            'SHELTER_DIRECTORY_SCHEDULE_ENABLED': 'false', 'LOST_GALLERY_FEED_ENABLED': 'false',
@@ -107,6 +112,11 @@ def compose():
     volume_init.pop('networks')
     kafka['depends_on']={'kafka-volume-init':{'condition':'service_completed_successfully'}}
     services={'postgresql':pg,'redis':redis,'kafka-volume-init':volume_init,'kafka':kafka,'connect':connect}
+    services['mail']={**base('python@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534','64m','0.25'),
+        'user':'65534:65534','read_only':True,
+        'ports':['127.0.0.1:18025:8025','127.0.0.1:11025:1025'],
+        'command':['python','-B','/app/mail_sink.py'], 'volumes':['./mail_sink.py:/app/mail_sink.py:ro'],
+        'healthcheck':health('true')}
     for name in ('api-gateway',*(s+'-service' for s in SERVICES)):
         port=8080 if name in ('api-gateway','user-service') else {'animal-service':8081,'community-service':8082,'store-service':8083,'payment-service':8084}[name]
         services[name]={**base(image(name),'640m'), 'profiles':['apps'], 'environment':app_env(name),
@@ -116,6 +126,8 @@ def compose():
     for name in ('photo-service','python-ai-service'):
         services[name]={**base(image(name),'512m'), 'profiles':['optional-ai'], 'ports':[f'127.0.0.1:{PORTS[name]}:8000'],
             'environment':{'INTERNAL_API_KEY':'${DEV_INTERNAL_API_KEY}','LOST_STORAGE_BACKEND':'postgresql','LOST_GALLERY_SYNC_ENABLED':'false','LOST_PG_DSN':'postgresql://pawbridge_dev_vector:${DEV_VECTOR_PASSWORD}@postgresql:5432/pawbridge'}}
+    services['mail']['healthcheck']['test']=['CMD','python','-c',"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8025/health')"]
+    services['user-service']['depends_on']['mail']={'condition':'service_healthy'}
     ports=[port for service in services.values() for port in service.pop('ports',[])]
     services['local-access']={**base('nginxinc/nginx-unprivileged@sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c','64m','0.25'),
         'networks':['dev','access'], 'ports':[p.rsplit(':',1)[0]+':'+p.split(':')[1] for p in ports],
@@ -157,10 +169,10 @@ def prepare(state):
         for k,v in values.items():
             values[k]=re.sub(r'\$\{([A-Z_]+)\}',lambda m:keys[m[1]],v)
         write_private(state/(name+'.env'),''.join(k+'='+v+'\n' for k,v in values.items()))
-    for name in ('kafka.properties','connect.properties','access.conf'):
+    for name in ('kafka.properties','connect.properties','access.conf','mail_sink.py'):
         write_private(state/name,(ROOT/'environments/dev/compose'/name).read_text())
     write_private(state/'compose.yaml',yaml.safe_dump(compose(),sort_keys=False))
-    for name in ('init.sql','redis.conf','cdc.properties','kafka.properties','connect.properties','access.conf'):
+    for name in ('init.sql','redis.conf','cdc.properties','kafka.properties','connect.properties','access.conf','mail_sink.py'):
         (state/name).chmod(0o444) # state directory stays 0700; only explicitly mounted files reach containers
     print('Prepared local configuration (credentials not printed):',state)
 
@@ -268,7 +280,7 @@ def main():
     if a.command=='prepare':prepare(state)
     elif a.command=='config':cli(state,'--profile','apps','--profile','events','--profile','optional-ai','config','--quiet');print('Compose configuration valid')
     elif a.command=='up-data':
-        cli(state,'up','-d','--wait','--wait-timeout','180','postgresql','redis','kafka','local-access')
+        cli(state,'up','-d','--wait','--wait-timeout','180','postgresql','redis','kafka','mail','local-access')
         topics=json.loads((ROOT/'environments/dev/compose/topics.json').read_text())+['__debezium-heartbeat.pawbridge-pg-'+s for s in SERVICES]
         existing=set(cli(state,'exec','-T','kafka','/opt/kafka/bin/kafka-topics.sh','--bootstrap-server','localhost:9092','--list',text=True,capture_output=True).stdout.splitlines())
         for topic in topics:
