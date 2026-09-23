@@ -27,3 +27,7 @@ kubeconfig
 
 # Local Environment Values
 # environments/*/values/
+
+# Generated local development credentials and Python bytecode
+.local-dev/
+__pycache__/

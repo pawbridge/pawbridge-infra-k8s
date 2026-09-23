@@ -1,0 +1,4 @@
+# CI release metadata for local Compose; not Kubernetes dev settings.
+image:
+  repository: dorosiya/pawbridge-photo-service
+  digest: sha256:a6628d85a37a56de0b8b4eb41988d7f82bc909caec5deb6850fe4e4e91f68b1a

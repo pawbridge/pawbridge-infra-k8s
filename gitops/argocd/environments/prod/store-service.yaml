@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: store-service-dev
+  namespace: argocd
+spec:
+  project: pawbridge-production
+  source:
+    repoURL: https://github.com/pawbridge/pawbridge-infra-k8s.git
+    targetRevision: main
+    path: charts/store-service
+    helm:
+      releaseName: store-service
+      valueFiles:
+      - ../../environments/prod/values/store-service.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pawbridge
+  syncPolicy:
+    syncOptions:
+    - Prune=false
+    - FailOnSharedResource=true

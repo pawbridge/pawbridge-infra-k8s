@@ -1,0 +1,164 @@
+{
+  "version": 2,
+  "branch": "dev",
+  "productionNamespace": "pawbridge",
+  "productionBranch": "main",
+  "services": {
+    "animal-service": {
+      "chart": "charts/animal-service",
+      "baselineRevision": "efcc11034e604e7c705c750603c89e7a0524fcb9",
+      "legacyValueFiles": [
+        "../../environments/dev/values/animal-service.yaml",
+        "../../environments/postgresql/values/animal-service.yaml"
+      ],
+      "devValues": "environments/dev/isolated-values/animal-service.yaml",
+      "prodValues": "environments/prod/values/animal-service.yaml",
+      "baselineParameters": [
+        {
+          "forceString": true,
+          "name": "env.APMS_PHOTO_ARCHIVE_ENABLED",
+          "value": "true"
+        },
+        {
+          "forceString": true,
+          "name": "env.APMS_PHOTO_ARCHIVE_MAX_PHOTOS",
+          "value": "100"
+        },
+        {
+          "forceString": true,
+          "name": "env.APMS_PHOTO_ARCHIVE_SCAN_SIZE",
+          "value": "50"
+        },
+        {
+          "forceString": true,
+          "name": "env.APMS_PHOTO_ARCHIVE_INTERVAL_MS",
+          "value": "60000"
+        },
+        {
+          "forceString": true,
+          "name": "env.APMS_PHOTO_ARCHIVE_MAX_RUN_SECONDS",
+          "value": "120"
+        },
+        {
+          "name": "lostGalleryFeed.enabled",
+          "value": "true"
+        }
+      ]
+    },
+    "api-gateway": {
+      "chart": "charts/api-gateway",
+      "baselineRevision": "efcc11034e604e7c705c750603c89e7a0524fcb9",
+      "legacyValueFiles": [
+        "../../environments/dev/values/api-gateway.yaml",
+        "../../environments/dev/values/api-gateway-pilot.yaml"
+      ],
+      "devValues": "environments/dev/isolated-values/api-gateway.yaml",
+      "prodValues": "environments/prod/values/api-gateway.yaml",
+      "baselineParameters": []
+    },
+    "community-service": {
+      "chart": "charts/community-service",
+      "baselineRevision": "efcc11034e604e7c705c750603c89e7a0524fcb9",
+      "legacyValueFiles": [
+        "../../environments/dev/values/community-service.yaml",
+        "../../environments/postgresql/values/community-service.yaml"
+      ],
+      "devValues": "environments/dev/isolated-values/community-service.yaml",
+      "prodValues": "environments/prod/values/community-service.yaml",
+      "baselineParameters": []
+    },
+    "lost-search-gpu-proxy": {
+      "chart": "charts/lost-search-gpu-proxy",
+      "baselineRevision": "efcc11034e604e7c705c750603c89e7a0524fcb9",
+      "legacyValueFiles": [
+        "../../environments/dev/values/lost-search-gpu-proxy.yaml"
+      ],
+      "devValues": "environments/dev/isolated-values/lost-search-gpu-proxy.yaml",
+      "prodValues": "environments/prod/values/lost-search-gpu-proxy.yaml",
+      "baselineParameters": []
+    },
+    "payment-service": {
+      "chart": "charts/payment-service",
+      "baselineRevision": "efcc11034e604e7c705c750603c89e7a0524fcb9",
+      "legacyValueFiles": [
+        "../../environments/dev/values/payment-service.yaml",
+        "../../environments/postgresql/values/payment-service.yaml"
+      ],
+      "devValues": "environments/dev/isolated-values/payment-service.yaml",
+      "prodValues": "environments/prod/values/payment-service.yaml",
+      "baselineParameters": []
+    },
+    "photo-service": {
+      "chart": "charts/photo-service",
+      "baselineRevision": "bd74b8fdc27921bcfde9565b9d59ef163145288e",
+      "legacyValueFiles": [
+        "../../environments/dev/values/photo-service.yaml"
+      ],
+      "devValues": "environments/dev/isolated-values/photo-service.yaml",
+      "prodValues": "environments/prod/values/photo-service.yaml",
+      "baselineParameters": [
+        {
+          "forceString": true,
+          "name": "image.digest",
+          "value": "sha256:a6628d85a37a56de0b8b4eb41988d7f82bc909caec5deb6850fe4e4e91f68b1a"
+        },
+        {
+          "name": "replicaCount",
+          "value": "1"
+        }
+      ]
+    },
+    "python-ai-service": {
+      "chart": "charts/python-ai-service",
+      "baselineRevision": "efcc11034e604e7c705c750603c89e7a0524fcb9",
+      "legacyValueFiles": [
+        "../../environments/dev/values/python-ai-service.yaml",
+        "../../environments/postgresql/values/python-ai-service.yaml"
+      ],
+      "devValues": "environments/dev/isolated-values/python-ai-service.yaml",
+      "prodValues": "environments/prod/values/python-ai-service.yaml",
+      "baselineParameters": []
+    },
+    "store-service": {
+      "chart": "charts/store-service",
+      "baselineRevision": "efcc11034e604e7c705c750603c89e7a0524fcb9",
+      "legacyValueFiles": [
+        "../../environments/dev/values/store-service.yaml",
+        "../../environments/postgresql/values/store-service.yaml"
+      ],
+      "devValues": "environments/dev/isolated-values/store-service.yaml",
+      "prodValues": "environments/prod/values/store-service.yaml",
+      "baselineParameters": [
+        {
+          "name": "autoscaling.enabled",
+          "value": "false"
+        },
+        {
+          "name": "autoscaling.minReplicas",
+          "value": "1"
+        },
+        {
+          "name": "autoscaling.maxReplicas",
+          "value": "1"
+        },
+        {
+          "name": "serviceMonitor.enabled",
+          "value": "false"
+        }
+      ]
+    },
+    "user-service": {
+      "chart": "charts/user-service",
+      "baselineRevision": "efcc11034e604e7c705c750603c89e7a0524fcb9",
+      "legacyValueFiles": [
+        "../../environments/dev/values/user-service.yaml",
+        "../../environments/postgresql/values/user-service.yaml"
+      ],
+      "devValues": "environments/dev/isolated-values/user-service.yaml",
+      "prodValues": "environments/prod/values/user-service.yaml",
+      "baselineParameters": []
+    }
+  },
+  "runtime": "local-compose",
+  "composeProject": "pawbridge-dev"
+}

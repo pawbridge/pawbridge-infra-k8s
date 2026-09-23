@@ -1,0 +1,553 @@
+# Canonical local runtime settings. No Python generation is needed for Compose.
+name: pawbridge-dev
+x-app-environment: &app-environment
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: '6379'
+  REDIS_HOST: redis
+  REDIS_PORT: '6379'
+  SPRING_DATA_REDIS_PASSWORD: ${DEV_REDIS_PASSWORD}
+  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '3'
+  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '0'
+  SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+  SPRING_BATCH_JOB_ENABLED: 'false'
+  SPRING_BATCH_JDBC_INITIALIZE_SCHEMA: never
+  MANAGEMENT_TRACING_ENABLED: 'false'
+  MANAGEMENT_HEALTH_MAIL_ENABLED: 'false'
+  JAVA_TOOL_OPTIONS: -Xms64m -Xmx384m -Duser.timezone=Asia/Seoul
+  JWT_SECRET: ${DEV_JWT_SECRET}
+  JWT_ACCESS_TOKEN_EXPIRATION: '3600000'
+  JWT_REFRESH_TOKEN_EXPIRATION: '1209600000'
+  R2_ACCESS_KEY_ID: local-unconfigured
+  R2_SECRET_ACCESS_KEY: local-unconfigured
+  R2_REGION: auto
+  R2_ENDPOINT: http://unconfigured.invalid
+  R2_BUCKET_NAME: pawbridge-dev-images
+  R2_PUBLIC_BASE_URL: http://unconfigured.invalid
+  GOOGLE_CLIENT_ID: local-unconfigured
+  GOOGLE_SECRET_KEY: local-unconfigured
+  GOOGLE_EMAIL: local@example.invalid
+  GOOGLE_EMAIL_SECRET_KEY: local-unconfigured
+  SPRING_MAIL_HOST: mail
+  SPRING_MAIL_PORT: '1025'
+  SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: 'false'
+  SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: 'false'
+  SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: 'false'
+  TOSS_SECRET_KEY: test_unconfigured
+  APMS_API_BASE_URL: http://unconfigured.invalid
+  APMS_API_SERVICE_KEY: local-unconfigured
+  APMS_PHOTO_ARCHIVE_ENABLED: 'false'
+  TOURAPI_ENABLED: 'false'
+  TOURAPI_SCHEDULE_ENABLED: 'false'
+  SHELTER_DIRECTORY_SCHEDULE_ENABLED: 'false'
+  LOST_GALLERY_FEED_ENABLED: 'false'
+  LOST_SEARCH_PYTHON_URL: http://unconfigured.invalid:18091
+  PYTHON_AI_SERVICE_INTERNAL_API_KEY: ${DEV_INTERNAL_API_KEY}
+  CHATBOT_IP_HASH_SECRET: ${DEV_INTERNAL_API_KEY}
+  REDIRECT_URI: http://localhost:28080/login/oauth2/code/google
+  OAUTH2_REDIRECT_URI: http://localhost:5184/oauth/callback
+  USER_SERVICE_URL: http://user-service:8080
+  ANIMAL_SERVICE_URL: http://animal-service:8081
+  COMMUNITY_SERVICE_URL: http://community-service:8082
+  STORE_SERVICE_URL: http://store-service:8083
+  PAYMENT_SERVICE_URL: http://payment-service:8084
+  PYTHON_AI_SERVICE_URL: http://python-ai-service:8000
+services:
+  postgresql:
+    image: pgvector/pgvector@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 768m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    shm_size: 128m
+    environment:
+      POSTGRES_DB: pawbridge
+      POSTGRES_PASSWORD: ${DEV_POSTGRES_PASSWORD:?Run prepare}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    command:
+    - postgres
+    - -c
+    - wal_level=logical
+    - -c
+    - max_replication_slots=10
+    - -c
+    - max_wal_senders=10
+    - -c
+    - max_connections=60
+    - -c
+    - shared_buffers=128MB
+    - -c
+    - max_slot_wal_keep_size=256MB
+    volumes:
+    - pg-data:/var/lib/postgresql/data
+    - ${PAWBRIDGE_DEV_STATE:?Set the private state directory}/init.sql:/docker-entrypoint-initdb.d/010-dev.sql:ro
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U postgres -d pawbridge
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  redis:
+    image: redis@sha256:ee64a64eaab618d88051c3ade8f6352d11531fcf79d9a4818b9b183d8c1d18ba
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 256m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    volumes:
+    - redis-data:/data
+    - ${PAWBRIDGE_DEV_STATE:?Set the private state directory}/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command:
+    - redis-server
+    - /usr/local/etc/redis/redis.conf
+    environment:
+      REDISCLI_AUTH: ${DEV_REDIS_PASSWORD}
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - redis-cli ping | grep -q PONG
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  kafka-volume-init:
+    image: dorosiya/pawbridge-debezium-connect@sha256:3fec7b3140917505648943bab214696fb7b30c103d2c4f6483143c1d8ff274a0
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 64m
+    cpus: '1.0'
+    pids_limit: 256
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    user: 0:0
+    network_mode: none
+    volumes:
+    - kafka-data:/var/lib/kafka
+    command:
+    - /bin/sh
+    - -ec
+    - mkdir -p /var/lib/kafka/data && chown 1001:0 /var/lib/kafka/data
+  kafka:
+    image: dorosiya/pawbridge-debezium-connect@sha256:3fec7b3140917505648943bab214696fb7b30c103d2c4f6483143c1d8ff274a0
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 1024m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    volumes:
+    - kafka-data:/var/lib/kafka
+    - ./kafka.properties:/tmp/kafka.properties:ro
+    environment:
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+      LOG_DIR: /tmp/kafka-logs
+      KAFKA_GC_LOG_OPTS: -Xlog:gc=warning:stdout
+    command:
+    - /bin/bash
+    - -ec
+    - /opt/kafka/bin/kafka-storage.sh format --ignore-formatted --standalone -t MDEyMzQ1Njc4OWFiY2RlZg -c /tmp/kafka.properties && exec /opt/kafka/bin/kafka-server-start.sh
+      /tmp/kafka.properties
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    depends_on:
+      kafka-volume-init:
+        condition: service_completed_successfully
+  connect:
+    image: dorosiya/pawbridge-debezium-connect@sha256:3fec7b3140917505648943bab214696fb7b30c103d2c4f6483143c1d8ff274a0
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 1024m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    profiles:
+    - events
+    volumes:
+    - ./connect.properties:/tmp/connect.properties:ro
+    - ${PAWBRIDGE_DEV_STATE:?Set the private state directory}/cdc.properties:/run/secrets/cdc.properties:ro
+    command:
+    - /opt/kafka/bin/connect-distributed.sh
+    - /tmp/connect.properties
+    environment:
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+      LOG_DIR: /tmp/kafka-logs
+      KAFKA_GC_LOG_OPTS: -Xlog:gc=warning:stdout
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl -fsS http://localhost:8083/connector-plugins >/dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  mail:
+    image: python@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 64m
+    cpus: '0.25'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    user: 65534:65534
+    read_only: true
+    command:
+    - python
+    - -B
+    - /app/mail_sink.py
+    volumes:
+    - ./mail_sink.py:/app/mail_sink.py:ro
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8025/health')
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  api-gateway:
+    image: ${DEV_IMAGE_API_GATEWAY:?Prepare image metadata}
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 640m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    profiles:
+    - apps
+    environment:
+      <<: *app-environment
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_APPLICATION_JSON: '{"spring": {"cloud": {"gateway": {"globalcors": {"cors-configurations": {"[/**]": {"allowedOriginPatterns": ["http://localhost:5184",
+        "http://127.0.0.1:5184"], "allowedMethods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], "allowedHeaders": ["Authorization",
+        "Content-Type", "Accept", "x-user-id"], "allowCredentials": true}}}}}}}'
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+  animal-service:
+    image: ${DEV_IMAGE_ANIMAL_SERVICE:?Prepare image metadata}
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 640m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    profiles:
+    - apps
+    environment:
+      <<: *app-environment
+      SPRING_PROFILES_ACTIVE: dev,postgresql
+      ANIMAL_POSTGRESQL_JDBC_URL: jdbc:postgresql://postgresql:5432/pawbridge
+      ANIMAL_POSTGRESQL_USERNAME: pawbridge_dev_animal_app
+      ANIMAL_POSTGRESQL_PASSWORD: ${DEV_ANIMAL_APP_PASSWORD}
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+  user-service:
+    image: ${DEV_IMAGE_USER_SERVICE:?Prepare image metadata}
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 640m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    profiles:
+    - apps
+    environment:
+      <<: *app-environment
+      SPRING_PROFILES_ACTIVE: dev,postgresql
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-local-unconfigured}
+      GOOGLE_SECRET_KEY: ${GOOGLE_SECRET_KEY:-local-unconfigured}
+      USER_POSTGRESQL_JDBC_URL: jdbc:postgresql://postgresql:5432/pawbridge
+      USER_POSTGRESQL_USERNAME: pawbridge_dev_user_app
+      USER_POSTGRESQL_PASSWORD: ${DEV_USER_APP_PASSWORD}
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      mail:
+        condition: service_healthy
+  community-service:
+    image: ${DEV_IMAGE_COMMUNITY_SERVICE:?Prepare image metadata}
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 640m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    profiles:
+    - apps
+    environment:
+      <<: *app-environment
+      SPRING_PROFILES_ACTIVE: dev,postgresql
+      COMMUNITY_POSTGRESQL_JDBC_URL: jdbc:postgresql://postgresql:5432/pawbridge
+      COMMUNITY_POSTGRESQL_USERNAME: pawbridge_dev_community_app
+      COMMUNITY_POSTGRESQL_PASSWORD: ${DEV_COMMUNITY_APP_PASSWORD}
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+  store-service:
+    image: ${DEV_IMAGE_STORE_SERVICE:?Prepare image metadata}
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 640m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    profiles:
+    - apps
+    environment:
+      <<: *app-environment
+      SPRING_PROFILES_ACTIVE: dev,postgresql
+      STORE_POSTGRESQL_JDBC_URL: jdbc:postgresql://postgresql:5432/pawbridge
+      STORE_POSTGRESQL_USERNAME: pawbridge_dev_store_app
+      STORE_POSTGRESQL_PASSWORD: ${DEV_STORE_APP_PASSWORD}
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+  payment-service:
+    image: ${DEV_IMAGE_PAYMENT_SERVICE:?Prepare image metadata}
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 640m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    profiles:
+    - apps
+    environment:
+      <<: *app-environment
+      SPRING_PROFILES_ACTIVE: dev,postgresql
+      PAYMENT_POSTGRESQL_JDBC_URL: jdbc:postgresql://postgresql:5432/pawbridge
+      PAYMENT_POSTGRESQL_USERNAME: pawbridge_dev_payment_app
+      PAYMENT_POSTGRESQL_PASSWORD: ${DEV_PAYMENT_APP_PASSWORD}
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+  photo-service:
+    image: ${DEV_IMAGE_PHOTO_SERVICE:?Prepare image metadata}
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 512m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    profiles:
+    - optional-ai
+    environment:
+      INTERNAL_API_KEY: ${DEV_INTERNAL_API_KEY}
+      LOST_STORAGE_BACKEND: postgresql
+      LOST_GALLERY_SYNC_ENABLED: 'false'
+      LOST_PG_DSN: postgresql://pawbridge_dev_vector:${DEV_VECTOR_PASSWORD}@postgresql:5432/pawbridge
+  python-ai-service:
+    image: ${DEV_IMAGE_PYTHON_AI_SERVICE:?Prepare image metadata}
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 512m
+    cpus: '1.0'
+    pids_limit: 256
+    networks:
+    - dev
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    profiles:
+    - optional-ai
+    environment:
+      INTERNAL_API_KEY: ${DEV_INTERNAL_API_KEY}
+      LOST_STORAGE_BACKEND: postgresql
+      LOST_GALLERY_SYNC_ENABLED: 'false'
+      LOST_PG_DSN: postgresql://pawbridge_dev_vector:${DEV_VECTOR_PASSWORD}@postgresql:5432/pawbridge
+  local-access:
+    image: nginxinc/nginx-unprivileged@sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c
+    pull_policy: missing
+    restart: 'no'
+    mem_limit: 64m
+    cpus: '0.25'
+    pids_limit: 256
+    networks:
+    - dev
+    - access
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    ports:
+    - 127.0.0.1:15433:15433
+    - 127.0.0.1:16379:16379
+    - 127.0.0.1:19092:19092
+    - 127.0.0.1:18383:18383
+    - 127.0.0.1:18025:18025
+    - 127.0.0.1:11025:11025
+    - 127.0.0.1:28080:28080
+    - 127.0.0.1:28082:28082
+    - 127.0.0.1:28081:28081
+    - 127.0.0.1:28083:28083
+    - 127.0.0.1:28084:28084
+    - 127.0.0.1:28085:28085
+    - 127.0.0.1:28086:28086
+    - 127.0.0.1:28087:28087
+    command:
+    - nginx
+    - -c
+    - /etc/nginx/local-dev.conf
+    - -g
+    - daemon off;
+    volumes:
+    - ./access.conf:/etc/nginx/local-dev.conf:ro
+networks:
+  dev:
+    internal: true
+  access: {}
+volumes:
+  pg-data: {}
+  redis-data: {}
+  kafka-data: {}

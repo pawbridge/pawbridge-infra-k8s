@@ -1,0 +1,50 @@
+ingress:
+  hosts:
+  - host: api.pawbridge.kr
+    paths:
+    - path: /
+      pathType: Prefix
+  enabled: false
+env:
+  SPRING_PROFILES_ACTIVE: dev
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql.databases.svc.cluster.local:3306/pawbridge_user
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: pawbridge-kafka-bootstrap.kafka.svc.cluster.local:9092
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin.tracing.svc.cluster.local:9411/api/v2/spans
+  ANIMAL_SERVICE_URL: http://animal-service.pawbridge.svc.cluster.local:8081
+  STORE_SERVICE_URL: http://store-service.pawbridge.svc.cluster.local:8083
+  USER_SERVICE_URL: http://user-service.pawbridge.svc.cluster.local:8080
+  COMMUNITY_SERVICE_URL: http://community-service.pawbridge.svc.cluster.local:8082
+  PAYMENT_SERVICE_URL: http://payment-service.pawbridge.svc.cluster.local:8084
+  SPRING_DATA_REDIS_URL: redis://redis-master.databases.svc.cluster.local:6379
+  SPRING_APPLICATION_JSON: "{\n  \"spring\": {\n    \"cloud\": {\n      \"gateway\"\
+    : {\n        \"globalcors\": {\n          \"cors-configurations\": {\n       \
+    \     \"[/**]\": {\n              \"allowedOriginPatterns\": [\n             \
+    \   \"https://pawbridge.kr\",\n                \"https://www.pawbridge.kr\",\n\
+    \                \"https://*.pawbridge.kr\",\n                \"http://localhost:3000\"\
+    ,\n                \"http://127.0.0.1:3000\"\n              ],\n             \
+    \ \"allowedMethods\": [\n                \"GET\",\n                \"POST\",\n\
+    \                \"PUT\",\n                \"DELETE\",\n                \"OPTIONS\"\
+    ,\n                \"PATCH\"\n              ],\n              \"allowedHeaders\"\
+    : [\n                \"Authorization\",\n                \"Content-Type\",\n \
+    \               \"Accept\",\n                \"x-user-id\"\n              ],\n\
+    \              \"allowCredentials\": true\n            }\n          }\n      \
+    \  }\n      }\n    }\n  }\n}\n"
+image:
+  repository: dorosiya/pawbridge-api-gateway
+  tag: sha-f9b42bcf9bc2326bcb7e5d27c90ac639706b1c46
+  digest: sha256:64e5f266621f94adb932ad77ad3c6787847537b2054a6c757bbd046e682b825f
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  nodePort: null
+serviceMonitor:
+  enabled: false
+networkPolicy:
+  enabled: true
+secretRef: api-gateway-secrets-vso
+secretRefOptional: false
+automountServiceAccountToken: false
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2

@@ -1,0 +1,10 @@
+# CI release metadata for local Compose; not Kubernetes dev settings.
+image:
+  repository: dorosiya/pawbridge-payment-service
+  tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  digest: sha256:169080b45facc6bc70a97f25a83ab72e005502aeb20df19f2c7c25d9fd3c0128
+  pullPolicy: IfNotPresent
+schemaMigration:
+  image: dorosiya/pawbridge-payment-service@sha256:2e9f878d88b63d819b53d9c4a679075df85b9a2bf4d75553111105cd60228ef9
+  apiImageDigest: sha256:3bfea8fa7c149184da595078ab3046c6f4d2682ac0b8e10188ec9ebcb785ac35
+  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
