@@ -1,6 +1,6 @@
 # CI release metadata for local Compose; not Kubernetes dev settings.
 image:
   repository: dorosiya/pawbridge-python-ai-service
-  tag: sha-d4704084d0dce9d73bbafbe4c4b60420ca02e43e
-  digest: sha256:da494b3f261962289d57ae0f1f9e09f43b0efefd8fb4d6342cbb584f46692392
+  tag: sha-ca39dab666c6ff1a94b970d34284d73b9d5675d7
+  digest: sha256:d8288dc2e7d5d7db2542e82a2b0a9e3090352b95e9a66795928b4e2f1ee1af91
   pullPolicy: IfNotPresent
