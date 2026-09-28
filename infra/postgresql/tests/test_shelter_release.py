@@ -5,9 +5,9 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 FILE = 'environments/prod/values/animal-service.yaml'
-REVISION = '03d7a9e5d58b783848be647f79f29d1b98a33abf'
-API = 'sha256:277d47960e999067c31906b070eca0d3393000a349ff54eea57f95cb4f08a22c'
-MIGRATION = 'sha256:fd522e8146655239570fbcf89312785581ddc6e4a7e183b297ace3849df77c6f'
+REVISION = '66332461b644f6513c6ce2eff4de47fb0dea061b'
+API = 'sha256:3c39f016d5b1e45d911c2b66f22cc621cb62dfffac7b062c15d81d2fc74408a0'
+MIGRATION = 'sha256:305b804883633b6cf37c2dc7c7b23186d7520bc00d3d5102087c583682e9e460'
 
 class ShelterReleaseTest(unittest.TestCase):
     def test_reviewed_pair_does_not_enable_mysql_migration(self):
