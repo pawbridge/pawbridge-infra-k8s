@@ -1,6 +1,6 @@
 replicaCount: 1
 image:
-  digest: sha256:31c4c0e8ca02ab5c5d6df303a754dcc2262c09f77dc6ed654d91d745d37d9aa9
+  digest: sha256:83b4d51f741d6f35dd914184fd4cc9f77ca4cc6cab24d390d59e5377a77bb169
 mysqlSecretRef: ''
 postgresqlSecretRef: community-postgresql-auth
 elasticsearchSecretRef: ''
