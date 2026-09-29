@@ -1,6 +1,6 @@
 # CI release metadata for local Compose; not Kubernetes dev settings.
 image:
   repository: dorosiya/pawbridge-api-gateway
-  tag: sha-ace60875359ea27fa1715e7445cf4b2fd8afdca1
-  digest: sha256:ff01d4d3d6a72f255cd39f8adee19e1a2bc23f1bc68e0df1c44eb5847b5054ba
+  tag: sha-2e9785af3d5394525783a2370e722d75ab482a9e
+  digest: sha256:8d79ec9baf22e32db445b0b927dd5032a06506c82d32045e9075f19f4f424c1a
   pullPolicy: IfNotPresent
