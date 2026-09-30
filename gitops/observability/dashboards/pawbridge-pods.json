@@ -2,7 +2,7 @@
   "uid": "pawbridge-pods",
   "title": "PawBridge VM·파드 상세",
   "schemaVersion": 39,
-  "version": 4,
+  "version": 6,
   "timezone": "Asia/Seoul",
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
@@ -40,10 +40,9 @@
         "refresh": 1,
         "sort": 1,
         "multi": false,
-        "includeAll": true,
-        "allValue": ".*",
+        "includeAll": false,
         "options": [],
-        "current": { "text": "All", "value": "$__all" },
+        "current": { "text": "pawbridge", "value": "pawbridge" },
         "hide": 0
       },
       {
@@ -122,7 +121,7 @@
       "type": "text",
       "title": "보는 방법",
       "gridPos": { "x": 0, "y": 0, "w": 24, "h": 3 },
-      "options": { "mode": "markdown", "content": "**VM → 네임스페이스 → 파드** 순서로 선택합니다. 위쪽 막대는 해당 VM의 파드를 비교하고, 아래쪽은 선택한 파드 하나만 보여줍니다. 서비스 이름표가 없는 배치·DB·모니터링 파드도 조회할 수 있습니다." }
+      "options": { "mode": "markdown", "content": "**VM → 네임스페이스 → 파드** 순서로 선택합니다. 위쪽 막대는 해당 VM의 파드를 비교하고, 아래쪽은 선택한 파드 하나만 보여줍니다. 서비스 이름표가 없는 배치·DB·모니터링 파드도 조회할 수 있습니다. 네임스페이스는 하나씩 선택하여 다른 네임스페이스의 동명 파드가 섞이지 않게 합니다. 파드 네트워크는 집 회선 WAN 사용량이 아닙니다." }
     },
     {
       "id": 19,
@@ -399,6 +398,49 @@
           "values": false
         },
         "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 38,
+      "type": "timeseries",
+      "title": "$pod · CPU 제한 구간 비율",
+      "description": "컨테이너별 CPU quota 제한을 받은 CFS 구간의 비율입니다. CPU 사용률이나 실행 불가 시간의 비율과 다릅니다. 표시 구간 평균이며 분모가 0이거나 지표가 없으면 빈 값입니다.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "pawbridge-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 59,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "noValue": "수집값 없음",
+          "max": 100
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * rate(container_cpu_cfs_throttled_periods_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=~\"$namespace\",pod=\"$pod\",container!=\"\",container!=\"POD\"}[$__rate_interval]) / (rate(container_cpu_cfs_periods_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",namespace=~\"$namespace\",pod=\"$pod\",container!=\"\",container!=\"POD\"}[$__rate_interval]) > 0)",
+          "legendFormat": "{{container}} · 제한 구간 비율",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       }
     }
   ]

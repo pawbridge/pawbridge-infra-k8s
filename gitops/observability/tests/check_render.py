@@ -87,11 +87,16 @@ def validate_grafana(objects):
     assert len(sources) == 2 and sources[0]['uid'] == 'pawbridge-prometheus'
     assert sources[0]['url'] == 'http://pawbridge-observability-prometheus.monitoring.svc.cluster.local:9090'
     assert sources[0]['access'] == 'proxy' and sources[0]['editable'] is False
+    assert sources[0]['jsonData']['timeInterval'] == '30s'
     assert sources[1] == {'name': 'PawBridge Loki', 'uid': 'pawbridge-loki', 'type': 'loki',
                           'access': 'proxy', 'url': 'http://pawbridge-loki.monitoring.svc.cluster.local:3100',
                           'isDefault': False, 'editable': False, 'jsonData': {'maxLines': 1000}}
     providers = yaml.safe_load(config['dashboardproviders.yaml'])['providers']
     assert len(providers) == 1 and providers[0]['options']['path'] == '/var/lib/grafana/dashboards/pawbridge'
+    validate_dashboards(objects)
+
+
+def validate_dashboards(objects):
     dashboards = next(o for o in objects if o['kind'] == 'ConfigMap'
                       and o['metadata']['name'] == 'pawbridge-observability-dashboards')
     assert dashboards['metadata']['namespace'] == 'monitoring'
@@ -102,8 +107,13 @@ def validate_grafana(objects):
         assert dashboard == json.loads((ROOT / 'dashboards' / name).read_text())
         assert dashboard['timezone'] == 'Asia/Seoul'
         assert dashboard['templating']['list'], 'Dashboard filters must be provisioned'
-        assert all(panel['datasource']['uid'] == 'pawbridge-prometheus'
-                   for panel in dashboard['panels'] if panel.get('targets'))
+        for panel in dashboard['panels']:
+            if not panel.get('targets'):
+                continue
+            expected_uid = 'pawbridge-loki' if panel['type'] == 'logs' else 'pawbridge-prometheus'
+            assert panel['datasource']['uid'] == expected_uid, (name, panel['id'])
+            assert all(t.get('datasource', panel['datasource'])['uid'] == expected_uid
+                       for t in panel['targets']), (name, panel['id'], 'target datasource')
 
 
 def validate(objects, slack):

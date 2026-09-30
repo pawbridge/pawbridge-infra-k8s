@@ -23,7 +23,20 @@ CPU 단위 1은 한 코어다. 메모리는 working set이다. 요청량·제한
 과금용 계량이 아니다. hostNetwork 파드는 호스트 네트워크를 공유하므로 개별 앱 트래픽으로
 해석하지 않는다. 수집 공백은 0이나 정상으로 채우지 않는다.
 VM 루트 디스크 여유 공간은 파드별 저장 용량이 아니다.
-JVM 힙·GC·HTTP 응답시간은 이 수집 범위에 없으며 대시보드 설치만으로 생기지 않는다.
+JVM·GC·HTTP 평균 지연은 Spring runtime 수집 대상에 표시한다. DB 연결 풀 패널은
+Hikari 사용 서비스의 파드·풀별 사용/유휴/최대·대기·획득 평균 시간·타임아웃 발생률을 표시한다.
+DB 전체 연결 수와 같지 않으며 획득 평균 시간은 p95/p99가 아니다.
+VM·파드 상세의 CPU 제한 구간 비율은 컨테이너별 throttled periods / periods다.
+CPU 사용률·제한 시간 비율과 구분하고 분모 0·미수집을 정상 0으로 채우지 않는다.
+기존 30초 수집 간격을 유지하므로 짧은 대기·제한의 순간 최고값을 보장하지 않는다.
+새 exporter·서버·애플리케이션 설정·k6 실행·WAN 수집은 이 변경에 포함하지 않는다.
+Prometheus 데이터 소스의 수집 간격도 30초로 명시해 `$__rate_interval`의 계산 기준을 맞춘다.
+API별 요청량·가중 평균과 HTTP 상태 코드별 요청량은 기존 timer 지표로 표시한다.
+4xx·429는 별도 상태 코드로 확인하며 서버 수치는 Cloudflare에서 차단된 요청이나 외부 경로 지연을 포함하지 않는다.
+p95/p99는 현재 수집하는 count/sum만으로 계산할 수 없다. 이후 승인된 k6 측정 결과로 확인한다.
+Spring 지표 수집 상태는 scrape의 성공/실패이며 업무 정상·전체 지표 존재를 보장하지 않는다.
+VM·파드 상세는 네임스페이스를 하나씩 선택해 동명 파드 혼합을 방지한다.
+전체 VM 메모리는 현재 노드 이름과 일치하는 시계열만 합산하고 누락 노드가 있으면 빈 값으로 표시한다.
 
 서비스 연결은 기존 pod의 app 이름표를 사용한다. KSM에 pods=[app] 하나만 허용하며
 전체 label·annotation 수집, 새 exporter, 앱 설정 변경은 하지 않는다.
@@ -35,11 +48,13 @@ app 이름표 수집을 시작하기 전 과거 서비스별 합계는 소급 �
 
 ```bash
 python3 gitops/observability/tests/test_dashboard_queries.py /absolute/path/to/promtool
+python3 gitops/observability/tests/test_load_observability_queries.py /absolute/path/to/promtool
 python3 gitops/observability/tests/test_grafana_contract.py /path/to/helm-render.yaml /path/to/resources-render.yaml
 ```
 
 첫 검사는 네임스페이스 격리·복수 파드 합계·네트워크 집계·사라진 파드의 기간 트래픽을 검증한다.
-두 번째 검사는 세 JSON의 실제 ConfigMap 포함과 Grafana 보안 설정을 검사한다.
+부하 관측 검사는 Hikari 수집 허용 목록·패널 배치와 연결 획득 평균·타임아웃·CPU 제한 조회식을 검증한다.
+Grafana 계약 검사는 세 JSON의 실제 ConfigMap 포함과 Grafana 보안 설정을 검사한다.
 반영 후에는 서비스 선택 목록, 두 파드의 반복 행, VM 이름, 빈 결과 표시를 실제 브라우저에서 확인한다.
 소스·조회식·등록 API 검사만으로 브라우저 화면까지 확인했다고 기록하지 않는다.
 롤백은 이전 Git revision으로 관측 Application을 동기화한다. 대시보드 DB를 직접 수정하거나 PVC를 삭제하지 않는다.
