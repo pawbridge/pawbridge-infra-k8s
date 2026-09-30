@@ -4,7 +4,7 @@ nodeSelector:
 image:
   repository: dorosiya/pawbridge-community-service
   tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
-  digest: sha256:83b4d51f741d6f35dd914184fd4cc9f77ca4cc6cab24d390d59e5377a77bb169
+  digest: sha256:e4ef833ec4fcb65440a4c9eb39c00268145b2434e91c966f91dc6dc33611de4b
   pullPolicy: IfNotPresent
 automountServiceAccountToken: false
 secretRefOptional: true
