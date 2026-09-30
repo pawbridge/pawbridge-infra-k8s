@@ -2,7 +2,7 @@
   "uid": "pawbridge-overview",
   "title": "PawBridge 운영 현황",
   "schemaVersion": 39,
-  "version": 4,
+  "version": 5,
   "timezone": "Asia/Seoul",
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
@@ -36,7 +36,7 @@
   "panels": [
     {
       "id": 34, "type": "timeseries", "title": "전체 VM · 메모리 용량 추이",
-      "description": "Windows 호스트가 아닌 cp1·워커 VM의 OS 인식 메모리 합계입니다. 사용량은 총량−가용량으로 Slack 경보와 같은 기준입니다. 한 VM이라도 지표가 누락되면 합계를 표시하지 않습니다. VM 할당량보다 OS 인식 총량이 조금 작을 수 있습니다.",
+      "description": "Windows 호스트가 아닌 cp1·워커 VM의 OS 인식 메모리 합계입니다. 사용량은 총량−가용량으로 Slack 경보와 같은 기준입니다. 한 VM이라도 지표가 누락되면 합계를 표시하지 않습니다. VM 할당량보다 OS 인식 총량이 조금 작을 수 있습니다. 현재 Kubernetes 노드와 이름이 일치하는 지표만 합산하므로, 사라진 노드의 시계열로 누락 노드를 대체하지 않습니다.",
       "datasource": {"type": "prometheus", "uid": "pawbridge-prometheus"},
       "gridPos": {"x": 0, "y": 3, "w": 24, "h": 8},
       "fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "noValue": "수집값 없음", "custom": {"spanNulls": false, "stacking": {"mode": "none", "group": "A"}}}, "overrides": [
@@ -45,9 +45,9 @@
         {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]}
       ]},
       "targets": [
-        {"refId": "A", "expr": "sum(max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"})) and on() (count(max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"})) == count(max by(node)(kube_node_info)))", "legendFormat": "총량", "instant": false, "range": true},
-        {"refId": "B", "expr": "sum(max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"}) - max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) and on() (count(max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"}) - max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) == count(max by(node)(kube_node_info)))", "legendFormat": "사용량 (총량−가용량)", "instant": false, "range": true},
-        {"refId": "C", "expr": "sum(max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) and on() (count(max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) == count(max by(node)(kube_node_info)))", "legendFormat": "가용량", "instant": false, "range": true}
+        {"refId": "A", "expr": "sum(((max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"})) and on(node) max by(node)(kube_node_info))) and on() (count(((max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"})) and on(node) max by(node)(kube_node_info))) == count(max by(node)(kube_node_info)))", "legendFormat": "총량", "instant": false, "range": true},
+        {"refId": "B", "expr": "sum(((max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"}) - max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) and on(node) max by(node)(kube_node_info))) and on() (count(((max by(node)(node_memory_MemTotal_bytes{job=\"node-exporter\",node!=\"\"}) - max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) and on(node) max by(node)(kube_node_info))) == count(max by(node)(kube_node_info)))", "legendFormat": "사용량 (총량−가용량)", "instant": false, "range": true},
+        {"refId": "C", "expr": "sum(((max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) and on(node) max by(node)(kube_node_info))) and on() (count(((max by(node)(node_memory_MemAvailable_bytes{job=\"node-exporter\",node!=\"\"})) and on(node) max by(node)(kube_node_info))) == count(max by(node)(kube_node_info)))", "legendFormat": "가용량", "instant": false, "range": true}
       ],
       "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "min", "max"]}, "tooltip": {"mode": "multi", "sort": "desc"}}
     },

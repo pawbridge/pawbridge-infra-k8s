@@ -82,6 +82,9 @@ grafana:
           url: http://pawbridge-observability-prometheus.monitoring.svc.cluster.local:9090
           isDefault: true
           editable: false
+          jsonData:
+            # Match the 30s scrape interval used by $__rate_interval.
+            timeInterval: 30s
         - name: PawBridge Loki
           uid: pawbridge-loki
           type: loki

@@ -31,7 +31,7 @@ spec:
       metricRelabelings:
         - sourceLabels: [__name__]
           action: keep
-          regex: 'jvm_memory_(used|committed|max)_bytes|jvm_threads_(live|daemon|peak)_threads|jvm_gc_pause_seconds_(count|sum)|http_server_requests_seconds_(count|sum)'
+          regex: 'jvm_memory_(used|committed|max)_bytes|jvm_threads_(live|daemon|peak)_threads|jvm_gc_pause_seconds_(count|sum)|http_server_requests_seconds_(count|sum)|hikaricp_connections_(active|pending|idle|max|timeout_total|acquire_seconds_(count|sum))'
 ---
 # Add only monitoring -> gateway TCP access; existing policy remains unchanged.
 # NetworkPolicy is L4: this authorizes port 8080, not just the metrics URL.
