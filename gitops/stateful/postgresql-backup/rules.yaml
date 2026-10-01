@@ -1,0 +1,64 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pawbridge-postgresql-backup
+  namespace: monitoring
+  labels:
+    pawbridge-monitoring: baseline
+spec:
+  groups:
+  - name: pawbridge.postgresql.backup
+    rules:
+    - record: pawbridge:postgresql_backup_job_created
+      expr: max by (namespace, job_name, cronjob) (label_replace(kube_job_created{namespace="databases"} * on (namespace,
+        job_name) group_left (owner_name) kube_job_owner{namespace="databases",owner_kind="CronJob",owner_name="pawbridge-postgresql-backup",owner_is_controller="true"},
+        "cronjob", "$1", "owner_name", "(.+)"))
+    - alert: PawBridgePostgreSQLBackupMissing
+      expr: absent(kube_cronjob_info{namespace="databases",cronjob="pawbridge-postgresql-backup"})
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: PostgreSQL 예약 백업 리소스 또는 지표가 누락되었습니다.
+        description: CronJob 존재와 kube-state-metrics 수집을 확인하세요. 지표 누락을 정상으로 해석하지 마세요.
+    - alert: PawBridgePostgreSQLBackupFailed
+      expr: (max by (namespace, cronjob) ((kube_job_failed{namespace="databases",condition="true"} == 1) * on (namespace,
+        job_name) group_left (cronjob) (pawbridge:postgresql_backup_job_created == on (namespace, cronjob) group_left max
+        by (namespace, cronjob) (pawbridge:postgresql_backup_job_created))) > 0) and on (namespace, cronjob) (max by (namespace,
+        cronjob) (kube_cronjob_spec_suspend{namespace="databases",cronjob="pawbridge-postgresql-backup"}) == 0)
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: 가장 최근 PostgreSQL 예약 백업이 최종 실패했습니다.
+        description: Job의 단계 로그·종료 코드와 DB·암호화·R2 연결을 확인하세요. 재시도 중 실패와 이전 실패 이력은 제외합니다.
+    - alert: PawBridgePostgreSQLBackupStale
+      expr: (time() - (max by (namespace, cronjob) (kube_cronjob_status_last_successful_time{namespace="databases",cronjob="pawbridge-postgresql-backup"}
+        > 0) or max by (namespace, cronjob) (kube_cronjob_created{namespace="databases",cronjob="pawbridge-postgresql-backup"}))
+        > 54000) and on (namespace, cronjob) (max by (namespace, cronjob) (kube_cronjob_spec_suspend{namespace="databases",cronjob="pawbridge-postgresql-backup"})
+        == 0)
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: PostgreSQL 백업 성공이 15시간 이상 확인되지 않았습니다.
+        description: 최초 설치는 생성 시각부터 15시간의 여유를 둡니다. 예약 누락·실행 지연·업로드·보관 정리 실패를 확인하세요.
+    - alert: PawBridgePostgreSQLBackupSuspended
+      expr: max by (namespace, cronjob) (kube_cronjob_spec_suspend{namespace="databases",cronjob="pawbridge-postgresql-backup"})
+        == 1
+      for: 24h
+      labels:
+        severity: warning
+      annotations:
+        summary: PostgreSQL 예약 백업이 하루 이상 중지되어 있습니다.
+        description: 초기 구성 또는 승인된 유지보수인지 확인하세요. 키·이미지·복원 검증 없이 자동으로 활성화하지 마세요.
+    - alert: PawBridgePostgreSQLBackupCollectionUnhealthy
+      expr: max(absent(kube_state_metrics_list_total{resource="*v1.CronJob",result="success"} > 0) or absent(kube_state_metrics_list_total{resource="*v1.Job",result="success"}
+        > 0) or (sum(increase(kube_state_metrics_list_total{resource=~"\\*v1.(CronJob|Job)",result="error"}[10m])) > 0) or
+        (sum(increase(kube_state_metrics_watch_total{resource=~"\\*v1.(CronJob|Job)",result="error"}[10m])) > 0))
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: 예약 백업의 상태 수집이 누락되거나 실패했습니다.
+        description: 수집기의 Job·CronJob 설정, 읽기 전용 RBAC와 list/watch 자체 지표를 확인하세요. 이 경보 중에 작업 성공 여부를 단정하지 마세요.

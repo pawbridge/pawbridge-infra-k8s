@@ -396,3 +396,12 @@ Grafana Service만 NodePort 30300을 사용한다. `externalTrafficPolicy: Local
 [API 수집 한계](https://grafana.com/docs/alloy/v1.18/reference/components/loki/loki.source.kubernetes/),
 [filesystem 한계](https://grafana.com/docs/loki/latest/operations/storage/filesystem/),
 [로그 보관](https://grafana.com/docs/loki/latest/operations/storage/retention/).
+
+## PostgreSQL 백업 상태 수집
+
+`values.yaml`의 KSM에 `jobs`, `cronjobs` 읽기 전용 collector와 해당 list/watch 자체 지표를
+추가했다. 기존 CSR 수집도 유지한다. Git 변경만으로 현재 release에 적용되지 않는다.
+백업 전용 경보는 `gitops/stateful/postgresql-backup/rules.yaml`에 있으며 baseline 18개 경보에
+자동 합치지 않는다. 예약 리소스와 함께 최종 승인으로 설치한다.
+[백업 실행 계약](../../infra/postgresql/backup/README.md)의 적용 순서·신선도·전체 호스트 중단 경계를 따른다.
+경보식 검증은 `python3 infra/postgresql/backup/verify_alerts.py /absolute/path/to/promtool`로 실행한다.

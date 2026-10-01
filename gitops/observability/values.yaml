@@ -305,8 +305,8 @@ kube-state-metrics:
   resources:
     requests: {cpu: 10m, memory: 32Mi}
     limits: {cpu: 200m, memory: 64Mi}
-  collectors: [nodes, pods, deployments, statefulsets, daemonsets, persistentvolumeclaims, certificatesigningrequests]
-  # Observe list/watch health even when no CSR objects exist. No approval rights.
+  collectors: [nodes, pods, deployments, statefulsets, daemonsets, persistentvolumeclaims, certificatesigningrequests, cronjobs, jobs]
+  # CSR·백업 작업이 없어도 list/watch 수집 상태를 관측한다. 쓰기·승인 권한은 없다.
   selfMonitor:
     enabled: true
   prometheus:
@@ -316,7 +316,7 @@ kube-state-metrics:
         metricRelabelings:
           - sourceLabels: [__name__, resource]
             action: keep
-            regex: 'kube_state_metrics_(list|watch)_total;\*v1.CertificateSigningRequest'
+            regex: 'kube_state_metrics_(list|watch)_total;\*v1.(CertificateSigningRequest|CronJob|Job)'
   # Only the existing application name; never collect arbitrary pod labels.
   metricLabelsAllowlist: ['pods=[app]']
   metricAnnotationsAllowList: []
