@@ -1,0 +1,47 @@
+# 표준 NetworkPolicy에는 FQDN 제한이 없다. 공개 HTTPS egress와 코드의 R2 endpoint 검증을 함께 사용한다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pawbridge-postgresql-backup-egress
+  namespace: databases
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: pawbridge-postgresql-backup
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress: []
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: databases
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: pawbridge-postgresql
+          app.kubernetes.io/instance: pawbridge
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - 127.0.0.0/8
+        - 169.254.0.0/16
+    ports:
+    - protocol: TCP
+      port: 443

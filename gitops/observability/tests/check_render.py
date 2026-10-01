@@ -177,18 +177,20 @@ def validate(objects, slack):
     args = ksm['spec']['template']['spec']['containers'][0]['args']
     collectors = next(a.split('=', 1)[1].split(',') for a in args if a.startswith('--resources='))
     assert set(collectors) == {'nodes', 'pods', 'deployments', 'statefulsets', 'daemonsets',
-                               'persistentvolumeclaims', 'certificatesigningrequests'}
+                               'persistentvolumeclaims', 'certificatesigningrequests', 'cronjobs', 'jobs'}
     role = next(o for o in objects if o['kind'] == 'ClusterRole' and o['metadata']['name'] == ksm_name)
     csr_permissions = [r for r in role['rules'] if 'certificates.k8s.io' in r['apiGroups']]
     assert csr_permissions == [{'apiGroups': ['certificates.k8s.io'],
                                'resources': ['certificatesigningrequests'], 'verbs': ['list', 'watch']}]
+    batch_permissions = [r for r in role['rules'] if 'batch' in r['apiGroups']]
+    assert set(resource for r in batch_permissions for resource in r['resources']) == {'jobs', 'cronjobs'}
     assert all(set(r['verbs']) <= {'get', 'list', 'watch'} for r in role['rules']), 'Read-only collector'
     monitor = next(o for o in objects if o['kind'] == 'ServiceMonitor' and o['metadata']['name'] == ksm_name)
     telemetry = next(e for e in monitor['spec']['endpoints'] if e['port'] == 'metrics')
     assert telemetry['interval'] == '30s'
     assert telemetry['metricRelabelings'] == [{
         'sourceLabels': ['__name__', 'resource'], 'action': 'keep',
-        'regex': r'kube_state_metrics_(list|watch)_total;\*v1.CertificateSigningRequest'}]
+        'regex': r'kube_state_metrics_(list|watch)_total;\*v1.(CertificateSigningRequest|CronJob|Job)'}]
     for obj in objects:
         if obj['kind'] in ['Deployment', 'Job', 'DaemonSet']:
             pod = obj['spec']['template']['spec']

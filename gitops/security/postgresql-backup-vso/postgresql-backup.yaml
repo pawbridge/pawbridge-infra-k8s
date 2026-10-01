@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pawbridge-postgresql-backup-vault-auth
+  namespace: databases
+automountServiceAccountToken: false
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: pawbridge-postgresql-backup-vault-auth
+  namespace: databases
+spec:
+  vaultConnectionRef: postgresql-admin-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: postgresql-backup-r2-read
+    serviceAccount: pawbridge-postgresql-backup-vault-auth
+    audiences:
+    - vault
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: pawbridge-postgresql-backup-r2-auth
+  namespace: databases
+spec:
+  vaultAuthRef: pawbridge-postgresql-backup-vault-auth
+  mount: secret
+  type: kv-v2
+  path: pawbridge/dev/postgresql/backup-r2
+  refreshAfter: 1m
+  hmacSecretData: true
+  destination:
+    create: true
+    overwrite: false
+    name: pawbridge-postgresql-backup-r2-auth
+    transformation:
+      excludeRaw: true
+      includes:
+      - ^access-key-id$
+      - ^secret-access-key$

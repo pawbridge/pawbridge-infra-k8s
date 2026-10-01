@@ -82,3 +82,11 @@ Rollback: remove only `pawbridge-postgresql-local` Service first, then the new
 network policy state without touching the internal Service, StatefulSet or PVC.
 Verify Windows and GPU SSH TCP/auth handshakes, internal application reads, CDC activity and
 unchanged PostgreSQL Pod UID/restart count after the change.
+
+## 정기 압축·암호화 백업
+
+백업 프로그램과 격리 복원은 [백업 실행 계약](../../../infra/postgresql/backup/README.md)에 정의한다.
+예약 후보는 `gitops/stateful/postgresql-backup`, R2 자격 증명 VSO 후보는
+`gitops/security/postgresql-backup-vso`에서 별도로 렌더링한다. 새 CronJob은 중지 상태이며
+실제 개인키 보관·R2 설정·이미지 게시·첫 운영 데이터 복원 검증 후 최종 승인으로 적용한다.
+이 PostgreSQL kustomization은 백업을 자동 설치하지 않는다.

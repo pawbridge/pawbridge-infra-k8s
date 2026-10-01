@@ -1,0 +1,83 @@
+name: PostgreSQL encrypted backup
+on:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - infra/postgresql/backup/**
+      - gitops/stateful/postgresql-backup/**
+      - gitops/security/postgresql-backup-vso/**
+      - gitops/observability/values.yaml
+      - gitops/observability/tests/check_render.py
+      - .github/workflows/postgresql-backup.yml
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: '검증한 dev 커밋의 이미지를 Docker Hub에 게시 (별도 운영 승인 후)'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+jobs:
+  isolated-roundtrip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      IMAGE_TAG: docker.io/dorosiya/pawbridge-postgresql-backup:sha-${{ github.sha }}
+    steps:
+      - name: Refuse publication outside dev
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        run: test "$GITHUB_REF" = 'refs/heads/dev'
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install PyYAML==6.0.3
+      - run: python3 infra/postgresql/backup/verify_manifests.py -v
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310
+        with:
+          version: v3.15.4
+      - name: Render fixed monitoring chart and validate collector RBAC
+        run: |
+          helm template pawbridge-observability kube-prometheus-stack --repo https://prometheus-community.github.io/helm-charts --version 89.2.4 --namespace monitoring --include-crds --skip-tests -f gitops/observability/values.yaml >/tmp/monitoring.yaml
+          kubectl kustomize gitops/observability >/tmp/monitoring-resources.yaml
+          python3 gitops/observability/tests/check_render.py /tmp/monitoring.yaml --resources /tmp/monitoring-resources.yaml
+      - name: Build validation image only
+        run: docker build --pull=false -t pawbridge-postgresql-backup:ci infra/postgresql/backup
+      - name: Real isolated PostgreSQL and age roundtrip without external storage
+        run: >-
+          docker run --rm --pull=never --network=none --read-only --cap-drop=ALL
+          --security-opt=no-new-privileges --cpus=2 --memory=2g --pids-limit=256
+          --tmpfs=/tmp:rw,nosuid,nodev,size=256m
+          --tmpfs=/work:rw,nosuid,nodev,size=512m,uid=999,gid=999
+          -e PAWBRIDGE_BACKUP_TEST_CONTAINER=true --entrypoint=python3
+          pawbridge-postgresql-backup:ci -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Check and test actual alert rules with pinned Prometheus
+        run: |
+          docker pull quay.io/prometheus/prometheus@sha256:6976aa8a60fec930796ce5772b8d12da7a318a5daa8d40d69c5c7819a05eeed7
+          cid=$(docker create --entrypoint=/bin/promtool quay.io/prometheus/prometheus@sha256:6976aa8a60fec930796ce5772b8d12da7a318a5daa8d40d69c5c7819a05eeed7 --version)
+          docker cp "$cid:/bin/promtool" /tmp/promtool
+          docker rm "$cid"
+          python3 infra/postgresql/backup/verify_alerts.py /tmp/promtool
+      - name: Log in only for explicitly requested publication
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Publish the same image that passed the isolated tests
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        run: |
+          set -euo pipefail
+          if docker buildx imagetools inspect "$IMAGE_TAG" >/tmp/backup-tag-check.log 2>&1; then
+            echo 'Refusing to overwrite an existing backup image tag' >&2
+            exit 1
+          fi
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          text = Path('/tmp/backup-tag-check.log').read_text()
+          if not ('manifest unknown' in text or ': not found' in text):
+              raise SystemExit('Could not verify registry tag absence; publication stopped')
+          PYTHON
+          docker tag pawbridge-postgresql-backup:ci "$IMAGE_TAG"
+          docker push "$IMAGE_TAG"
+          docker image inspect "$IMAGE_TAG" --format '{{json .RepoDigests}}' >>"$GITHUB_STEP_SUMMARY"

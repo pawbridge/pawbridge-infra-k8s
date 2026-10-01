@@ -1,0 +1,144 @@
+# 초기에는 중지한다. 실제 이미지 digest·R2 endpoint·공개 암호화 키 설정 후 승인된 배포에서만 활성화한다.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pawbridge-postgresql-backup
+  namespace: databases
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pawbridge-postgresql-backup-recipient
+  namespace: databases
+data:
+  recipient: REPLACE_WITH_PUBLIC_AGE_RECIPIENT
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pawbridge-postgresql-backup
+  namespace: databases
+  labels: &id001
+    app.kubernetes.io/name: pawbridge-postgresql-backup
+    app.kubernetes.io/part-of: pawbridge
+spec:
+  schedule: 10 3,15 * * *
+  timeZone: Asia/Seoul
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 43199
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 2700
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 172800
+      template:
+        metadata:
+          labels: *id001
+        spec:
+          serviceAccountName: pawbridge-postgresql-backup
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 30
+          nodeSelector:
+            kubernetes.io/hostname: pawbridge-k136-w2
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: backup
+            image: dorosiya/pawbridge-postgresql-backup:UNPUBLISHED
+            imagePullPolicy: IfNotPresent
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            env:
+            - name: PGHOST
+              value: pawbridge-postgresql.databases.svc.cluster.local
+            - name: PGDATABASE
+              value: pawbridge
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD_FILE
+              value: /run/secrets/postgresql/postgres-password
+            - name: R2_ENDPOINT
+              value: https://REPLACE_ACCOUNT_ID.r2.cloudflarestorage.com
+            - name: R2_ACCESS_KEY_FILE
+              value: /run/secrets/r2/access-key-id
+            - name: R2_SECRET_KEY_FILE
+              value: /run/secrets/r2/secret-access-key
+            - name: AGE_RECIPIENT_FILE
+              value: /etc/backup/recipient
+            - name: BACKUP_WORKDIR
+              value: /work
+            - name: BACKUP_RETENTION_DAYS
+              value: '7'
+            - name: BACKUP_TIMEOUT_SECONDS
+              value: '2400'
+            - name: BACKUP_CONTENT_PROOF
+              value: 'false'
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+                ephemeral-storage: 512Mi
+              limits:
+                cpu: '1'
+                memory: 512Mi
+                ephemeral-storage: 9Gi
+            volumeMounts:
+            - name: work
+              mountPath: /work
+            - name: tmp
+              mountPath: /tmp
+            - name: admin
+              mountPath: /run/secrets/postgresql
+              readOnly: true
+            - name: r2
+              mountPath: /run/secrets/r2
+              readOnly: true
+            - name: recipient
+              mountPath: /etc/backup
+              readOnly: true
+          volumes:
+          - name: work
+            emptyDir:
+              sizeLimit: 8Gi
+          - name: tmp
+            emptyDir:
+              medium: Memory
+              sizeLimit: 32Mi
+          - name: admin
+            secret:
+              secretName: pawbridge-postgresql-admin-auth
+              defaultMode: 288
+              items:
+              - key: postgres-password
+                path: postgres-password
+          - name: r2
+            secret:
+              secretName: pawbridge-postgresql-backup-r2-auth
+              defaultMode: 288
+              items:
+              - key: access-key-id
+                path: access-key-id
+              - key: secret-access-key
+                path: secret-access-key
+          - name: recipient
+            configMap:
+              name: pawbridge-postgresql-backup-recipient
+              items:
+              - key: recipient
+                path: recipient
