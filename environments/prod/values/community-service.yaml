@@ -3,8 +3,8 @@ nodeSelector:
   kubernetes.io/hostname: pawbridge-k136-w2
 image:
   repository: dorosiya/pawbridge-community-service
-  tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
-  digest: sha256:e4ef833ec4fcb65440a4c9eb39c00268145b2434e91c966f91dc6dc33611de4b
+  tag: sha-3550301da46c0f5141cec4335895e1fc7d83a003
+  digest: sha256:b38521df933c4f4099a8310ca280fb91a6e07ea0c08ad2ace79117e04ac8842b
   pullPolicy: IfNotPresent
 automountServiceAccountToken: false
 secretRefOptional: true
