@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from backup import BackupError, UTC, PREFIX
 from download import download_bundle
 from tests.fakes import MemoryS3
@@ -21,8 +22,12 @@ class DownloadTests(unittest.TestCase):
 
     def test_download_needs_only_storage_and_publishes_verified_ciphertext_bundle(self):
         destination = self.root / 'new'
-        with contextlib.redirect_stdout(io.StringIO()):
+        with contextlib.redirect_stdout(io.StringIO()), patch.object(
+            self.client, 'get_object', wraps=self.client.get_object
+        ) as get_object:
             marker = download_bundle(self.client, self.run, destination)
+        self.assertTrue(all(call.kwargs['Bucket'] == 'pawbridge-backups' for call in get_object.call_args_list))
+        self.assertTrue(all(call.kwargs['Key'].startswith(PREFIX + self.run + '/') for call in get_object.call_args_list))
         self.assertEqual(marker, verify_inputs(destination))
         self.assertEqual([], self.client.deleted)
 

@@ -17,7 +17,7 @@ import time
 import uuid
 
 UTC = dt.timezone.utc
-BUCKET = "pawbridge-postgresql-backups"
+BUCKET = "pawbridge-backups"
 PREFIX = "postgresql/v1/"
 FILES = {"database.dump.age", "roles.sql.age", "manifest.json.age"}
 RUN_RE = re.compile(r"(\d{8}T\d{6}Z)-([a-f0-9]{32})")
@@ -67,7 +67,7 @@ class Config:
         if not re.fullmatch(r"https://[a-f0-9]{32}\.r2\.cloudflarestorage\.com", self.endpoint):
             raise BackupError("only the reviewed R2 HTTPS endpoint is allowed")
         if self.bucket != BUCKET or self.prefix != PREFIX:
-            raise BackupError("only the dedicated backup bucket and prefix are allowed")
+            raise BackupError("only the reviewed backup bucket and PostgreSQL prefix are allowed")
         if not 1 <= self.retention_days <= 30 or not 10 <= self.timeout <= 2400:
             raise BackupError("invalid retention or timeout")
         recipient = secret(self.recipient_file)
