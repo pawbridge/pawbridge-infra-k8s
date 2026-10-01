@@ -13,7 +13,9 @@
   평문 DB/역할 덤프 파일을 생성하지 않는다. 임시 작업 공간에는 암호문만 둔다.
 - DB 덤프와 테이블 검증 기준은 같은 exported snapshot에서 읽는다. 역할은 별도 전역 카탈로그이므로
   전후 해시가 달라지면 업로드하지 않는다. 장시간 읽기 snapshot과 추가 테이블 조회 부하는 첫 운영 실행에서 측정한다.
-- 전용 비공개 R2 Standard 버킷 `pawbridge-postgresql-backups`, prefix `postgresql/v1/`만 사용한다.
+- 비공개 운영 백업용 R2 Standard 버킷 `pawbridge-backups`에서 `postgresql/v1/`만 사용한다.
+  같은 관리 주체의 다른 운영 백업은 별도 prefix로 구분할 수 있지만, 이 프로그램은 해당 경로를
+  조회하거나 보관 정리하지 않는다. Vault 백업 등 다른 백업의 생성 기능은 포함하지 않는다.
   기존 이미지 버킷·D/E 수동 백업·운영 PVC를 삭제하지 않는다.
 - 날짜+UUID마다 새 키를 사용한다. 암호문 3개를 업로드한 뒤 다시 읽어 크기와 SHA-256을 검증하고,
   `complete.json`을 마지막에 기록한다. 완료 표시 없는 묶음은 복원 후보로 사용하지 않는다.
@@ -32,7 +34,8 @@
 Vault 예약 경로, Git, 로그, R2 버킷에 넣지 않는다. 적용 전에 사용자의 보관 위치를 정하고
 PC 밖에도 개인키 사본을 보존하며 실제 복호화를 검증해야 한다. 개인키를 잃으면 백업을 복원할 수 없다.
 
-R2 자격 증명은 해당 버킷의 Object Read & Write에만 한정한다. 버킷 생성용 계정 권한과 구분한다.
+R2 자격 증명은 `pawbridge-backups`의 Object Read & Write에만 한정한다. 버킷 생성용 계정 권한과 구분한다.
+이 권한은 버킷 범위이며 PostgreSQL prefix 제한은 프로그램의 검사다. 이미지 처리 계정과 공유하지 않는다.
 새 Vault KV-v2 `secret/pawbridge/dev/postgresql/backup-r2`에 `access-key-id`, `secret-access-key`만 둔다.
 `vault-policy.hcl`/`vault-role.json`은 값 없는 적용 후보다. VSO는 기존 TLS 검증
 `postgresql-admin-vault-connection`을 재사용하고 신규 두 키만 동기화한다. 자동 DB 재시작은 없다.
@@ -45,7 +48,7 @@ R2 endpoint와 별도로 확보한 읽기용 자격 증명만 필요하다. 복�
 
 1. 대상 클러스터·노드·Vault 상태와 기존 DB/PVC 식별자를 다시 확인한다.
 2. 사용자 개인키 보관 위치·PC 밖 사본을 확정하고 공개키만 추출한다.
-3. 전용 R2 버킷의 비공개/Standard 설정과 해당 버킷 전용 키를 만들고 Vault/VSO에 등록한다.
+3. `pawbridge-backups`의 비공개/Standard 설정과 해당 버킷 전용 키를 확인하고 Vault/VSO에 등록한다.
 4. 병합된 dev 커밋에서 `PostgreSQL encrypted backup` 워크플로를 수동 실행하고 publish를 명시한 경우에만
    기존 Docker Hub 레지스트리에 같은 검증 이미지를 게시한다. registry의 실제 digest를 확인한다. 임의 digest나 `UNPUBLISHED`를 사용하지 않는다.
 5. `render.py`로 공개키·R2 endpoint·이미지 digest를 넣되 **중지 상태로 렌더링**한다.
@@ -78,6 +81,8 @@ python3 infra/postgresql/backup/render.py \
 `R2_ENDPOINT`, `R2_ACCESS_KEY_FILE`, `R2_SECRET_KEY_FILE`을 파일로 제공한다. 기존 폴더 덮어쓰기와
 16GiB 초과 묶음을 거부하고 다운로드 체크섬을 확인한 뒤에만 로컬 완료 표시를 만든다.
 R2 계정 접근도 잃은 상황을 대비해 Cloudflare 계정 복구 수단을 별도로 보관해야 한다.
+업로드와 다운로드는 같은 `pawbridge-backups` 상수를 사용한다. 버킷 이름을 바꾸면 새 검증 이미지를
+게시해야 하며, 기존 이름을 사용하는 이미지의 digest를 신규 운영 후보에 재사용하지 않는다.
 
 `drill.py`는 새 폴더에 initdb하고 TCP listener 없이 Unix 소켓만 열어 복원한다.
 개인키와 앱 비밀번호 파일은 읽기 전용으로 전달한다. 비밀번호 폴더에는

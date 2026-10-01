@@ -82,11 +82,14 @@ class BackupTests(unittest.TestCase):
         boundary, _ = completed(self.client, NOW - dt.timedelta(days=7), 'b')
         completed(self.client, NOW - dt.timedelta(days=1), 'c')
         self.client.objects['unrelated/manual-20260924.dump'] = b'preserve'
+        vault_key = 'vault/v1/' + expired + '/database.dump.age'
+        self.client.objects[vault_key] = b'preserve operational backup'
         marker = self.run_backup()
         self.assertEqual(4, len(self.client.deleted))
         self.assertTrue(all(key.startswith(PREFIX + expired) for key in self.client.deleted))
         self.assertTrue(any(key.startswith(PREFIX + boundary) for key in self.client.objects))
         self.assertIn('unrelated/manual-20260924.dump', self.client.objects)
+        self.assertEqual(b'preserve operational backup', self.client.objects[vault_key])
         self.assertIn(PREFIX + marker['run'] + '/complete.json', self.client.objects)
 
     def test_retention_removes_completion_marker_before_its_archives(self):
@@ -140,8 +143,14 @@ class BackupTests(unittest.TestCase):
             prune(self.client, self.cfg, 'absent', NOW)
         self.assertEqual([], self.client.deleted)
 
-    def test_image_bucket_and_non_r2_endpoint_are_rejected_before_transfer(self):
-        for changes in [{'bucket': 'pawbridge-public-images'}, {'endpoint': 'http://example.invalid'}, {'prefix': ''}]:
+    def test_reviewed_operational_backup_bucket_is_accepted(self):
+        recipient = dataclasses.replace(self.cfg, bucket='pawbridge-backups').validate()
+        self.assertEqual(PUBLIC, recipient)
+
+    def test_other_bucket_prefix_and_non_r2_endpoint_are_rejected_before_transfer(self):
+        for changes in [{'bucket': 'pawbridge-public-images'}, {'bucket': 'pawbridge-animal-originals'},
+                        {'bucket': 'pawbridge-postgresql-backups'}, {'endpoint': 'http://example.invalid'},
+                        {'prefix': ''}, {'prefix': 'vault/v1/'}]:
             with self.subTest(changes=changes), self.assertRaises(BackupError):
                 dataclasses.replace(self.cfg, **changes).validate()
 
