@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
-  tag: sha-e55b7725e2853fd019260cc1fca4165f57c1fb63
-  digest: sha256:f86af0cbbc250a4edc8e7e099589cabaf44ced03f9346bebe1f298ded482b5a3
+  tag: recommendation-diagnostics-4f03eeb80c110b517f881425ac5d53e6a543b37d
+  digest: sha256:3789101a3d47f4972db18241163ffc19481c863f0daef68008eea73b4032cb9c
 mysqlSecretRef: ''
 postgresqlSecretRef: animal-postgresql-auth
 elasticsearchSecretRef: ''
