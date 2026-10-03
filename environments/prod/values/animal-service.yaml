@@ -20,8 +20,8 @@ affinity:
           - pawbridge-k136-w2
 image:
   repository: dorosiya/pawbridge-animal-service
-  tag: sha-990cff6100a4c74da5c49de5517d58e8717c24fd
-  digest: sha256:b5e7f2fa23fd94c63892c22fd27755017c2db4a5c2f1b43632a79f3403afd386
+  tag: sha-6f55ab69ac794a147afe5902083f5101cee07db5
+  digest: sha256:1d43ddfd1fc343299ad6065df3dafe1b2bd8506cf9f356fbc30decd0ac771d73
   pullPolicy: IfNotPresent
 automountServiceAccountToken: false
 secretRefOptional: false
@@ -115,9 +115,9 @@ env:
   SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '10'
   SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '2'
 schemaMigration:
-  image: dorosiya/pawbridge-animal-service@sha256:b479cb413dfab6199c9a2417cae9d7c61347103657d10c0fbf93d6960e687d3b
-  apiImageDigest: sha256:b5e7f2fa23fd94c63892c22fd27755017c2db4a5c2f1b43632a79f3403afd386
-  sourceRevision: 990cff6100a4c74da5c49de5517d58e8717c24fd
+  image: dorosiya/pawbridge-animal-service@sha256:370e7060b6d0ac9c7876f9f420b44cb11f449301896483317a0344bbb493dea6
+  apiImageDigest: sha256:1d43ddfd1fc343299ad6065df3dafe1b2bd8506cf9f356fbc30decd0ac771d73
+  sourceRevision: 6f55ab69ac794a147afe5902083f5101cee07db5
   enabled: false
   existingSchemaVerified: true
   recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
