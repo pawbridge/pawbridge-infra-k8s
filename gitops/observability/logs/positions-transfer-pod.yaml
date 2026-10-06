@@ -1,0 +1,39 @@
+# 운영 승인 후 위치 파일 이관에만 사용하는 Pod. Kustomization에 포함하지 않는다.
+# helper와 새 Alloy는 같은 노드/PVC를 사용한다. 작업 후 이 Pod만 UID 확인 후 제거한다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pawbridge-alloy-position-transfer
+  namespace: monitoring
+  labels:
+    pawbridge.io/purpose: alloy-position-transfer
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  nodeSelector:
+    kubernetes.io/hostname: pawbridge-k136-cp1
+  tolerations:
+    - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 473
+    runAsGroup: 473
+    fsGroup: 473
+    seccompProfile: {type: RuntimeDefault}
+  containers:
+    - name: transfer
+      image: grafana/alloy:v1.18.1@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33
+      imagePullPolicy: IfNotPresent
+      command: [/bin/sh, -c, sleep 3600]
+      resources:
+        requests: {cpu: 5m, memory: 8Mi}
+        limits: {cpu: 25m, memory: 32Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: {drop: [ALL]}
+      volumeMounts:
+        - {name: data, mountPath: /var/lib/alloy}
+  volumes:
+    - name: data
+      persistentVolumeClaim: {claimName: pawbridge-alloy-positions}

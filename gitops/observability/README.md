@@ -248,6 +248,92 @@ NetworkPolicy로 실제 수집하는 검증·자원/방화벽·관리자 Secret�
    존재 여부와 키 이름만 확인한 뒤 `api_url_file` 경로 마운트를 검증한다.
    이 저장소에는 runtime Secret 또는 실제 웹훅을 포함한 예제 파일을 만들지 않는다.
 
+### Alloy 읽기 위치 보존·최초 이관
+
+Alloy의 `/var/lib/alloy/loki.source.kubernetes.apps/positions.yml`은 Kubernetes 로그를
+어느 원본 시각까지 읽었는지 기록한다. `data`를 전용 `pawbridge-alloy-positions` PVC로
+연결하여 Pod 교체 뒤에도 같은 경로·컴포넌트 ID에서 이어 읽는다. PVC는 `local-path`,
+`ReadWriteOnce`, 요청 용량 `64Mi`이며 Argo prune/삭제에서 보호한다. 이 값은 RAM 요청이
+아니며 local-path의 실제 디스크 사용 상한을 강제하지 않는다. 실제 파일 크기와 노드 디스크를
+관찰한다. 노드 로컬 저장소이므로 노드 디스크 손상이나 다른 노드로의 이전을 해결하지 않는다.
+
+**최초 전환은 새 PVC만 연결해 재시작하지 않는다.** 기존 emptyDir의 위치를 먼저 이관한다.
+아래 절차는 별도 운영 승인을 받은 뒤 수행하며, 최초 관측 시스템 설치 절차를 대체하지 않는다.
+
+1. 클러스터 context, Argo Application UID·현재 운영 Git SHA, 기존 Alloy Pod UID·Ready,
+   노드·이미지, `local-path` 회수 정책 `Retain`을 확인하고 배포/설정 원본을 비공개 경로에 보존한다.
+   동시 Argo 작업이 있으면 중단한다. 최신 dev의 무관한 변경을 운영에 함께 적용하지 않는다.
+2. 후보의 **새 Alloy PVC만** 반영한다. `logs/positions-transfer-pod.yaml`의 임시 전환 Pod를
+   같은 노드에서 시작하여 `WaitForFirstConsumer` 바인딩을 완료한다. 이 Pod는 일반 Kustomization에
+   포함되지 않으며 고정 Alloy 이미지의 대기 명령만 실행한다. 원래 Alloy는 계속 수집한다.
+3. PVC/PV UID·연결·`Retain`, 비루트 UID/GID 473의 파일 쓰기 계약을 점검한다.
+   기존 위치 파일은 `positions_transfer.py snapshot`으로 새 비공개 디렉터리에 읽기 백업한다.
+   파일 내용은 출력하지 않고 SHA-256·바이트 수·위치 수·시각만 기록한다. 원본은 수정하지 않는다.
+4. 같은 스크립트의 `seed`로 새 PVC만 사전 점검하고, 승인된 전환에서만 `seed --apply`를 실행한다.
+   context/Application·Pod/PVC UID·노드·이미지·권한·대상 파일 부재·백업 해시를 확인한다.
+   60초 초과 또는 미래 시각의 백업은 거부한다. 실패하면 기존 수집기를 유지하고 자동으로
+   오래된 파일을 쓰거나 대상 파일을 덮어쓰지 않는다. 복원된 파일의 해시가 원본과 같은지 확인한다.
+5. 백업 후 60초 안에 새 Alloy PVC와 Alloy Deployment만 선택 동기화한다. 이미 만든 PVC에도
+   Argo 추적 정보를 연결하며 기존 Loki PVC는 동기화하지 않는다. 시간이 지나면 중단하고 원인을 조사한다.
+   새 위치 파일을 임의로 삭제해 재시도하지 않는다. 이미지·처리 설정·Loki·경보식은 변경하지 않는다.
+   새 Alloy Ready, PVC 유지, 이어 읽기, 신규 로그 수신, drop·discard·WAL 오류와 경보를 점검한다.
+6. 완료 후 임시 전환 Pod만 UID를 다시 확인하고 제거한다. PVC·PV·위치 백업과 이전 설정은 보존한다.
+   실패하면 자동 정리/전체 앱 동기화/기존 PVC 삭제를 수행하지 않는다.
+
+명령 입력 계약(실제 값은 배포 직전 점검 결과로 공급하고 기록에는 인증정보를 남기지 않는다):
+
+```bash
+python3 gitops/observability/logs/positions_transfer.py snapshot \
+  --kubeconfig /absolute/private/kubeconfig --context CONFIRMED_CONTEXT \
+  --application-uid CONFIRMED_APP_UID --source-revision CONFIRMED_OPERATING_SHA \
+  --source-pod CONFIRMED_SOURCE_POD --source-uid CONFIRMED_SOURCE_UID \
+  --snapshot-dir /absolute/private/new-snapshot-directory
+python3 gitops/observability/logs/positions_transfer.py seed \
+  --kubeconfig /absolute/private/kubeconfig --context CONFIRMED_CONTEXT \
+  --application-uid CONFIRMED_APP_UID --source-revision CONFIRMED_OPERATING_SHA \
+  --source-pod CONFIRMED_SOURCE_POD --source-uid CONFIRMED_SOURCE_UID \
+  --snapshot-dir /absolute/private/new-snapshot-directory \
+  --target-pod pawbridge-alloy-position-transfer --target-uid CONFIRMED_TRANSFER_UID \
+  --pvc-uid CONFIRMED_PVC_UID
+```
+
+`seed` 기본값은 쓰기 없는 사전 점검이다. 적용 단계에서만 마지막 명령에 `--apply`를 추가한다.
+기존 CP 접속 경로에 sudo가 필요한 경우 두 명령에 `--sudo-kubectl`을 추가한다.
+스크립트는 기존 Python/PyYAML과 kubectl을 사용하며 도구를 설치하거나 배포하지 않는다.
+
+**롤백 경계:** Deployment 전환 전 실패는 원래 수집기를 유지한다. 전환 후에도 PVC·PV와
+백업은 지우지 않는다. 기존 이미지·설정으로 되돌릴 때 PVC 연결을 유지하는 복원 매니페스트를
+먼저 검수한다. 이전 Git 원본의 emptyDir Deployment 전체로 되돌리는 비상 복원은 읽기 위치를
+다시 잃을 수 있고 과거 로그 재전송·일시 경보를 유발할 수 있으므로 무중단/무중복 롤백이라고
+부르지 않는다. 배포 승인에는 선택 동기화 대상과 실제 복원 매니페스트를 함께 제시한다.
+
+Alloy의 읽기 위치 저장 주기와 전환 중 유입분 때문에 경계의 일부 로그는 다시 읽을 수 있다.
+동일 시각의 서로 다른 로그를 보존해야 하므로 경계를 무조건 건너뛰지 않는다. 읽기 위치는
+Loki 저장 완료의 확인값이 아니며 전송 중 메모리 큐·갑작스러운 종료까지 복구하지 않는다.
+정확히 한 번 전달이나 무손실을 보장하지 않는다.
+
+검증 명령:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 gitops/observability/tests/test_positions_transfer.py
+PYTHONDONTWRITEBYTECODE=1 python3 gitops/observability/tests/test_log_positions_runtime.py \
+  --resources-render /tmp/render-resources.yaml
+PYTHONDONTWRITEBYTECODE=1 python3 gitops/observability/tests/test_log_positions_runtime.py \
+  --resources-render /tmp/render-resources.yaml --migration
+```
+
+첫 검사는 백업 훼손·오래된 백업·잘못된 context/대상/PVC/회수 정책을 거부한다.
+런타임 검사는 캐시된 고정 Alloy 이미지와 가짜 Kubernetes API/수신 성공 응답만 사용한다.
+모든 네트워크는 격리된 컨테이너의 loopback이며 호스트 포트·외부 통신·이미지 다운로드가 없다.
+가짜 볼륨 초기 준비에만 CHOWN capability를 부여하고 실제 수집·복사는 UID 473과 capability
+제거 상태로 실행한다. 생성한 시험 자원만 제거한다. `--migration`은 실행 중 수집기의 위치를
+새 볼륨으로 복사하고 원본 바이트 유지·기존 파일 덮어쓰기 거부·교체 후 이어 읽기를 확인한다.
+실제 Kubernetes PVC 권한/스케줄링, Loki 영구 저장, 노드 장애 또는 운영 부하 검증은 아니다.
+
+근거: [고정 Alloy Kubernetes 읽기 위치 저장](https://github.com/grafana/alloy/blob/v1.18.1/internal/component/loki/source/kubernetes/kubernetes.go),
+[고정 tailer 재접속 경계](https://github.com/grafana/alloy/blob/v1.18.1/internal/component/loki/source/kubernetes/kubetail/tailer.go),
+[local-path 용량 상한 제약](https://github.com/rancher/local-path-provisioner#cons).
+
 ## 오프라인 검증
 
 ### 최초 설치 순서

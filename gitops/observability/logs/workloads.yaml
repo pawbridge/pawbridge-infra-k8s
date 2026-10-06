@@ -107,6 +107,20 @@ spec:
         - name: tmp
           emptyDir: {sizeLimit: 64Mi}
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pawbridge-alloy-positions
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  storageClassName: local-path
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 64Mi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -168,7 +182,7 @@ spec:
         - name: config
           configMap: {name: pawbridge-alloy-config}
         - name: data
-          emptyDir: {sizeLimit: 64Mi}
+          persistentVolumeClaim: {claimName: pawbridge-alloy-positions}
 ---
 apiVersion: v1
 kind: Service
