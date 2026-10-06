@@ -105,6 +105,16 @@ CASES += [
     scenario('PawBridgeLogDataLoss', [
         ('loki_ingester_wal_disk_full_failures_total{instance="fixture"}', '0+1x5 5+0x20'),
     ], [('0m', []), ('4m', [{}]), ('20m', [])]),
+    scenario('PawBridgeLogDataLoss', [
+        ('loki_process_dropped_lines_total{reason="outside_retention"}', '0+1x25'),
+    ], [('0m', []), ('4m', []), ('20m', [])]),
+    scenario('PawBridgeLogDataLoss', [
+        ('loki_process_dropped_lines_total{reason="outside_retention"}', '0+1x25'),
+        ('loki_discarded_samples_total{reason="rate_limited"}', '0+1x5 5+0x20'),
+    ], [('0m', []), ('4m', [{}]), ('20m', [])]),
+    scenario('PawBridgeLogDataLoss', [
+        ('loki_ingester_wal_corruptions_total{instance="fixture"}', '0+1x5 5+0x20'),
+    ], [('0m', []), ('4m', [{}]), ('20m', [])]),
 ]
 
 
