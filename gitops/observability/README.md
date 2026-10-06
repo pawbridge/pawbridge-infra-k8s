@@ -143,6 +143,12 @@ Grafana는 2Gi PVC로 사용자·설정 DB를 보존하며 local-path 특성상 
   제한한다. 상한 초과 시 누락될 수 있으며 실제 유입량에 맞는지 설치 후 검증해야 한다.
   Alloy는 알려진 인증/비밀값 패턴의 줄과 과도하게 긴 줄을 버린다. 임의의 개인정보까지 모두
   제거하는 기능이 아니며 애플리케이션에서 비밀을 로그에 쓰지 않는 것이 우선이다.
+- Loki가 거절하는 72시간 초과 로그는 Alloy에서 전송 전에 제외한다. Kubernetes tail의
+  같은 시각 로그 재조회 자체를 없애는 수정은 아니며 Loki의 72h 보관·수신 정책은 유지한다.
+  의도적 제외 건수는 `loki_process_dropped_lines_total{reason="outside_retention"}`로 수집한다.
+  이 지표는 로그 손실 경보에 합산하지 않는다. 실제 전송 포기·Loki 수신 거절·WAL 오류 경보는 유지한다.
+  나이는 Alloy 처리 시각에서 원본 로그 시각을 뺀 값이다. 이후 전송 지연으로 72h 경계를 넘으면
+  Loki가 거절할 수 있으며, 이를 숨기려고 정상 로그의 수신 기간을 줄이지 않는다.
 - index label은 cluster/namespace/app/pod/container와 Loki가 app에서 만드는 service_name이다.
   pod는 재시작 구분에 필요해 유지하되 72h·500 stream 제한으로 무제한 증가를 막는다.
   API reader에 필요한 UID는 Loki label로 전송하지 않는다. 조회의 detected_level 같은
@@ -289,14 +295,19 @@ python3 gitops/observability/tests/test_notifications.py /tmp/render-base.yaml /
 python3 gitops/observability/tests/test_grafana_contract.py /tmp/render-base.yaml /tmp/render-resources.yaml
 PYTHONDONTWRITEBYTECODE=1 python3 gitops/observability/tests/test_logs_contract.py /tmp/render-resources.yaml
 PYTHONDONTWRITEBYTECODE=1 python3 gitops/observability/tests/test_logs_runtime.py /tmp/render-base.yaml
+PYTHONDONTWRITEBYTECODE=1 python3 gitops/observability/tests/test_log_age_runtime.py
 ```
 
 `check_render.py`에는 **오프라인 Helm 결과만** 전달한다. live Secret 출력은 금지한다.
-13개 규칙·20시나리오로 발생/정상/복구와 완료 배치·과거 OOM 오탐을 확인한다.
+경보식 시험은 발생·정상·복구와 완료 배치·과거 OOM 오탐을 확인하고 검사 수를 출력한다.
 `test_logs_runtime.py`는 사전 다운로드된 정확한 Loki/Alloy/Grafana 이미지와 기존 Python 이미지를
 사용한다. 호스트 포트/외부 네트워크 없이 가짜 로그만 넣고 필터·Loki WAL 재시작·Grafana 조회를
 검증한다. 생성한 고유 Docker 컨테이너/가짜 데이터 볼륨만 제거한다. 실제 Kubernetes API tail,
 RBAC/NetworkPolicy 집행, 운영 부하, 72h 경과 후 삭제는 별도의 운영 검증으로 남는다.
+`test_log_age_runtime.py`는 같은 고정 Alloy/Loki 이미지에 가짜 시각의 로그를 넣어 최근 로그,
+71h59m 로그, 72h1m·96h 로그와 반복 재전송을 확인한다. 기존 비밀값·크기 필터도 확인한다.
+외부 네트워크·호스트 포트·운영 자격 증명을 사용하지 않으며 자체 시험 자원만 제거한다.
+이는 입력 시각에 따른 제외 시험이며 실제 72시간 경과 후 저장 데이터 삭제 시험이 아니다.
 이 검사는 upstream CRD의 전체 OpenAPI/CEL 검증이나 실제 지표 수집 검증을 대체하지 않는다.
 promtool 구버전으로 실행한 결과는 사용한 버전을 기록하고 배포 후보 버전 검증과 구분한다.
 amtool로 opt-in 설정·한국어 템플릿을 검증할 때는 임시 가짜 웹훅 파일을 사용하고

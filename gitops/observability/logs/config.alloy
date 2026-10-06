@@ -65,6 +65,11 @@ loki.process "apps" {
     longer_than = "16KB"
     drop_counter_reason = "line_too_long"
   }
+  // Match Loki's acceptance window; expired rereads are intentional exclusions.
+  stage.drop {
+    older_than = "72h"
+    drop_counter_reason = "outside_retention"
+  }
   stage.label_keep {
     values = ["cluster", "namespace", "app", "pod", "container"]
   }
