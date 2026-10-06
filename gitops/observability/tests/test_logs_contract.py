@@ -34,6 +34,17 @@ def validate(objects):
     assert lp['containers'][0]['resources']['limits']['memory'] == '768Mi'
     assert ap['containers'][0]['resources']['limits']['memory'] == '256Mi'
     assert '--stability.level=generally-available' in ap['containers'][0]['args']
+    assert ap['securityContext']['fsGroup'] == 473
+    alloy_data = next(v for v in ap['volumes'] if v['name'] == 'data')
+    assert alloy_data == {'name': 'data', 'persistentVolumeClaim': {'claimName': 'pawbridge-alloy-positions'}}
+    assert {'name': 'data', 'mountPath': '/var/lib/alloy'} in ap['containers'][0]['volumeMounts']
+    assert '--storage.path=/var/lib/alloy' in ap['containers'][0]['args']
+    alloy_claim = one('PersistentVolumeClaim', 'pawbridge-alloy-positions')
+    assert alloy_claim['metadata']['namespace'] == 'monitoring'
+    assert alloy_claim['spec']['storageClassName'] == 'local-path'
+    assert alloy_claim['spec']['accessModes'] == ['ReadWriteOnce']
+    assert alloy_claim['spec']['resources']['requests']['storage'] == '64Mi'
+    assert alloy_claim['metadata']['annotations']['argocd.argoproj.io/sync-options'] == 'Prune=false,Delete=false'
     role = one('Role', 'pawbridge-observability-pod-logs')
     assert role['metadata']['namespace'] == 'pawbridge'
     assert role['rules'] == [{'apiGroups': [''], 'resources': ['pods'], 'verbs': ['get', 'list', 'watch']},
@@ -95,6 +106,10 @@ def main():
         assert old in config['data']['config.alloy']
         config['data']['config.alloy'] = config['data']['config.alloy'].replace(old, new)
     mutations = {
+        'lost read positions': lambda x: next(v for v in obj(x, 'Deployment', 'pawbridge-alloy')['spec']['template']['spec']['volumes'] if v['name'] == 'data').update(persistentVolumeClaim={}, emptyDir={'sizeLimit': '64Mi'}),
+        'wrong positions claim': lambda x: next(v for v in obj(x, 'Deployment', 'pawbridge-alloy')['spec']['template']['spec']['volumes'] if v['name'] == 'data')['persistentVolumeClaim'].update(claimName='pawbridge-loki-data'),
+        'positions deletion': lambda x: obj(x, 'PersistentVolumeClaim', 'pawbridge-alloy-positions')['metadata']['annotations'].clear(),
+        'unwritable positions': lambda x: obj(x, 'Deployment', 'pawbridge-alloy')['spec']['template']['spec']['securityContext'].update(fsGroup=10001),
         'broad RBAC': lambda x: obj(x, 'Role', 'pawbridge-observability-pod-logs')['rules'][0].update(resources=['*']),
         'PVC deletion': lambda x: obj(x, 'PersistentVolumeClaim', 'pawbridge-loki-data')['metadata']['annotations'].clear(),
         'unrestricted ingress': lambda x: obj(x, 'NetworkPolicy', 'observability-internal')['spec'].update(podSelector={}),
