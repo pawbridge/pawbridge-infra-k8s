@@ -1,0 +1,17 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: community-youtube-vault-auth
+  namespace: pawbridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  vaultConnectionRef: community-youtube-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: community-youtube-read
+    serviceAccount: community-youtube-vault-auth
+    audiences:
+      - vault
+    tokenExpirationSeconds: 600

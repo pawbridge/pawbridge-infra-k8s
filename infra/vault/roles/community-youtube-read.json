@@ -1,0 +1,9 @@
+{
+  "bound_service_account_names": ["community-youtube-vault-auth"],
+  "bound_service_account_namespaces": ["pawbridge"],
+  "audience": "vault",
+  "token_policies": ["community-youtube-read"],
+  "token_no_default_policy": true,
+  "token_ttl": "10m",
+  "token_max_ttl": "10m"
+}
