@@ -3,11 +3,12 @@ nodeSelector:
   kubernetes.io/hostname: pawbridge-k136-w2
 image:
   repository: dorosiya/pawbridge-community-service
-  tag: sha-aff8ace06cb1db2a6d8e3c816a53d54b4cabdf51
-  digest: sha256:e01c6b212dc3734e367252189ba90760947de526ceafb0fa4bc950e7229a3cb0
+  tag: sha-82a9cfa648ebfb122fad1f44c16d843985eb611b
+  digest: sha256:13c3fcd3ea69dc0cfc087f509d226dbec0cc2b42efae68b7fa0c2bf3f494ae18
   pullPolicy: IfNotPresent
 automountServiceAccountToken: false
-secretRefOptional: true
+secretRef: community-youtube-auth
+secretRefOptional: false
 mysqlSecretRef: ''
 r2SecretRef: community-service-r2-secrets-vso
 r2SecretRefOptional: false
@@ -48,9 +49,9 @@ env:
   SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '5'
   SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '0'
 schemaMigration:
-  image: dorosiya/pawbridge-community-service@sha256:85dc774204fd8b0609ddd549db8467a1cc6817af99ee8892fc37a2ed363f618a
-  apiImageDigest: sha256:e01c6b212dc3734e367252189ba90760947de526ceafb0fa4bc950e7229a3cb0
-  sourceRevision: aff8ace06cb1db2a6d8e3c816a53d54b4cabdf51
+  image: dorosiya/pawbridge-community-service@sha256:c7f2104e5e1b543f710c99f8c3eb9f7ba63a9ddb476c79953cfc843680fdd3b2
+  apiImageDigest: sha256:13c3fcd3ea69dc0cfc087f509d226dbec0cc2b42efae68b7fa0c2bf3f494ae18
+  sourceRevision: 82a9cfa648ebfb122fad1f44c16d843985eb611b
   enabled: false
   existingSchemaVerified: true
   recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911

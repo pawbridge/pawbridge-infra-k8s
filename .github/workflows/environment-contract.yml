@@ -6,6 +6,9 @@ on:
       - charts/**
       - environments/**
       - gitops/argocd/environments/**
+      - gitops/security/community-youtube-vso/**
+      - infra/vault/policies/community-youtube-read.hcl
+      - infra/vault/roles/community-youtube-read.json
       - scripts/environments/**
       - .github/workflows/environment-contract.yml
 permissions:
