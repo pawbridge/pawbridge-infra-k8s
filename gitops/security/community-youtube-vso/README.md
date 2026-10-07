@@ -146,16 +146,56 @@ runner가 실제 Vault에 요청해 다음을 확인한다.
 이 시험의 성공 JSON에는 `vsoControllerTested=false`가 명시된다. 실제 Vault ACL
 시험이지 Kubernetes 인증·VSO 컨트롤러·Secret 동기화 성공이 아니다.
 
-### 실제 VSO 컨트롤러 검증 전에는 운영에 적용하지 않는다
+### 실제 VSO와 Kubernetes 인증·Secret 동기화를 시험한다
 
-별도 비운영 Kubernetes API, Vault 2.0.4와 VSO 1.4.1을 연결한 시험도 필요하다.
-운영 kubeconfig·CA·키·영구 볼륨을 복사하지 않는다. 합성 키를 사용해 이전 정책의
-실제 `renew-self` 403과 목적지 Secret 미생성을 먼저 재현한다. 정책 보완 뒤에는
-Kubernetes 서비스 계정 인증, Secret 소유권·필드 허용 목록·값 동기화, 토큰 갱신과
-만료 후 재인증을 확인한다. 잘못된 서비스 계정·namespace·audience도 거부돼야 한다.
+다음 runner는 별도 Kubernetes API, Vault 2.0.4와 VSO 1.4.1을 실제로 연결한다.
+운영 kubeconfig·CA·키·영구 볼륨을 복사하지 않는다. 앞의 Vault ACL 시험과 함께
+통과해야 운영 정책 보완의 검증 근거가 된다. 로컬 성공은 운영 공급 성공이 아니다.
 
-이 컨트롤러 시험이나 운영 공급 확인을 실행하지 않았다면 미실행으로 보고한다.
-정적 검사 또는 실제 Vault ACL 시험만으로 전체 연결 성공을 보고하지 않는다.
+```sh
+python3 -B infra/vault/tests/community_youtube_vso_integration.py --run-isolated
+```
+
+로컬 Docker의 `default` 소켓과 캐시에 있는 다음 고정 이미지만 사용한다.
+`--pull=never`이므로 이미지가 없으면 중단한다. 다운로드는 별도 승인 사항이다.
+
+- Vault: 앞의 2.0.4 digest.
+- K3s 1.36.1: `rancher/k3s@sha256:08fdebd14db9ab7d5ea821d5bfa95d02341a6ef886842fcc8d9dfd0e9fa9e0cd`
+- VSO 1.4.1: `hashicorp/vault-secrets-operator@sha256:1314beb4df53650d1a8c0f70eab1de516e4362329a541156fef5acefbdc18cc8`
+
+K3s는 agentless로 API와 저장소만 실행하고 VSO는 별도 Docker 프로세스로 실행한다.
+시험 전용 내부 네트워크의 주소를 사용하며 호스트 포트를 공개하지 않는다.
+세 컨테이너의 메모리 상한 합계는 2,432MiB, CPU 상한 합계는 2개다.
+privileged·bind mount·영구 volume을 사용하지 않고 기본 volume도 tmpfs로 대체한다.
+Vault는 시험용 TLS 인증서를 발급하고 VSO는 CA와 서버명을 검증한다.
+API 접속 인증서는 이 시험의 Kubernetes에서 새로 만든다.
+
+runner는 저장소의 역할 및 네 가지 VSO 리소스를 사용한다. VaultConnection의 주소와
+서버명만 시험용으로 바꾸며 SSL 검증과 키 필터는 유지한다. 역할 TTL·max TTL 600초와
+`token_no_default_policy=true`도 유지한다. 다음을 실제 요청으로 확인한다.
+
+1. 이전 정책에서는 VSO의 `renew-self` HTTP 403이 발생하고 목적지 Secret이 없다.
+2. 정책 보완 뒤 `Ready=True`·`Healthy=True`, Secret 소유권과 단일 키 허용 목록이 맞는다.
+3. 실제 Kubernetes TokenRequest로 만든 잘못된 계정·namespace·audience는 Vault가 거부한다.
+4. 합성 키 변경이 목적지 Secret에 반영되고 관련 없는 필드는 복사되지 않는다.
+5. 최초 토큰의 백그라운드 갱신과 그 뒤 새 로그인을 Vault audit HMAC·시각으로 연결한다.
+   로그인 직후 갱신이나 이전 재시도 로그인을 성공으로 세지 않는다.
+   VSO는 실제 만료 전에 재인증할 수 있으므로 특정 초 이후의 로그인만 요구하지 않는다.
+   역할 설정을 줄이지 않고 관찰 시간은 최소 601초로 유지한다.
+6. 601초 이상 관찰한 뒤 합성 값을 다시 바꾸고 Secret 반영까지 확인한다.
+   과거 Secret이나 남아 있는 Ready 상태만으로 성공을 판정하지 않는다.
+
+초기화와 두 번의 1분 동기화 대기를 포함해 약 12~15분이 필요하다.
+출력은 검사명·판정·경과 시간뿐이다. 토큰, audit 원문과 키 값은 출력하지 않는다.
+성공·실패 모두 실행별 이름과 소유 라벨을 대조해 세 컨테이너와 내부 네트워크만
+제거한다. 다운로드한 이미지와 기존 Docker 자원은 남긴다. 정리가 실패하면 실패로
+보고하며 전역 prune으로 대신하지 않는다.
+
+이 시험은 운영 Pod의 Kubernetes RBAC·리더 선출·영구 캐시·장애 복구를 검증하지 않는다.
+VSO의 API 접속에는 시험 전용 관리자 인증서를 사용한다. rollout target은 replicas 0의
+시험용 Deployment이므로 Community 앱 재시작, DB, Google API와 화면 E2E도 범위 밖이다.
+운영 정책 적용 후에는 실제 서비스 계정 권한, Secret 공급과 앱 상태를 별도로 확인한다.
+컨트롤러 시험이나 운영 공급 확인을 실행하지 않았다면 각각 미실행으로 보고한다.
 
 ### 기존 전용 정책을 보완할 때의 복구 경계
 
@@ -169,3 +209,8 @@ Kubernetes 서비스 계정 인증, Secret 소유권·필드 허용 목록·값 
 [VSO 1.4.1 필드 필터 구현](https://github.com/hashicorp/vault-secrets-operator/blob/v1.4.1/helpers/template.go)을 따른다.
 토큰 생명주기는 [VSO 1.4.1 client 구현](https://github.com/hashicorp/vault-secrets-operator/blob/v1.4.1/vault/client.go#L460-L470)과
 [Vault token API](https://developer.hashicorp.com/vault/api-docs/auth/token)를 따른다.
+audit의 `token_ttl`·HMAC·시각 필드는
+[Vault audit schema](https://developer.hashicorp.com/vault/docs/audit/schema)를 따른다.
+만료 전 교체 판정은 VSO가 사용하는
+[Vault API LifetimeWatcher 구현](https://github.com/hashicorp/vault/blob/eff87a134a94/api/lifetime_watcher.go)과
+[VSO 1.4.1 캐시 교체 구현](https://github.com/hashicorp/vault-secrets-operator/blob/v1.4.1/vault/client_factory.go#L788-L800)을 따른다.
