@@ -31,8 +31,8 @@ env:
     \  }\n      }\n    }\n  }\n}\n"
 image:
   repository: dorosiya/pawbridge-api-gateway
-  tag: sha-bbc4bea2deb5c04b6dccc784b8b6af5425c6ad53
-  digest: sha256:90c540fd7dd91f7500aa3483d1ff1e9429fcae1766d9928de176dbfac4c85db1
+  tag: sha-aff8ace06cb1db2a6d8e3c816a53d54b4cabdf51
+  digest: sha256:c5a5abadf9cb2e8d965bf317a47d6e28b7177b5b12a94a894d304549b13ef138
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
