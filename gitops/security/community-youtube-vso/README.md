@@ -43,15 +43,26 @@ V9를 적용하지 않는다. `existingSchemaVerified`와 기존 `recoveryRefere
    ```
 
    이 역할은 `pawbridge/community-youtube-vault-auth`의 `vault` audience에만 묶인다.
-   데이터와 메타데이터 경로 두 개에 `read`만 허용하며 기본 정책을 포함하지 않는다.
+   데이터와 메타데이터 경로 두 개에는 `read`만 허용한다. VSO가 자기 토큰을
+   관리하도록 `auth/token/lookup-self`에 `read`, `auth/token/renew-self`와
+   `auth/token/revoke-self`에 `update`를 허용한다. 기본 정책은 포함하지 않는다.
+   토큰 생성, 다른 토큰 관리, 다른 KV 경로 읽기와 키 쓰기는 허용하지 않는다.
+   TTL과 max TTL은 모두 10분이다. 갱신 요청으로 최대 수명을 늘리지 않는다.
+
+   VSO 1.4.1은 renewable 토큰으로 로그인한 직후 `renew-self`를 호출한다.
+   자기 관리 권한 없는 KV read-only 정책은 로그인에 성공해도 여기서 403으로
+   중단될 수 있다. 관리자 userpass 로그인 성공은 이 전용 역할의 연결 검증이 아니다.
 
 3. V9와 복구 준비가 끝난 뒤 이 디렉터리의 Kustomize 리소스를 적용한다.
    **최초 공급 또는 키 변경은 Community 재시작을 유발할 수 있다.**
    `refreshAfter: 1m`은 Vault→Secret 동기화 주기이며 Google API 호출 주기가 아니다.
    환경변수 갱신에는 Pod 재시작이 필요하므로 restart target은 Community만 지정했다.
-4. VaultStaticSecret의 정상 상태와 목적지 Secret `pawbridge/community-youtube-auth`를
-   확인한다. 비밀값을 출력하지 않고 키 이름이 `YOUTUBE_DATA_API_KEY` 하나인지,
-   값이 비어 있지 않은지만 확인한다. 기존 R2·DB Secret과 Gateway에는 공급하지 않는다.
+4. VaultStaticSecret의 `Ready=True`와 `Healthy=True`, 목적지 Secret
+   `pawbridge/community-youtube-auth`의 소유권을 함께 확인한다. 변경이 없으면
+   `SecretSynced=False`일 수 있으므로 이 조건 하나로 실패를 판단하지 않는다.
+   Secret의 owner reference가 해당 VaultStaticSecret의 UID와 일치해야 한다.
+   비밀값을 출력하지 않고 키 이름이 `YOUTUBE_DATA_API_KEY` 하나인지,
+   값이 비어 있지 않은지 확인한다. 기존 R2·DB Secret과 Gateway에는 공급하지 않는다.
    `overwrite: false`는 다른 주체가 만든 목적지 Secret의 인수를 방지한다.
    `excludeRaw: true`와 키 허용 목록은 `_raw` 및 다른 필드의 복사를 막는다.
 
@@ -92,9 +103,9 @@ Community 소스는 `82a9cfa648ebfb122fad1f44c16d843985eb611b`, Gateway 소스�
 4. Vault 등록을 되돌려야 하면 보존한 이전 버전과 정책·역할 복구본을 사용한다.
    새 키의 폐기나 Secret 정리는 의존 관계를 확인하고 별도 승인 후 실행한다.
 
-## 배포 없이 검증한다
+## 정적 검사와 실제 연동시험을 구분한다
 
-저장소 루트에서 실행한다. 운영 context나 키가 필요하지 않다.
+아래 정적 검사는 저장소 루트에서 실행한다. 운영 context나 키가 필요하지 않다.
 
 ```sh
 python3 -m unittest discover -s scripts/environments -p 'test_home_video_runtime.py'
@@ -107,5 +118,54 @@ Helm은 기존 CI와 같은 3.15.4를 사용한다. PATH에 없으면 `HELM_COMM
 실행 파일을 지정한다. 테스트는 키 허용 목록·최소 권한·인증 참조와 실제 Helm 렌더를
 검증하지만 Vault 로그인, Secret 생성이나 운영 배포를 대신하지 않는다.
 
+### 실제 Vault에서 ACL과 토큰 생명주기를 시험한다
+
+운영 키·토큰·snapshot 없이 로컬 Docker의 합성 값으로만 시험한다. 실행 전에
+로컬 Docker 접근과 아래 고정 이미지가 캐시에 있는지 확인한다. runner는 이미지를
+받지 않고 `--pull=never`로 실행한다. 이미지 다운로드는 별도로 승인받는다.
+
+```sh
+python3 -B infra/vault/tests/community_youtube_integration.py --run-isolated
+```
+
+Vault 2.0.4의 고정 digest는
+`hashicorp/vault@sha256:5be49781ecf78bfe775c5309c6a4d9f4e9e040b6c885c99eb2b12fb69855e1a2`다.
+Docker context `default`의 로컬 소켓만 허용한다. 네트워크는 `none`이고 포트·bind
+mount·영구 volume·privileged 권한이 없다. 메모리 상한은 384MiB, CPU는 0.5개다.
+이미지의 기본 volume 경로도 tmpfs로 대체한다. 이번 실행의 라벨과 이름을 대조해
+시험 컨테이너만 종료·제거한다. 운영 컨테이너나 기존 볼륨은 정리하지 않는다.
+
+runner가 실제 Vault에 요청해 다음을 확인한다.
+
+- 이전 KV read-only 정책은 키 읽기를 허용하지만 자기 조회·갱신·폐기를 HTTP 403으로 거부한다.
+- 수정 정책은 자기 조회·갱신을 허용하고, 1시간 갱신 요청도 max TTL 600초를 넘기지 않는다.
+- 다른 비밀 경로, 상위 경로 목록, 키 쓰기, 정책 쓰기, 토큰 생성과 다른 토큰 관리가 HTTP 403이다.
+- 자기 폐기 후 해당 토큰의 조회와 비밀값 읽기가 HTTP 403이다. 저장한 KV는 남는다.
+- 만료 경계는 별도 3초짜리 합성 토큰으로 가속 시험한다. 운영 역할의 10분 설정은 변경하지 않는다.
+
+이 시험의 성공 JSON에는 `vsoControllerTested=false`가 명시된다. 실제 Vault ACL
+시험이지 Kubernetes 인증·VSO 컨트롤러·Secret 동기화 성공이 아니다.
+
+### 실제 VSO 컨트롤러 검증 전에는 운영에 적용하지 않는다
+
+별도 비운영 Kubernetes API, Vault 2.0.4와 VSO 1.4.1을 연결한 시험도 필요하다.
+운영 kubeconfig·CA·키·영구 볼륨을 복사하지 않는다. 합성 키를 사용해 이전 정책의
+실제 `renew-self` 403과 목적지 Secret 미생성을 먼저 재현한다. 정책 보완 뒤에는
+Kubernetes 서비스 계정 인증, Secret 소유권·필드 허용 목록·값 동기화, 토큰 갱신과
+만료 후 재인증을 확인한다. 잘못된 서비스 계정·namespace·audience도 거부돼야 한다.
+
+이 컨트롤러 시험이나 운영 공급 확인을 실행하지 않았다면 미실행으로 보고한다.
+정적 검사 또는 실제 Vault ACL 시험만으로 전체 연결 성공을 보고하지 않는다.
+
+### 기존 전용 정책을 보완할 때의 복구 경계
+
+신규 등록 절차의 동명 자원 거부를 제거해서 기존 리소스를 덮어쓰지 않는다.
+403 보완은 별도 승인된 작업으로 현재 정책을 비공개 복구 파일에 읽어 보존한 뒤
+정확히 해당 정책만 갱신한다. 등록된 키·역할·기본 정책·auth mount는 바꾸지 않는다.
+실패 시 보존한 정책으로만 복구한다. VSS·Secret 삭제, VSO 전체 재시작과 V9
+되돌리기는 이 보완에 포함하지 않는다. 새 앱 배포는 실제 공급 확인 후에만 재개한다.
+
 변환·인증의 공급자 계약은 [VSO API reference](https://developer.hashicorp.com/vault/docs/deploy/kubernetes/vso/api-reference)와
 [VSO 1.4.1 필드 필터 구현](https://github.com/hashicorp/vault-secrets-operator/blob/v1.4.1/helpers/template.go)을 따른다.
+토큰 생명주기는 [VSO 1.4.1 client 구현](https://github.com/hashicorp/vault-secrets-operator/blob/v1.4.1/vault/client.go#L460-L470)과
+[Vault token API](https://developer.hashicorp.com/vault/api-docs/auth/token)를 따른다.

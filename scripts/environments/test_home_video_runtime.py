@@ -85,7 +85,7 @@ class HomeVideoRuntimeTest(unittest.TestCase):
         self.assertEqual(self.by_kind['VaultAuth']['metadata']['name'],
                          self.by_kind['VaultStaticSecret']['spec']['vaultAuthRef'])
 
-    def test_vault_role_and_policy_allow_only_the_video_path(self):
+    def test_vault_role_and_policy_allow_video_reads_and_token_self_management_only(self):
         role = json.loads((ROOT / 'infra/vault/roles/community-youtube-read.json').read_text())
         self.assertEqual({
             'bound_service_account_names': ['community-youtube-vault-auth'],
@@ -99,13 +99,19 @@ class HomeVideoRuntimeTest(unittest.TestCase):
         policy = (ROOT / 'infra/vault/policies/community-youtube-read.hcl').read_text()
         policy = re.sub(r'#.*', '', policy).strip()
         blocks = re.findall(r'path\s+"([^"]+)"\s*\{([^}]+)\}', policy)
-        self.assertEqual({
-            'secret/data/pawbridge/dev/community/youtube',
-            'secret/metadata/pawbridge/dev/community/youtube',
-        }, {path for path, _ in blocks})
-        self.assertEqual(2, len(blocks))
-        for _, body in blocks:
-            self.assertRegex(body.strip(), r'^capabilities\s*=\s*\["read"\]$')
+        expected = {
+            'secret/data/pawbridge/dev/community/youtube': 'read',
+            'secret/metadata/pawbridge/dev/community/youtube': 'read',
+            'auth/token/lookup-self': 'read',
+            'auth/token/renew-self': 'update',
+            'auth/token/revoke-self': 'update',
+        }
+        self.assertEqual(set(expected), {path for path, _ in blocks})
+        self.assertEqual(len(expected), len(blocks))
+        for path, body in blocks:
+            with self.subTest(path=path):
+                self.assertRegex(body.strip(),
+                                 r'^capabilities\s*=\s*\["' + expected[path] + r'"\]$')
         self.assertEqual('', re.sub(r'path\s+"[^"]+"\s*\{[^}]+\}', '', policy).strip())
 
     def test_destination_whitelist_excludes_raw_and_unrelated_keys(self):
