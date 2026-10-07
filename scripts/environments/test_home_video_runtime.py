@@ -1,4 +1,5 @@
 """Offline contracts for Community-only YouTube key supply and video images."""
+from fnmatch import fnmatchcase
 import json
 import os
 from pathlib import Path
@@ -45,6 +46,18 @@ class HomeVideoRuntimeTest(unittest.TestCase):
     def deployment(self, service):
         return next(resource for resource in self.rendered[service]
                     if resource and resource['kind'] == 'Deployment')
+
+    def test_supply_contract_changes_trigger_the_existing_ci(self):
+        workflow = read_yaml(ROOT / '.github/workflows/environment-contract.yml')
+        # PyYAML uses YAML 1.1, where GitHub's unquoted "on" is a boolean key.
+        trigger = workflow.get('on', workflow.get(True))['pull_request']
+        self.assertEqual(['dev', 'main'], trigger['branches'])
+        files = [str(path.relative_to(ROOT)) for path in VSO.glob('*.yaml')]
+        files.extend(['infra/vault/policies/community-youtube-read.hcl',
+                      'infra/vault/roles/community-youtube-read.json'])
+        for path in files:
+            with self.subTest(path=path):
+                self.assertTrue(any(fnmatchcase(path, pattern) for pattern in trigger['paths']))
 
     def test_authentication_chain_is_namespace_scoped_and_tls_verified(self):
         self.assertEqual(4, len(self.resources))
