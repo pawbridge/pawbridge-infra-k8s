@@ -1,10 +1,10 @@
 # CI release metadata for local Compose; not Kubernetes dev settings.
 image:
   repository: dorosiya/pawbridge-community-service
-  tag: sha-44cb9f49d5f54794576ffdf1d99a3596588ae82b
-  digest: sha256:493e6ee433284171a566d145d88fbee575c61ba3209800d58586c3344d4079e1
+  tag: sha-2ddb2b8aa794af73da1a9d516652d4bc30d876b9
+  digest: sha256:0c34c4f1b967ea2230e492366518598b0d0784b1257db7dc4ff660ce345688de
   pullPolicy: IfNotPresent
 schemaMigration:
-  image: dorosiya/pawbridge-community-service@sha256:f7f773156aac6349ee9012b64af2ba51e86badf220815896c6daa935901319dd
-  apiImageDigest: sha256:493e6ee433284171a566d145d88fbee575c61ba3209800d58586c3344d4079e1
-  sourceRevision: 44cb9f49d5f54794576ffdf1d99a3596588ae82b
+  image: dorosiya/pawbridge-community-service@sha256:a36932ccfbe7a91f8063e2640c78fb6589ce3c3042bcc26a05313dffd1ff5b3c
+  apiImageDigest: sha256:0c34c4f1b967ea2230e492366518598b0d0784b1257db7dc4ff660ce345688de
+  sourceRevision: 2ddb2b8aa794af73da1a9d516652d4bc30d876b9
