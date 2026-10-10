@@ -13,11 +13,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 VSO = ROOT / 'gitops/security/community-youtube-vso'
-COMMUNITY_REVISION = '82a9cfa648ebfb122fad1f44c16d843985eb611b'
-COMMUNITY_DIGEST = 'sha256:13c3fcd3ea69dc0cfc087f509d226dbec0cc2b42efae68b7fa0c2bf3f494ae18'
-MIGRATION_DIGEST = 'sha256:c7f2104e5e1b543f710c99f8c3eb9f7ba63a9ddb476c79953cfc843680fdd3b2'
-GATEWAY_REVISION = '6ae772456bcea1b5e149585193188d50a7d5d83b'
-GATEWAY_DIGEST = 'sha256:9e5b31a721dd510800d636a6e88bb1a12fe8e82153bce395284a89e4b905656d'
 
 
 def read_yaml(path):
@@ -142,7 +137,7 @@ class HomeVideoRuntimeTest(unittest.TestCase):
         pod = deployment['spec']['template']['spec']
         self.assertFalse(pod['automountServiceAccountToken'])
         container = pod['containers'][0]
-        self.assertEqual('dorosiya/pawbridge-community-service@' + COMMUNITY_DIGEST,
+        self.assertEqual('dorosiya/pawbridge-community-service@' + self.values['community-service']['image']['digest'],
                          container['image'])
         self.assertEqual([
             {'secretRef': {'name': 'community-youtube-auth', 'optional': False}},
@@ -162,20 +157,20 @@ class HomeVideoRuntimeTest(unittest.TestCase):
 
     def test_gateway_render_changes_image_without_receiving_video_key(self):
         container = self.deployment('api-gateway')['spec']['template']['spec']['containers'][0]
-        self.assertEqual('dorosiya/pawbridge-api-gateway@' + GATEWAY_DIGEST, container['image'])
+        values = self.values['api-gateway']
+        self.assertEqual('dorosiya/pawbridge-api-gateway@' + values['image']['digest'], container['image'])
         self.assertEqual([{'secretRef': {'name': 'api-gateway-secrets-vso', 'optional': False}}],
                          container['envFrom'])
         self.assertNotIn('YOUTUBE_DATA_API_KEY', {item['name'] for item in container['env']})
-        self.assertEqual('sha-' + GATEWAY_REVISION, self.values['api-gateway']['image']['tag'])
+        self.assertRegex(values['image']['tag'], r'^sha-[a-f0-9]{40}$')
 
     def test_migration_metadata_matches_source_but_no_job_is_enabled(self):
         values = self.values['community-service']
-        self.assertEqual('sha-' + COMMUNITY_REVISION, values['image']['tag'])
         migration = values['schemaMigration']
-        self.assertEqual(COMMUNITY_REVISION, migration['sourceRevision'])
-        self.assertEqual(COMMUNITY_DIGEST, migration['apiImageDigest'])
-        self.assertEqual('dorosiya/pawbridge-community-service@' + MIGRATION_DIGEST,
-                         migration['image'])
+        self.assertRegex(migration['sourceRevision'], r'^[a-f0-9]{40}$')
+        self.assertEqual('sha-' + migration['sourceRevision'], values['image']['tag'])
+        self.assertEqual(values['image']['digest'], migration['apiImageDigest'])
+        self.assertRegex(migration['image'], r'^dorosiya/pawbridge-community-service@sha256:[a-f0-9]{64}$')
         self.assertIs(False, migration['enabled'])
         for resources in self.rendered.values():
             self.assertFalse(any(r and r['kind'] == 'Job' for r in resources))

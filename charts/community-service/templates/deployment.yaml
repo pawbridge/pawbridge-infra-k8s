@@ -1,4 +1,5 @@
 {{- include "community-service.postgresqlContract" . -}}
+{{- include "community-service.chatContract" . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,6 +40,13 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.postgresqlSecretRef }}
                   key: postgres-password
+            {{- end }}
+            {{- if .Values.redisSecretRef }}
+            - name: SPRING_DATA_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.redisSecretRef }}
+                  key: redis-password
             {{- end }}
             {{- if .Values.mysqlSecretRef }}
             - name: SPRING_DATASOURCE_PASSWORD

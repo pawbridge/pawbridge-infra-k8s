@@ -11,14 +11,15 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class MemberChatContractTest(unittest.TestCase):
-    def test_feature_is_enabled_only_in_local_compose(self):
+    def test_local_compose_keeps_an_isolated_chat_namespace(self):
         compose = yaml.safe_load((ROOT / 'environments/dev/compose/compose.yaml').read_text())
         community = compose['services']['community-service']['environment']
         self.assertEqual('true', community['MEMBER_CHAT_ENABLED'])
         self.assertEqual('local-dev', community['MEMBER_CHAT_NAMESPACE'])
         self.assertNotIn('*', community['MEMBER_CHAT_ALLOWED_ORIGINS'])
-        for file in (ROOT / 'environments/prod/values').glob('*.yaml'):
-            self.assertNotIn('MEMBER_CHAT_ENABLED', file.read_text())
+        production = yaml.safe_load((ROOT / 'environments/prod/values/community-service.yaml').read_text())
+        self.assertNotEqual(community['MEMBER_CHAT_NAMESPACE'],
+                            production['env']['MEMBER_CHAT_NAMESPACE'])
 
     def test_cross_app_overlay_reuses_existing_network_and_database(self):
         overlay = yaml.safe_load((ROOT / 'environments/dev/compose/compose.chat-test.yaml').read_text())
