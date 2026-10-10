@@ -388,6 +388,9 @@ services:
       COMMUNITY_POSTGRESQL_JDBC_URL: jdbc:postgresql://postgresql:5432/pawbridge
       COMMUNITY_POSTGRESQL_USERNAME: pawbridge_dev_community_app
       COMMUNITY_POSTGRESQL_PASSWORD: ${DEV_COMMUNITY_APP_PASSWORD}
+      MEMBER_CHAT_ENABLED: 'true'
+      MEMBER_CHAT_NAMESPACE: local-dev
+      MEMBER_CHAT_ALLOWED_ORIGINS: http://localhost:5184,http://127.0.0.1:5184
     depends_on:
       postgresql:
         condition: service_healthy
