@@ -1,0 +1,33 @@
+# Opt-in two-app verification. No production values, credentials or new data volumes.
+services:
+  user-service:
+    volumes:
+      - ${MEMBER_CHAT_USER_JAR:?Set the unchanged base User build JAR}:/app.jar:ro
+  community-service:
+    volumes:
+      - ${MEMBER_CHAT_COMMUNITY_JAR:?Set the approved local build JAR}:/app.jar:ro
+  api-gateway:
+    environment:
+      COMMUNITY_CHAT_WEBSOCKET_URL: ws://community-service:8082
+    volumes:
+      - ${MEMBER_CHAT_GATEWAY_JAR:?Set the approved local build JAR}:/app.jar:ro
+  community-chat-peer:
+    extends:
+      file: compose.yaml
+      service: community-service
+    profiles: [chat-test]
+    volumes:
+      - ${MEMBER_CHAT_COMMUNITY_JAR:?Set the approved local build JAR}:/app.jar:ro
+  chat-peer-gateway:
+    extends:
+      file: compose.yaml
+      service: api-gateway
+    profiles: [chat-test]
+    networks: [dev, access]
+    environment:
+      COMMUNITY_SERVICE_URL: http://community-chat-peer:8082
+      COMMUNITY_CHAT_WEBSOCKET_URL: ws://community-chat-peer:8082
+    volumes:
+      - ${MEMBER_CHAT_GATEWAY_JAR:?Set the approved local build JAR}:/app.jar:ro
+    ports:
+      - 127.0.0.1:28180:8080
