@@ -48,6 +48,7 @@ secretRefOptional: true
 mysqlSecretRef: ""
 r2SecretRef: community-service-r2-secrets
 r2SecretRefOptional: true
+redisSecretRef: ""
 elasticsearchSecretRef: ""
 elasticsearchCaSecretRef: ""
 elasticsearchCaMountPath: /etc/pawbridge/elasticsearch
