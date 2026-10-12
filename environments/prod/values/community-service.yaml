@@ -3,8 +3,8 @@ nodeSelector:
   kubernetes.io/hostname: pawbridge-k136-w2
 image:
   repository: dorosiya/pawbridge-community-service
-  tag: sha-4e82f8405a8693272d367c5e7d7f1cf6f9f5d958
-  digest: sha256:7d709d472bc7ec1fd4b4160a495ee7f6ec9d058ae7caa5f80f7e1657293fbce1
+  tag: sha-255cc285189dd2ea341e7325577865b99af461f8
+  digest: sha256:547b28abe153073fe51bfa889471602096fd33b407704a72d8ae30a53dba4284
   pullPolicy: IfNotPresent
 automountServiceAccountToken: false
 secretRef: community-youtube-auth
@@ -20,6 +20,8 @@ autoscaling:
 serviceMonitor:
   enabled: false
 env:
+  DAILY_VISITORS_ENABLED: 'true'
+  DAILY_VISITORS_ALLOWED_ORIGINS: https://www.pawbridge.kr
   MEMBER_CHAT_ENABLED: 'true'
   MEMBER_CHAT_NAMESPACE: pawbridge-prod
   MEMBER_CHAT_ALLOWED_ORIGINS: https://www.pawbridge.kr,https://pawbridge.kr
@@ -56,10 +58,11 @@ env:
   SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: '5'
   SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: '0'
 schemaMigration:
-  image: dorosiya/pawbridge-community-service@sha256:c08a74e1dfa7dfba7dd34a7eeffc95528b7521d557c1c1b3015b29db0b818932
-  apiImageDigest: sha256:7d709d472bc7ec1fd4b4160a495ee7f6ec9d058ae7caa5f80f7e1657293fbce1
-  sourceRevision: 4e82f8405a8693272d367c5e7d7f1cf6f9f5d958
+  image: dorosiya/pawbridge-community-service@sha256:67f8c98357dca54865a3620b6c049b1452bfd45b4683929f3842ad46d2ec45f5
+  apiImageDigest: sha256:547b28abe153073fe51bfa889471602096fd33b407704a72d8ae30a53dba4284
+  sourceRevision: 255cc285189dd2ea341e7325577865b99af461f8
   enabled: false
   existingSchemaVerified: false
   recoveryReference: ''
 postgresqlSecretRef: community-postgresql-auth
+visitsSecretRef: community-visits-auth

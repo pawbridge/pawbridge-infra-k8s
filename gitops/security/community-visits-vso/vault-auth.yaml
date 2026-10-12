@@ -1,0 +1,14 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: community-visits-vault-auth
+  namespace: pawbridge
+spec:
+  vaultConnectionRef: community-visits-vault-connection
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: community-visits-read
+    serviceAccount: community-visits-vault-auth
+    audiences: [vault]
+    tokenExpirationSeconds: 600
