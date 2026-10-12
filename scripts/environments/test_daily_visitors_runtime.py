@@ -77,10 +77,10 @@ class DailyVisitorsRuntimeTest(unittest.TestCase):
         community=yaml.safe_load((ROOT/'environments/prod/values/community-service.yaml').read_text())
         migration=community['schemaMigration']
         self.assertFalse(migration['enabled'])
-        self.assertEqual('255cc285189dd2ea341e7325577865b99af461f8',migration['sourceRevision'])
+        self.assertEqual('501d513b76a7340c6a03fcb34ebb55f0d1984650',migration['sourceRevision'])
         self.assertEqual(community['image']['digest'],migration['apiImageDigest'])
         self.assertEqual('sha-'+migration['sourceRevision'],community['image']['tag'])
-        self.assertEqual('sha256:547b28abe153073fe51bfa889471602096fd33b407704a72d8ae30a53dba4284',community['image']['digest'])
+        self.assertEqual('sha256:2756a9cf510977987aa7e1797f36cb43fade1ef19c9b66ee16fea96c43dba326',community['image']['digest'])
         gateway=yaml.safe_load((ROOT/'environments/prod/values/api-gateway.yaml').read_text())
         self.assertEqual('sha256:972e5685fb37d49792347173d342843b692344cd004afa43ddcb13219e394104',gateway['image']['digest'])
 
