@@ -99,3 +99,4 @@ autoscaling:
 
 # Opt-in PostgreSQL password source; never combine with mysqlSecretRef.
 postgresqlSecretRef: ""
+visitsSecretRef: ""
