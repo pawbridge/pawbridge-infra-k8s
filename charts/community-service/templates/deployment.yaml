@@ -1,5 +1,6 @@
 {{- include "community-service.postgresqlContract" . -}}
 {{- include "community-service.chatContract" . -}}
+{{- include "community-service.visitsContract" . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -47,6 +48,14 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.redisSecretRef }}
                   key: redis-password
+            {{- end }}
+            {{- if .Values.visitsSecretRef }}
+            - name: DAILY_VISITORS_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.visitsSecretRef }}
+                  key: DAILY_VISITORS_SIGNING_KEY
+                  optional: false
             {{- end }}
             {{- if .Values.mysqlSecretRef }}
             - name: SPRING_DATASOURCE_PASSWORD
