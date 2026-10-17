@@ -23,11 +23,14 @@ def environments(values,inputs,mode='standby'):
     f=MODE_FLAGS[mode];env=prep.fragments(values)
     for svc in APP_PORTS:
         if svc in ('photo-service','python-ai-service'):continue
+        # Collection session locks consume connections alongside APMS worker transactions.
+        # Keep Animal at its source default; idle=0 avoids reserving all ten connections.
+        maximum_pool_size='10' if svc=='animal-service' else '3'
         env[svc].update(SPRING_PROFILES_ACTIVE='dev' if svc=='api-gateway' else 'dev,postgresql',
             JAVA_TOOL_OPTIONS='-Xms32m -Xmx256m -XX:ActiveProcessorCount=2 -Duser.timezone=Asia/Seoul',
             SPRING_KAFKA_BOOTSTRAP_SERVERS='kafka:9092',SPRING_KAFKA_ADMIN_AUTO_CREATE='false',
             SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET='earliest',
-            SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE='3',SPRING_DATASOURCE_HIKARI_MINIMUMIDLE='0',
+            SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE=maximum_pool_size,SPRING_DATASOURCE_HIKARI_MINIMUMIDLE='0',
             SPRING_JPA_SHOW_SQL='false',LOGGING_LEVEL_ORG_HIBERNATE_SQL='OFF',
             MANAGEMENT_TRACING_ENABLED='false',MANAGEMENT_HEALTH_MAIL_ENABLED='false',
             MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE='health,info,scheduledtasks',
@@ -36,7 +39,7 @@ def environments(values,inputs,mode='standby'):
             PAWBRIDGE_JOBS_CART_SYNC_ENABLED=f['cart'])
         if svc!='api-gateway':
             prefix=svc.split('-')[0].upper()+'_POSTGRESQL_'
-            env[svc].update({prefix+'POOL_MAX':'3',prefix+'POOL_MIN':'0',prefix+'MAX_POOL_SIZE':'3',prefix+'MIN_IDLE':'0'})
+            env[svc].update({prefix+'POOL_MAX':maximum_pool_size,prefix+'POOL_MIN':'0',prefix+'MAX_POOL_SIZE':maximum_pool_size,prefix+'MIN_IDLE':'0'})
     routes={'USER_SERVICE_URL':'http://user-service:8080','ANIMAL_SERVICE_URL':'http://animal-service:8081',
         'COMMUNITY_SERVICE_URL':'http://community-service:8082','COMMUNITY_CHAT_WEBSOCKET_URL':'ws://community-service:8082',
         'STORE_SERVICE_URL':'http://store-service:8083','PAYMENT_SERVICE_URL':'http://payment-service:8084','PYTHON_AI_SERVICE_URL':'http://python-ai-service:8000'}

@@ -11,6 +11,23 @@ class OperatingBundleContract(unittest.TestCase):
         self.images = {'MAC_IMAGE_' + key: 'sha256:' + format(i, '064x')
                        for i, key in enumerate(image_keys, 1)}
 
+    def test_animal_connection_capacity_covers_collection_overlap_in_every_mode(self):
+        for mode in b.MODE_FLAGS:
+            with self.subTest(mode=mode):
+                env=b.environments(self.values,self.inputs,mode)
+                animal=env['animal-service']
+                for key in ('SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE',
+                            'ANIMAL_POSTGRESQL_MAX_POOL_SIZE','ANIMAL_POSTGRESQL_POOL_MAX'):
+                    self.assertEqual('10',animal[key])
+                for key in ('SPRING_DATASOURCE_HIKARI_MINIMUMIDLE',
+                            'ANIMAL_POSTGRESQL_MIN_IDLE','ANIMAL_POSTGRESQL_POOL_MIN'):
+                    self.assertEqual('0',animal[key])
+                for service in ('user','community','store','payment'):
+                    settings=env[service+'-service']
+                    self.assertEqual('3',settings['SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE'])
+                    self.assertEqual('3',settings[service.upper()+'_POSTGRESQL_MAX_POOL_SIZE'])
+                    self.assertEqual('0',settings[service.upper()+'_POSTGRESQL_MIN_IDLE'])
+
     def test_standby_disables_sources_and_cleanup_but_preserves_api_configuration(self):
         env=b.environments(self.values,self.inputs,'standby')
         for svc in b.APP_PORTS:

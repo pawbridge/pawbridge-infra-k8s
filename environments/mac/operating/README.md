@@ -15,7 +15,11 @@
 
 운영 native/monitor 실행본은 사용자 Library의 `Application Support/PawBridge/production-20261017/runtime-v1`에 있다. 이 실행본은 소스·관리 코드·비공개 설정·상태를 고정하여 사용한다. 저장소 파일을 수정해도 이 복사본이 자동 갱신되지는 않는다. 실제 실행 설정을 이 문서의 예시로 복사하지 않는다.
 
-운영 Compose 실행 조합은 비공개 고정 후보의 `compose.json`과 관리 실행본의 `backup-path-override.json`이다. 백업 작업 경로는 이 override로 관리 실행본에 연결한다. 활성 앱은 서비스별 비공개 active env를 사용하며, 기본 standby env만 다시 연결하면 현재 동작을 재현하지 못한다. native active 설정과 monitor 설정도 관리 실행본의 비공개 파일을 사용한다. 경로만 바꿔 새 배포를 실행하지 말고 해당 환경의 승인된 실행·복구 절차를 따른다.
+최초 운영 Compose 실행 조합은 비공개 고정 후보의 `compose.json`과 관리 실행본의 `backup-path-override.json`이었다. 백업 작업 경로는 이 override로 관리 실행본에 연결한다. 활성 앱은 서비스별 비공개 active env를 사용하며, 기본 standby env만 다시 연결하면 현재 동작을 재현하지 못한다. native active 설정과 monitor 설정도 관리 실행본의 비공개 파일을 사용한다. 경로만 바꿔 새 배포를 실행하지 말고 해당 환경의 승인된 실행·복구 절차를 따른다.
+
+현재 앱의 후속 설정은 서비스별 비공개 실행본에서 확인한다. 공유키 교체 뒤 Animal에는 최대 DB 연결 수 10 / 최소 유휴 0을 적용한 단일서비스 구성이 추가됐다. 다른 Java DB 서비스는 최대 3을 유지한다. `mac_compose_operating_bundle.py`의 새 생성 계약도 이 값을 사용하지만, 생성기 수정이 기존 렌더본을 자동 갱신하지는 않는다.
+
+Animal을 이전 rotation 구성으로 다시 생성하면 최대 연결 수가 3으로 돌아갈 수 있다. 실제 재생성에는 최신 비공개 receipt와 Obsidian의 서비스별 구성 경로를 확인하고, 해당 서비스의 정상 종료 완료 후 승인된 단일서비스 구성만 사용한다. 현재 인증값을 포함한 렌더본과 원복 파일은 Git에 추가하지 않는다.
 
 ## 예약 작업과 상태 인계
 
