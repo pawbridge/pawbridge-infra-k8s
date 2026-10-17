@@ -1,0 +1,34 @@
+# Mac-only Kafka 4.1.2 + Debezium PostgreSQL/Outbox worker.
+# The reviewed ARM64 child belongs to the existing Strimzi manifest index.
+# Windows/MySQL/Elasticsearch recipes and their worker images remain unchanged.
+FROM quay.io/strimzi/kafka@sha256:16821490bfbd17de0c8ab96aec7d48f46624b61d71bc9388f1f7d2c53bbe9a3d AS postgres-plugin
+
+# Exact versions/checksum/source from the existing PostgreSQL image recipe.
+# The checksum-verified archive stores EventRouter in debezium-connect-plugins,
+# not a standalone core JAR. Runtime SMT loading is checked in the rehearsal.
+ARG DEBEZIUM_POSTGRES_VERSION=3.5.2.Final
+ARG DEBEZIUM_POSTGRES_SHA512=7ee20a5106d11068677dd81d06fad7ee1c2fa09ba31658ecfed5dc9611e8fd73417251b9a5661e5425d8cfac1f868afb83dec56027639f54394e8f4d1f7f4c4e
+USER 1001
+RUN test "${DEBEZIUM_POSTGRES_VERSION}" = '3.5.2.Final' \
+    && mkdir -p /tmp/postgresql-plugin \
+    && curl --fail --show-error --silent --location --proto '=https' --tlsv1.2 \
+       --retry 3 --connect-timeout 15 --max-time 300 \
+       "https://repo.maven.apache.org/maven2/io/debezium/debezium-connector-postgres/${DEBEZIUM_POSTGRES_VERSION}/debezium-connector-postgres-${DEBEZIUM_POSTGRES_VERSION}-plugin.tar.gz" \
+       --output /tmp/postgresql-plugin.tar.gz \
+    && echo "${DEBEZIUM_POSTGRES_SHA512}  /tmp/postgresql-plugin.tar.gz" | sha512sum -c - \
+    && tar --extract --gzip --file /tmp/postgresql-plugin.tar.gz \
+       --directory /tmp/postgresql-plugin --strip-components=1 \
+    && test -r /tmp/postgresql-plugin/debezium-connector-postgres-${DEBEZIUM_POSTGRES_VERSION}.jar \
+    && test -r /tmp/postgresql-plugin/debezium-connect-plugins-${DEBEZIUM_POSTGRES_VERSION}.jar
+
+FROM quay.io/strimzi/kafka@sha256:16821490bfbd17de0c8ab96aec7d48f46624b61d71bc9388f1f7d2c53bbe9a3d
+LABEL com.pawbridge.purpose="synthetic-gateway-user-animal" \
+      com.pawbridge.kafka.version="4.1.2" \
+      com.pawbridge.debezium.postgresql.version="3.5.2.Final"
+USER root
+COPY --from=postgres-plugin --chown=1001:0 /tmp/postgresql-plugin/ /opt/kafka/plugins/debezium-postgresql/
+USER 1001
+RUN test -r /opt/kafka/plugins/debezium-postgresql/debezium-connector-postgres-3.5.2.Final.jar \
+    && test -r /opt/kafka/plugins/debezium-postgresql/debezium-connect-plugins-3.5.2.Final.jar
+# Compose owns the exact Kafka, volume-init and Connect commands.
+ENTRYPOINT []

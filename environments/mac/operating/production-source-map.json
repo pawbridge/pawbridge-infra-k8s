@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "recordedDate": "2026-10-18",
+  "purpose": "Mac production source preservation after 2026-10-17 cutover",
+  "sourceCommitsCreatedAfterDeployment": true,
+  "verificationScope": [
+    "Source-file hashes matched existing deployment build receipts; no image rebuild or redeployment was performed.",
+    "Image values below are local ARM64 build references, not a claim of remotely published OCI artifacts.",
+    "Secrets, rendered production configuration, logs, receipts, databases, models, and galleries are not part of this Git publication."
+  ],
+  "repositories": [
+    {
+      "repository": "pawbridge/pawbridge-backend-k8s",
+      "role": "community",
+      "branch": "chore/mac-community-runtime-controls",
+      "baseCommit": "501d513b76a7340c6a03fcb34ebb55f0d1984650",
+      "publicationCommit": "2bdc97411146c819afe9c7bf352224763fa4d43d",
+      "productionSourceSha256": {
+        "community-service/src/main/java/com/pawbridge/communityservice/chat/MemberChatDataLifecycle.java": "7e83ebf5667a3d92371ac5bf2269195163e17b8e35a5130a408348410507a512",
+        "community-service/src/main/java/com/pawbridge/communityservice/contact/PrivateNoteConfiguration.java": "6e6a1a979069889cd11d1156633ea93ddf7ac05023eb07d1f14bdc286d054825",
+        "community-service/src/main/java/com/pawbridge/communityservice/curation/HomeVideoRefresh.java": "030ed7f158ea136dca457d39c9c9a837041d97bb7a88883632a802d82e60eb52",
+        "community-service/src/main/java/com/pawbridge/communityservice/scheduler/CleanupScheduler.java": "af91dc117bd438fff4629e89bea721cba2119687b2ef8611404750c0fbc5b130"
+      }
+    },
+    {
+      "repository": "pawbridge/pawbridge-backend-k8s",
+      "role": "store",
+      "branch": "chore/mac-store-runtime-controls",
+      "baseCommit": "501d513b76a7340c6a03fcb34ebb55f0d1984650",
+      "publicationCommit": "ca3883f059eaa8eca0881c92413f6612bd80cef7",
+      "productionSourceSha256": {
+        "store-service/src/main/java/com/pawbridge/storeservice/domain/cart/scheduler/CartSyncScheduler.java": "49ac7555cee184d11e64d3b7b884cd235da4a3fa40311a5a6cf1c33461af7fdf"
+      }
+    },
+    {
+      "repository": "pawbridge/pawbridge-backend-k8s",
+      "role": "user",
+      "branch": "chore/mac-user-runtime-controls",
+      "baseCommit": "501d513b76a7340c6a03fcb34ebb55f0d1984650",
+      "publicationCommit": "5604737c4864100363580df71a7808f6d9c659f7",
+      "productionSourceSha256": {
+        "user-service/src/main/java/com/pawbridge/userservice/scheduler/OutboxCleanupScheduler.java": "c03ca8e40cc7a20ef8908e434716ee217c25666296ebc653e5c0f7d277e840fd"
+      }
+    },
+    {
+      "repository": "pawbridge/pawbridge-backend-k8s",
+      "role": "animal",
+      "branch": "feat/mac-apms-scheduler",
+      "baseCommit": "501d513b76a7340c6a03fcb34ebb55f0d1984650",
+      "publicationCommit": "d62f056c3c9c6687a72c5d70ccaf8cf3aede62c3",
+      "productionSourceSha256": {
+        "animal-service/src/main/java/com/pawbridge/animalservice/scheduler/OutboxCleanupScheduler.java": "9c62b5b5e50621f9b57307818d5aa03f0b2d1b080f0fe9a773c841ef43264458",
+        "animal-service/src/main/resources/application.yml": "7d8b9ee1a6160d5c5d6719c907d04167c1ba2f35c05e68939214c17720d962ca",
+        "animal-service/src/main/java/com/pawbridge/animalservice/batch/ApmsCollectionSchedule.java": "28fc3c7f88b81e0640900c192feb60289b14e758f90d66e2a8d9c2d7e73fbe5c"
+      }
+    },
+    {
+      "repository": "pawbridge/pawbridge-backend-k8s",
+      "role": "gateway",
+      "branch": "fix/mac-cart-gateway",
+      "baseCommit": "501d513b76a7340c6a03fcb34ebb55f0d1984650",
+      "publicationCommit": "0977be1fe15d3dde7d0f8a12750eebfdc5603fab",
+      "productionSourceSha256": {
+        "api-gateway/src/main/resources/application.yml": "f07de2bdc7cb7588466be1b2de6c7d1ec644ccd2a15af7d7fa75bccfed5537c4"
+      }
+    },
+    {
+      "repository": "pawbridge/pawbridge-python",
+      "role": "native",
+      "branch": "feat/mac-native-runtime",
+      "baseCommit": "cf67d541833e8bbe9e31e0aa5325590e1abf21b4",
+      "publicationCommit": "1253d0d06f2910c64cc59808cd29836a7851bdbf",
+      "productionSourceSha256": {
+        "app/lost_main.py": "1f447167c013a77ea302a49b35334bd21d411ec808f0d80312e0af31fc77bc18",
+        "app/services/dinov3.py": "b441121febce1a706749ed6893f4df0935e8f687ae3e1f32a3bf0243802287ad",
+        "app/services/sam3_focus.py": "56e02505331e85499c63753bff98f4726fc6701c4bf77d396a5a37d3d9666313",
+        "requirements-lost-mps.txt": "a8f17e8bd02ddde35187933a10b29c181f07b430a7f1a6c9b8841c8c14c569de",
+        "app/services/gpu_device.py": "8ae4707c94330fdf438d262915739906ab3b5db59a07be91ec47dabd8043aa35",
+        "deploy/macos/runtime.constraints.txt": "23abb0a04895a03a446267900c4ea1c980f0dbf85b52ab7de99c0879eb77145c",
+        "deploy/macos/sam3-manifest.json": "9071447621cf49e60c5c196ca27bd34cf7903499083a22baab7a708c387c10cb",
+        "deploy/macos/sam3-mps.patch": "bee34b1b567cad02f66eac7fb670205c21b60c8ce129de5bdea86fef358f5d06",
+        "scripts/prepare_sam3_mps.py": "62e155ca4eebbdd9ded5410dab30e17101ac78dc0a7a528c36938ea08427f279"
+      }
+    }
+  ],
+  "runtimeImages": {
+    "postgres": "sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f",
+    "redis": "sha256:74566c6910d13ae61e7ce73ebd3127438a1fe805b309b097c323142719ec8a5b",
+    "kafka": "sha256:eb78fc5c54acbd7fc06bbb7498987343bb1f1510b36ecd356e167cb0f4ea25bd",
+    "connect": "sha256:eb78fc5c54acbd7fc06bbb7498987343bb1f1510b36ecd356e167cb0f4ea25bd",
+    "api-gateway": "sha256:687b323ee97b47d97c8ae37b2cd18d9e020201c1f7bdf5f732afe447bb90872a",
+    "user-service": "sha256:6c1d0ddf87cc568a2d4fb8914d0c21356f6c9e4a748c1efa7142c783ddf7ab4c",
+    "animal-service": "sha256:2f0810c67dce4ff61afbee73f34a1b37c85b498ad6b52955955be1fe358704d5",
+    "community-service": "sha256:a3d9be4696b6988e53768af1a09cd29c488d165b1c7fcf6caef3de26c3cb04c1",
+    "store-service": "sha256:58411a381236921996a4745d32c8a552d9156aea5ad3331a3a98e280395400f0",
+    "payment-service": "sha256:3eef052c21dc637a1cab5e126f521de6d879099518081634707d7b0c4ea6026e",
+    "photo-service": "sha256:155a4c298ffb2958f2f85cb73528fb8776aeefa57fa3002a9612f4eacf4d9266",
+    "python-ai-service": "sha256:a76996f87bb50bc1f2aa022d6ac3db6889ec981ba2951ee40c9baa172b50e2bd",
+    "native-relay": "sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c",
+    "local-native-access": "sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c",
+    "backup": "sha256:5d467cfc9be954d94f6b4ba4c8140a547dbcd4bbd54e64ffad157d3d863532ca"
+  },
+  "tunnelImage": "cloudflare/cloudflared@sha256:4ecc4283c0f7cc127522e5ef261595cfe8571ee28f5c8d3751b24f52f9d04ebe"
+}

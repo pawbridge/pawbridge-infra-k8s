@@ -1,0 +1,13 @@
+# PostgreSQL-only Mac synthetic trial; model inference runs in the native service.
+FROM docker.io/library/python@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+LABEL org.opencontainers.image.source="https://github.com/pawbridge/pawbridge-python" \
+      org.opencontainers.image.revision="cf67d541833e8bbe9e31e0aa5325590e1abf21b4" \
+      com.pawbridge.purpose="synthetic-python-photo-native-integration"
+COPY requirements-photo.txt /app/requirements-photo.txt
+RUN pip install --no-cache-dir -r requirements-photo.txt && pip check
+COPY app /app/app
+USER 65532:65532
+EXPOSE 8000
+CMD ["uvicorn", "app.photo_main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--limit-concurrency", "4", "--backlog", "8", "--no-access-log"]

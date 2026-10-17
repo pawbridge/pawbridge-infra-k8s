@@ -1,0 +1,12 @@
+{
+  "name": "postgresql-backup",
+  "command": [
+    "/opt/backup-venv/bin/python",
+    "/opt/mac/mac_backup_job.py"
+  ],
+  "cwd": "/work",
+  "state": "/work/scheduler",
+  "interval": 43200,
+  "timeout": 2400,
+  "stale": 54000
+}
