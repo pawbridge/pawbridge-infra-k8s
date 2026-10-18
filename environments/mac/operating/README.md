@@ -7,6 +7,7 @@
 - [background-jobs-20261016/compose.json](background-jobs-20261016/compose.json)은 일반 서비스, Linux 데이터 볼륨, native 로컬 중계, 백업을 포함하는 전체 Compose 정의다. [실행 경계와 관리형 진입점](background-jobs-20261016/README.md)을 함께 읽는다.
 - [runtime-controls-20261016](runtime-controls-20261016/README.md)은 예약 모드와 CDC 계약을 설명한다. 이 폴더의 Kafka·Connect·connector·topic·native relay 정의를 사용한다.
 - `scripts/environments/mac_compose_operating.py`는 검토된 외부 입력 9개와 보존된 roles SQL로 비공개 credential fragment를 만든다. `mac_compose_operating_bundle.py`는 standby/drain/active 환경, CDC 및 기본 Compose를 준비한다. 두 도구 모두 Docker·SQL·외부 API를 실행하지 않는다.
+- 위 준비 도구는 이관 당시의 비공개 고정 후보(`environments/mac/candidate/current.json` 및 연결된 release 자료)를 입력으로 사용한다. 이 자료는 Git 게시 대상에서 제외했으므로 깨끗한 체크아웃만으로 준비 CLI를 실행할 수 없다. 새 설치·재구성에 사용하려면 먼저 별도 보존 입력과 출처를 확인해야 한다. 현재 운영 실행본의 실행에는 이 준비 CLI를 사용하지 않는다.
 - 기본 Compose 생성기는 백업·로컬 native 접근 중계·LaunchAgent·Python 환경 설치까지 만들지 않는다. 전체 운영 구성을 재현할 때는 위 전체 Compose 정의와 별도 관리형 native/monitor 실행 절차가 필요하다.
 
 ## 비공개 입력과 실제 실행본
