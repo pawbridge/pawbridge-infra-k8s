@@ -1,0 +1,38 @@
+services:
+  cloudflared:
+    image: cloudflare/cloudflared@sha256:4ecc4283c0f7cc127522e5ef261595cfe8571ee28f5c8d3751b24f52f9d04ebe
+    platform: linux/arm64
+    container_name: pawbridge-prod-cloudflared
+    profiles: [public-entry]
+    user: "${CLOUDFLARED_UID:?set host uid}:${CLOUDFLARED_GID:?set host gid}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 40s
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --metrics
+      - 127.0.0.1:2000
+      - --grace-period
+      - 30s
+      - run
+      - --token-file
+      - /run/secrets/tunnel-token
+    volumes:
+      - type: bind
+        source: ${CLOUDFLARED_TOKEN_FILE:?set private token file}
+        target: /run/secrets/tunnel-token
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [egress]
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

@@ -1,0 +1,1104 @@
+{
+  "name": "${OPERATING_PROJECT}",
+  "services": {
+    "postgres": {
+      "image": "sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-postgres",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 1073741824,
+      "memswap_limit": 1073741824,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/postgres.env",
+          "format": "raw"
+        }
+      ],
+      "networks": {
+        "private": {},
+        "backup-private": {
+          "ipv4_address": "10.203.254.2"
+        }
+      },
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m",
+        "/var/run/postgresql:rw,nosuid,size=8m,mode=0777"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "postgres-data",
+          "target": "/var/lib/postgresql/data",
+          "read_only": false,
+          "volume": {
+            "nocopy": true
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${BACKGROUND_CONFIG}/pg_hba.conf",
+          "target": "/etc/postgresql/pg_hba.conf",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "entrypoint": [
+        "postgres"
+      ],
+      "command": [
+        "-c",
+        "listen_addresses=*",
+        "-c",
+        "wal_level=logical",
+        "-c",
+        "max_replication_slots=5",
+        "-c",
+        "max_wal_senders=8",
+        "-c",
+        "max_slot_wal_keep_size=512MB",
+        "-c",
+        "shared_buffers=128MB",
+        "-c",
+        "max_connections=80",
+        "-c",
+        "work_mem=4MB",
+        "-c",
+        "temp_file_limit=256MB",
+        "-c",
+        "autovacuum=on",
+        "-c",
+        "log_statement=none",
+        "-c",
+        "log_min_error_statement=panic",
+        "-c",
+        "hba_file=/etc/postgresql/pg_hba.conf"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "pg_isready",
+          "-U",
+          "postgres",
+          "-d",
+          "pawbridge"
+        ],
+        "interval": "10s",
+        "timeout": "3s",
+        "retries": 6
+      }
+    },
+    "redis": {
+      "image": "sha256:74566c6910d13ae61e7ce73ebd3127438a1fe805b309b097c323142719ec8a5b",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-redis",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 536870912,
+      "memswap_limit": 536870912,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/redis.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "redis-data",
+          "target": "/data",
+          "read_only": false,
+          "volume": {
+            "nocopy": true
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${OPERATING_SECRETS}/redis.conf",
+          "target": "/redis.conf",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "entrypoint": [
+        "redis-server"
+      ],
+      "command": [
+        "/redis.conf"
+      ]
+    },
+    "kafka": {
+      "image": "sha256:eb78fc5c54acbd7fc06bbb7498987343bb1f1510b36ecd356e167cb0f4ea25bd",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-kafka",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 671088640,
+      "memswap_limit": 671088640,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/kafka.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "kafka-data",
+          "target": "/var/lib/kafka",
+          "read_only": false,
+          "volume": {
+            "nocopy": true
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${OPERATING_STATE}/config/kafka.properties",
+          "target": "/config/kafka.properties",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "entrypoint": [
+        "/opt/kafka/bin/kafka-server-start.sh"
+      ],
+      "command": [
+        "/config/kafka.properties"
+      ]
+    },
+    "connect": {
+      "image": "sha256:eb78fc5c54acbd7fc06bbb7498987343bb1f1510b36ecd356e167cb0f4ea25bd",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-kafka-connect",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 805306368,
+      "memswap_limit": 805306368,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/connect.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${OPERATING_STATE}/config/connect.properties",
+          "target": "/config/connect.properties",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${OPERATING_SECRETS}/cdc.properties",
+          "target": "/run/secrets/cdc.properties",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "entrypoint": [
+        "/opt/kafka/bin/connect-distributed.sh"
+      ],
+      "command": [
+        "/config/connect.properties"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://localhost:8083/"
+        ],
+        "interval": "15s",
+        "timeout": "4s",
+        "retries": 6
+      }
+    },
+    "api-gateway": {
+      "image": "sha256:687b323ee97b47d97c8ae37b2cd18d9e020201c1f7bdf5f732afe447bb90872a",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-gateway",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 671088640,
+      "memswap_limit": 671088640,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/api-gateway.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "entrypoint": [
+        "java",
+        "-jar",
+        "/app.jar"
+      ],
+      "command": [],
+      "ports": [
+        "127.0.0.1:38300:8080"
+      ]
+    },
+    "user-service": {
+      "image": "sha256:6c1d0ddf87cc568a2d4fb8914d0c21356f6c9e4a748c1efa7142c783ddf7ab4c",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-user",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 671088640,
+      "memswap_limit": 671088640,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/user-service.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "entrypoint": [
+        "java",
+        "-jar",
+        "/app.jar"
+      ],
+      "command": []
+    },
+    "animal-service": {
+      "image": "sha256:2f0810c67dce4ff61afbee73f34a1b37c85b498ad6b52955955be1fe358704d5",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-animal",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 671088640,
+      "memswap_limit": 671088640,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "400s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/animal-service.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "entrypoint": [
+        "java",
+        "-jar",
+        "/app.jar"
+      ],
+      "command": []
+    },
+    "community-service": {
+      "image": "sha256:a3d9be4696b6988e53768af1a09cd29c488d165b1c7fcf6caef3de26c3cb04c1",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-community",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 671088640,
+      "memswap_limit": 671088640,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/community-service.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "entrypoint": [
+        "java",
+        "-jar",
+        "/app.jar"
+      ],
+      "command": []
+    },
+    "store-service": {
+      "image": "sha256:58411a381236921996a4745d32c8a552d9156aea5ad3331a3a98e280395400f0",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-store",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 671088640,
+      "memswap_limit": 671088640,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/store-service.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "entrypoint": [
+        "java",
+        "-jar",
+        "/app.jar"
+      ],
+      "command": []
+    },
+    "payment-service": {
+      "image": "sha256:3eef052c21dc637a1cab5e126f521de6d879099518081634707d7b0c4ea6026e",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-payment",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 671088640,
+      "memswap_limit": 671088640,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/payment-service.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "entrypoint": [
+        "java",
+        "-jar",
+        "/app.jar"
+      ],
+      "command": []
+    },
+    "photo-service": {
+      "image": "sha256:155a4c298ffb2958f2f85cb73528fb8776aeefa57fa3002a9612f4eacf4d9266",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-photo",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 536870912,
+      "memswap_limit": 536870912,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/photo-service.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "command": [
+        "uvicorn",
+        "app.photo_main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--workers",
+        "1",
+        "--limit-concurrency",
+        "4",
+        "--backlog",
+        "8",
+        "--no-access-log"
+      ]
+    },
+    "python-ai-service": {
+      "image": "sha256:a76996f87bb50bc1f2aa022d6ac3db6889ec981ba2951ee40c9baa172b50e2bd",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-python-api",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 536870912,
+      "memswap_limit": 536870912,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/python-ai-service.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "command": [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--workers",
+        "1",
+        "--limit-concurrency",
+        "4",
+        "--backlog",
+        "8",
+        "--no-access-log"
+      ]
+    },
+    "native-relay": {
+      "image": "sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-native-ai-relay",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 67108864,
+      "memswap_limit": 67108864,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "env_file": [
+        {
+          "path": "${OPERATING_SECRETS}/native-relay.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${OPERATING_STATE}/config/native-relay.conf",
+          "target": "/etc/nginx/nginx.conf",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "entrypoint": [
+        "nginx"
+      ],
+      "command": [
+        "-g",
+        "daemon off;"
+      ]
+    },
+    "local-native-access": {
+      "image": "sha256:adf5042a17f4ecdd200c595fa9ffd1be37efb18f89a830bd1a00e4ab4d59d42c",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-native-db-gallery-bridge",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 67108864,
+      "memswap_limit": 67108864,
+      "cpus": 1.0,
+      "pids_limit": 256,
+      "stop_grace_period": "60s",
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "networks": [
+        "private",
+        "egress"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=64m"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${BACKGROUND_CONFIG}/local-native-access.conf",
+          "target": "/etc/nginx/nginx.conf",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "entrypoint": [
+        "nginx"
+      ],
+      "command": [
+        "-g",
+        "daemon off;"
+      ],
+      "ports": [
+        "127.0.0.1:35436:5432",
+        "127.0.0.1:35437:8080"
+      ]
+    },
+    "backup": {
+      "image": "sha256:5d467cfc9be954d94f6b4ba4c8140a547dbcd4bbd54e64ffad157d3d863532ca",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-backup-scheduler",
+      "profiles": [
+        "background"
+      ],
+      "restart": "unless-stopped",
+      "read_only": true,
+      "user": "${OPERATING_UID}:${OPERATING_GID}",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 536870912,
+      "memswap_limit": 536870912,
+      "cpus": 0.5,
+      "pids_limit": 64,
+      "init": true,
+      "networks": {
+        "backup-private": {
+          "ipv4_address": "10.203.254.3"
+        },
+        "egress": {}
+      },
+      "tmpfs": [
+        "/tmp:rw,nosuid,size=128m",
+        "/var/lib/postgresql/data:rw,nosuid,size=1m"
+      ],
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "entrypoint": [
+        "/opt/backup-venv/bin/python"
+      ],
+      "command": [
+        "/opt/mac/mac_background_jobs.py",
+        "loop",
+        "/config/backup-job.json"
+      ],
+      "environment": {
+        "PGHOST": "10.203.254.2",
+        "PGPORT": "5432",
+        "PGDATABASE": "pawbridge",
+        "PGUSER": "postgres",
+        "PGPASSWORD_FILE": "/credentials/postgres-password",
+        "R2_ENDPOINT": "${BACKUP_R2_ENDPOINT}",
+        "R2_ACCESS_KEY_FILE": "/credentials/r2-access",
+        "R2_SECRET_KEY_FILE": "/credentials/r2-secret",
+        "AGE_RECIPIENT_FILE": "/credentials/age-recipient",
+        "BACKUP_WORKDIR": "/work",
+        "BACKUP_CONTENT_PROOF": "false",
+        "BACKUP_TIMEOUT_SECONDS": "2400",
+        "BACKUP_DATA_SCOPE": "production",
+        "BACKUP_LIBRARY": "/opt/backup"
+      },
+      "volumes": [
+        {
+          "type": "bind",
+          "source": "${BACKGROUND_ROOT}/credentials",
+          "target": "/credentials",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${BACKGROUND_ROOT}/backup-work",
+          "target": "/work",
+          "read_only": false,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${BACKGROUND_ROOT}/config/backup-job.json",
+          "target": "/config/backup-job.json",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${BACKGROUND_SCRIPTS}/mac_backup_job.py",
+          "target": "/opt/mac/mac_backup_job.py",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${BACKGROUND_SCRIPTS}/mac_background_jobs.py",
+          "target": "/opt/mac/mac_background_jobs.py",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "/opt/backup-venv/bin/python",
+          "/opt/mac/mac_background_jobs.py",
+          "health",
+          "/config/backup-job.json"
+        ],
+        "interval": "60s",
+        "timeout": "10s",
+        "retries": 1,
+        "start_period": "10s"
+      },
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "5m",
+          "max-file": "2"
+        }
+      }
+    },
+    "storage-init": {
+      "image": "sha256:5d467cfc9be954d94f6b4ba4c8140a547dbcd4bbd54e64ffad157d3d863532ca",
+      "platform": "linux/arm64",
+      "pull_policy": "never",
+      "container_name": "${OPERATING_PROJECT}-storage-init",
+      "profiles": [
+        "bootstrap"
+      ],
+      "restart": "no",
+      "network_mode": "none",
+      "user": "0:0",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "cap_add": [
+        "CHOWN",
+        "FOWNER",
+        "DAC_READ_SEARCH"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "mem_limit": 134217728,
+      "memswap_limit": 134217728,
+      "cpus": 0.5,
+      "pids_limit": 32,
+      "labels": {
+        "com.pawbridge.operating-owner": "${OPERATING_OWNER}"
+      },
+      "entrypoint": [
+        "python3",
+        "/bootstrap/mac_operating_storage.py"
+      ],
+      "command": [
+        "${OPERATING_UID}",
+        "${OPERATING_GID}"
+      ],
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "postgres-data",
+          "target": "/storage/postgres",
+          "read_only": false,
+          "volume": {
+            "nocopy": true
+          }
+        },
+        {
+          "type": "volume",
+          "source": "redis-data",
+          "target": "/storage/redis",
+          "read_only": false,
+          "volume": {
+            "nocopy": true
+          }
+        },
+        {
+          "type": "volume",
+          "source": "kafka-data",
+          "target": "/storage/kafka",
+          "read_only": false,
+          "volume": {
+            "nocopy": true
+          }
+        },
+        {
+          "type": "bind",
+          "source": "${BACKGROUND_SCRIPTS}/mac_operating_storage.py",
+          "target": "/bootstrap/mac_operating_storage.py",
+          "read_only": true,
+          "bind": {
+            "create_host_path": false
+          }
+        }
+      ],
+      "tmpfs": [
+        "/var/lib/postgresql/data:rw,noexec,nosuid,size=1m"
+      ]
+    }
+  },
+  "networks": {
+    "private": {
+      "internal": true,
+      "name": "${OPERATING_PROJECT}-private"
+    },
+    "egress": {
+      "name": "${OPERATING_PROJECT}-egress"
+    },
+    "backup-private": {
+      "internal": true,
+      "ipam": {
+        "config": [
+          {
+            "subnet": "10.203.254.0/29"
+          }
+        ]
+      },
+      "name": "${OPERATING_PROJECT}-backup-private"
+    }
+  },
+  "volumes": {
+    "postgres-data": {
+      "external": true,
+      "name": "${OPERATING_PROJECT}-postgres-data"
+    },
+    "redis-data": {
+      "external": true,
+      "name": "${OPERATING_PROJECT}-redis-data"
+    },
+    "kafka-data": {
+      "external": true,
+      "name": "${OPERATING_PROJECT}-kafka-data"
+    }
+  }
+}

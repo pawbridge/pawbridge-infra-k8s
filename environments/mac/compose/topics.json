@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "source": "gitops/stateful/kafka/topics-business.yaml + topics-connect-internal.yaml + postgresql-outbox/*-heartbeat-topic.yaml at 281a511458a215eee4181d89d9938796907ea6b4",
+  "windowsLiveVerified": false,
+  "topics": [
+    {
+      "name": "user.favorite.events",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": 604800000
+      }
+    },
+    {
+      "name": "user.compensation.events",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": 604800000
+      }
+    },
+    {
+      "name": "community.post.events",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": 604800000
+      }
+    },
+    {
+      "name": "payment.events",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": 604800000
+      }
+    },
+    {
+      "name": "animal.created",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": 604800000
+      }
+    },
+    {
+      "name": "animal.updated",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": 604800000
+      }
+    },
+    {
+      "name": "animal.status.changed",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": 604800000
+      }
+    },
+    {
+      "name": "store.product-sku.events",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "compact,delete",
+        "retention.ms": 2592000000
+      }
+    },
+    {
+      "name": "store.order.events",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": 604800000
+      }
+    },
+    {
+      "name": "store.product-sku.es.dlq",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": 2592000000
+      }
+    },
+    {
+      "name": "__debezium-heartbeat.pawbridge-mac-pg-animal",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "compact",
+        "segment.bytes": 1048576,
+        "max.compaction.lag.ms": 60000
+      }
+    },
+    {
+      "name": "__debezium-heartbeat.pawbridge-mac-pg-user",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "compact",
+        "segment.bytes": 1048576,
+        "max.compaction.lag.ms": 60000
+      }
+    },
+    {
+      "name": "__debezium-heartbeat.pawbridge-mac-pg-community",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "compact",
+        "segment.bytes": 1048576,
+        "max.compaction.lag.ms": 60000
+      }
+    },
+    {
+      "name": "__debezium-heartbeat.pawbridge-mac-pg-store",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "compact",
+        "segment.bytes": 1048576,
+        "max.compaction.lag.ms": 60000
+      }
+    },
+    {
+      "name": "__debezium-heartbeat.pawbridge-mac-pg-payment",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "compact",
+        "segment.bytes": 1048576,
+        "max.compaction.lag.ms": 60000
+      }
+    },
+    {
+      "name": "mac-rehearsal-connect-configs",
+      "partitions": 1,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "compact"
+      }
+    },
+    {
+      "name": "mac-rehearsal-connect-offsets",
+      "partitions": 25,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "compact"
+      }
+    },
+    {
+      "name": "mac-rehearsal-connect-status",
+      "partitions": 5,
+      "replicationFactor": 1,
+      "config": {
+        "cleanup.policy": "compact"
+      }
+    }
+  ]
+}
