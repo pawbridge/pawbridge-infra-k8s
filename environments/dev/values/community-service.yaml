@@ -5,8 +5,8 @@ nodeSelector:
 
 image:
   repository: dorosiya/pawbridge-community-service
-  tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
-  digest: sha256:0fcbe26c44671fc7a7da11f93323af86f95a8810b1ab4cf88eaeda3c3edd9acb
+  tag: sha-10f57e7c10cd8057c858ce82921a4ee5088b16c1
+  digest: sha256:31c4c0e8ca02ab5c5d6df303a754dcc2262c09f77dc6ed654d91d745d37d9aa9
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
@@ -66,9 +66,9 @@ env:
   R2_REGION: auto
 
 schemaMigration:
-  image: dorosiya/pawbridge-community-service@sha256:0149ea0c060885689db449afafca92f0d869b5f6622620e0f48e40aba406938a
-  apiImageDigest: sha256:0fcbe26c44671fc7a7da11f93323af86f95a8810b1ab4cf88eaeda3c3edd9acb
-  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  image: dorosiya/pawbridge-community-service@sha256:b3948eab3b2d84863bcdebad3756ebd6649711e1bb8893a79927d93d00e1e0dd
+  apiImageDigest: sha256:31c4c0e8ca02ab5c5d6df303a754dcc2262c09f77dc6ed654d91d745d37d9aa9
+  sourceRevision: 10f57e7c10cd8057c858ce82921a4ee5088b16c1
   enabled: true
   existingSchemaVerified: true
   recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
