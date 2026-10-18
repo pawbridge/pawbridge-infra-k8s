@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: dorosiya/pawbridge-payment-service
-  tag: sha-5cd9a54d8fd769957f958f5c873cdd27da0520c0
-  digest: sha256:3bfea8fa7c149184da595078ab3046c6f4d2682ac0b8e10188ec9ebcb785ac35
+  tag: sha-a705619272943d36e99ec44613a5543d929196fe
+  digest: sha256:169080b45facc6bc70a97f25a83ab72e005502aeb20df19f2c7c25d9fd3c0128
   # Temporary bootstrap provenance; CI replaces this with the built immutable digest.
   pullPolicy: IfNotPresent
 
@@ -49,9 +49,9 @@ env:
   MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
 
 schemaMigration:
-  image: dorosiya/pawbridge-payment-service@sha256:2e9f878d88b63d819b53d9c4a679075df85b9a2bf4d75553111105cd60228ef9
-  apiImageDigest: sha256:3bfea8fa7c149184da595078ab3046c6f4d2682ac0b8e10188ec9ebcb785ac35
-  sourceRevision: 5cd9a54d8fd769957f958f5c873cdd27da0520c0
+  image: dorosiya/pawbridge-payment-service@sha256:459da5de6691f2554018af8effd3ab60e2e0c061c550c02d2ec753e1fb5e751e
+  apiImageDigest: sha256:169080b45facc6bc70a97f25a83ab72e005502aeb20df19f2c7c25d9fd3c0128
+  sourceRevision: a705619272943d36e99ec44613a5543d929196fe
   enabled: true
   existingSchemaVerified: true
   recoveryReference: baseline-v1-20260911-and-mysql-restore-20260911
