@@ -51,7 +51,7 @@ def environments(values,inputs,mode='standby'):
         'allowedOriginPatterns':origins,'allowedMethods':['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
         'allowedHeaders':['Authorization','Content-Type','Accept','x-user-id'],'allowCredentials':True}}}}}}},separators=(',',':'))
     env['animal-service'].update(PYTHON_AI_SERVICE_URL=routes['PYTHON_AI_SERVICE_URL'],
-        LOST_SEARCH_PYTHON_URL='http://native-relay:18091',APMS_PHOTO_OPTIMIZER_URL='http://photo-service:8000',
+        LOST_SEARCH_PYTHON_URL='http://native-relay:18091',APMS_PHOTO_OPTIMIZER_URL='http://photo-service:8000/internal/photos/optimize',
         APMS_BATCH_SCHEDULE_ENABLED=f['collection'],APMS_BATCH_COLLECTION_CRON='0 */30 * * * *',
         APMS_PHOTO_ARCHIVE_ENABLED=f['collection'],APMS_PHOTO_ARCHIVE_INTERVAL_MS='60000',
         TOURAPI_ENABLED='true',TOURAPI_SCHEDULE_ENABLED=f['collection'],SHELTER_DIRECTORY_SCHEDULE_ENABLED='false',

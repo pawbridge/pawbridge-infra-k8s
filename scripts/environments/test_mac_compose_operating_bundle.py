@@ -11,6 +11,13 @@ class OperatingBundleContract(unittest.TestCase):
         self.images = {'MAC_IMAGE_' + key: 'sha256:' + format(i, '064x')
                        for i, key in enumerate(image_keys, 1)}
 
+    def test_photo_archive_uses_the_optimizer_post_endpoint_in_every_mode(self):
+        for mode in b.MODE_FLAGS:
+            with self.subTest(mode=mode):
+                environment=b.environments(self.values,self.inputs,mode)
+                self.assertEqual('http://photo-service:8000/internal/photos/optimize',
+                                 environment['animal-service']['APMS_PHOTO_OPTIMIZER_URL'])
+
     def test_animal_connection_capacity_covers_collection_overlap_in_every_mode(self):
         for mode in b.MODE_FLAGS:
             with self.subTest(mode=mode):
