@@ -1,4 +1,7 @@
-"""Encrypted backup without retention: create-only objects, verified before completion."""
+"""Encrypted backup: create-only objects, verified before completion.
+
+Remote retention is an R2 lifecycle rule on the bucket, never this job's credential.
+The local run directory is removed only after every object, including complete.json, verified."""
 import datetime as dt
 import hashlib
 import json
@@ -64,7 +67,9 @@ def run(cfg, client=None, capture_fn=capture, production_snapshot=False):
     directory.mkdir(mode=0o700)
     capture_fn(cfg, recipient, directory, run_id)
     marker = upload_new(client or cfg.client(), cfg, run_id, directory, production_snapshot=production_snapshot)
-    print(json.dumps({'run': run_id, 'verified': True, 'retention': False}), flush=True)
+    # R2 now holds the verified copy; a failed run never reaches here and keeps its local files.
+    shutil.rmtree(directory)
+    print(json.dumps({'run': run_id, 'verified': True, 'localCopy': 'removed'}), flush=True)
     return marker
 
 

@@ -162,4 +162,34 @@ class BackupDiskGuardTest(unittest.TestCase):
                 backup.run(cfg,client=Mock(),capture_fn=capture)
             capture.assert_not_called();self.assertEqual(list(Path(d).iterdir()),[])
 
+
+class BackupLocalCopyTest(unittest.TestCase):
+    def run_backup(self, workdir, upload):
+        from unittest.mock import Mock
+        cfg = Mock(workdir=workdir)
+        cfg.validate.return_value = 'public-recipient'
+
+        def capture(cfg, recipient, directory, run_id):
+            for name in backup.FILES:
+                (directory / name).write_bytes(b'encrypted-fixture')
+
+        with patch('mac_backup_job.upload_new', side_effect=upload):
+            return backup.run(cfg, client=Mock(), capture_fn=capture)
+
+    def test_verified_run_removes_local_copy(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.run_backup(d, lambda *args, **kwargs: {'run': 'verified'})
+            self.assertEqual(list(Path(d).iterdir()), [])
+
+    def test_failed_upload_keeps_local_copy(self):
+        def fail(*args, **kwargs):
+            raise ValueError('Backup integrity mismatch')
+
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError):
+                self.run_backup(d, fail)
+            runs = list(Path(d).iterdir())
+            self.assertEqual(len(runs), 1)
+            self.assertEqual(sorted(p.name for p in runs[0].iterdir()), sorted(backup.FILES))
+
 if __name__=='__main__':unittest.main()
